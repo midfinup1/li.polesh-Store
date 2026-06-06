@@ -1,5 +1,7 @@
 # Compose commands
 
+## Development
+
 ```bash
 cp infra/.env.example infra/.env
 docker compose --env-file infra/.env -f infra/docker-compose.yml up --build -d

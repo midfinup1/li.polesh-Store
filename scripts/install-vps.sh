@@ -4,8 +4,6 @@ set -Eeuo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${PROJECT_DIR}/infra/.env.prod"
-PROD_COMPOSE_FILE="${PROJECT_DIR}/infra/docker-compose.prod.yml"
-CADDYFILE="${PROJECT_DIR}/infra/Caddyfile"
 
 log() {
   printf "\n\033[1;32m[INFO]\033[0m %s\n" "$*"
@@ -49,7 +47,7 @@ save_env_value() {
 }
 
 generate_secret() {
-  openssl rand -base64 48 | tr -d '\n'
+  openssl rand -hex 32 | tr -d '\n'
 }
 
 generate_secret_if_empty() {
@@ -127,6 +125,22 @@ validate_env() {
     [[ -n "${S3_ACCESS_KEY:-}" ]] || fail "S3_ACCESS_KEY пустой"
     [[ -n "${S3_SECRET_KEY:-}" ]] || fail "S3_SECRET_KEY пустой"
     [[ -n "${S3_PUBLIC_URL:-}" ]] || fail "S3_PUBLIC_URL пустой"
+
+    if [[ "${S3_ENDPOINT}" == http://* || "${S3_ENDPOINT}" == https://* ]]; then
+      fail "S3_ENDPOINT должен быть без схемы. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
+    fi
+
+    if [[ "${S3_ENDPOINT}" == */* ]]; then
+      fail "S3_ENDPOINT должен быть без пути и без bucket. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
+    fi
+  fi
+
+  if [[ ! -f "${PROJECT_DIR}/infra/docker-compose.prod.yml" ]]; then
+    fail "Не найден infra/docker-compose.prod.yml"
+  fi
+
+  if [[ ! -f "${PROJECT_DIR}/infra/Caddyfile" ]]; then
+    fail "Не найден infra/Caddyfile"
   fi
 }
 
@@ -220,125 +234,6 @@ setup_firewall() {
   ufw allow 443/udp
   ufw --force enable
   ufw status verbose
-}
-
-write_caddyfile() {
-  log "Создание infra/Caddyfile"
-
-  cat > "${CADDYFILE}" <<'EOF'
-{$DOMAIN} {
-	encode zstd gzip
-
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-	}
-
-	handle /api/v1/* {
-		reverse_proxy backend:8080
-	}
-
-	handle /uploads/* {
-		reverse_proxy backend:8080
-	}
-
-	handle {
-		reverse_proxy frontend:3000
-	}
-}
-
-www.{$DOMAIN} {
-	redir https://{$DOMAIN}{uri} permanent
-}
-EOF
-}
-
-write_prod_compose() {
-  log "Создание infra/docker-compose.prod.yml"
-
-  cat > "${PROD_COMPOSE_FILE}" <<'EOF'
-services:
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on:
-      - frontend
-      - backend
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    env_file:
-      - .env.prod
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - app
-
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: /api/v1
-        NEXT_PUBLIC_SITE_URL: ${FRONTEND_URL}
-    restart: unless-stopped
-    env_file:
-      - .env.prod
-    environment:
-      API_INTERNAL_URL: http://backend:8080/api/v1
-      NEXT_PUBLIC_API_URL: /api/v1
-      NEXT_PUBLIC_SITE_URL: ${FRONTEND_URL}
-    depends_on:
-      - backend
-    networks:
-      - app
-
-  backend:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - .env.prod
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - backend_uploads:/app/uploads
-    networks:
-      - app
-
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    env_file:
-      - .env.prod
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - app
-
-volumes:
-  postgres_data:
-  backend_uploads:
-  caddy_data:
-  caddy_config:
-
-networks:
-  app:
-    driver: bridge
-EOF
 }
 
 write_backup_scripts() {
@@ -435,14 +330,19 @@ setup_backup_cron() {
 }
 
 deploy_app() {
-  log "Сборка и запуск production stack"
+  log "Pull и запуск production stack"
 
   cd "${PROJECT_DIR}"
 
   docker compose \
     --env-file infra/.env.prod \
     -f infra/docker-compose.prod.yml \
-    up --build -d
+    pull
+
+  docker compose \
+    --env-file infra/.env.prod \
+    -f infra/docker-compose.prod.yml \
+    up -d --remove-orphans
 
   docker compose \
     --env-file infra/.env.prod \
@@ -512,6 +412,11 @@ API:
   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml logs backend --tail=100
   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml logs frontend --tail=100
 
+Обновление production:
+  cd ${PROJECT_DIR}
+  docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml pull
+  docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml up -d --remove-orphans
+
 Backup:
   cd ${PROJECT_DIR}
   ./scripts/backup-postgres.sh
@@ -519,7 +424,7 @@ Backup:
 
 Важно:
   DNS A-записи для ${DOMAIN} и www.${DOMAIN} должны указывать на IP сервера.
-  Для первого выпуска HTTPS Cloudflare лучше держать в режиме DNS only.
+  S3_ENDPOINT должен быть без https:// и без bucket, например: s3.twcstorage.ru.
 
 EOF
 }
@@ -533,8 +438,6 @@ main() {
   install_docker
   setup_swap
   setup_firewall
-  write_caddyfile
-  write_prod_compose
   write_backup_scripts
   setup_backup_cron
   deploy_app

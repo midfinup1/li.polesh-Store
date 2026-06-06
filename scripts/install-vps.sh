@@ -367,6 +367,7 @@ if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then
   echo "Uploading backup to S3: s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/${BACKUP_NAME}"
 
   docker run --rm \
+    --entrypoint /bin/sh \
     -v "$BACKUP_DIR:/backup:ro" \
     -e S3_SCHEME="$S3_SCHEME" \
     -e S3_ENDPOINT="$S3_ENDPOINT" \

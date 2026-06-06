@@ -237,11 +237,11 @@ write_caddyfile() {
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 	}
 
-	handle_path /api/v1/* {
+	handle /api/v1/* {
 		reverse_proxy backend:8080
 	}
 
-	handle_path /uploads/* {
+	handle /uploads/* {
 		reverse_proxy backend:8080
 	}
 

@@ -63,6 +63,7 @@ if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then
   echo "Uploading backup to S3: s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/${BACKUP_NAME}"
 
   docker run --rm \
+    --entrypoint /bin/sh \
     -v "$BACKUP_DIR:/backup:ro" \
     -e S3_SCHEME="$S3_SCHEME" \
     -e S3_ENDPOINT="$S3_ENDPOINT" \
@@ -72,7 +73,7 @@ if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then
     -e BACKUP_S3_PREFIX="$BACKUP_S3_PREFIX" \
     -e BACKUP_NAME="$BACKUP_NAME" \
     -e BACKUP_RETENTION_DAYS="$BACKUP_RETENTION_DAYS" \
-    minio/mc:latest sh -lc '
+    minio/mc:latest -lc '
       set -e
 
       mc alias set backup-s3 "${S3_SCHEME}://${S3_ENDPOINT}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" --api S3v4

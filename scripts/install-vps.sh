@@ -377,7 +377,7 @@ if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then
     -e BACKUP_S3_PREFIX="$BACKUP_S3_PREFIX" \
     -e BACKUP_NAME="$BACKUP_NAME" \
     -e BACKUP_RETENTION_DAYS="$BACKUP_RETENTION_DAYS" \
-    minio/mc:latest sh -lc '
+    minio/mc:latest -lc '
       set -e
 
       mc alias set backup-s3 "${S3_SCHEME}://${S3_ENDPOINT}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" --api S3v4
@@ -416,6 +416,7 @@ if [[ ! -f "$BACKUP_FILE" ]]; then
 fi
 
 set -a
+# shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
 

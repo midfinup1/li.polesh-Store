@@ -105,6 +105,42 @@ normalize_env() {
     export WWW_DOMAIN
   fi
 
+  if [[ -z "${BACKUP_S3_ENABLED:-}" ]]; then
+    BACKUP_S3_ENABLED="false"
+    save_env_value "BACKUP_S3_ENABLED" "${BACKUP_S3_ENABLED}"
+    export BACKUP_S3_ENABLED
+  fi
+
+  if [[ -z "${BACKUP_S3_BUCKET:-}" && -n "${S3_BUCKET:-}" ]]; then
+    BACKUP_S3_BUCKET="${S3_BUCKET}"
+    save_env_value "BACKUP_S3_BUCKET" "${BACKUP_S3_BUCKET}"
+    export BACKUP_S3_BUCKET
+  fi
+
+  if [[ -z "${BACKUP_S3_PREFIX:-}" ]]; then
+    BACKUP_S3_PREFIX="backups/postgres"
+    save_env_value "BACKUP_S3_PREFIX" "${BACKUP_S3_PREFIX}"
+    export BACKUP_S3_PREFIX
+  fi
+
+  if [[ -z "${BACKUP_RETENTION_DAYS:-}" ]]; then
+    BACKUP_RETENTION_DAYS="30"
+    save_env_value "BACKUP_RETENTION_DAYS" "${BACKUP_RETENTION_DAYS}"
+    export BACKUP_RETENTION_DAYS
+  fi
+
+  if [[ -z "${LOCAL_BACKUP_RETENTION_DAYS:-}" ]]; then
+    LOCAL_BACKUP_RETENTION_DAYS="14"
+    save_env_value "LOCAL_BACKUP_RETENTION_DAYS" "${LOCAL_BACKUP_RETENTION_DAYS}"
+    export LOCAL_BACKUP_RETENTION_DAYS
+  fi
+
+  if [[ -z "${S3_SCHEME:-}" ]]; then
+    S3_SCHEME="https"
+    save_env_value "S3_SCHEME" "${S3_SCHEME}"
+    export S3_SCHEME
+  fi
+
   chmod 600 "${ENV_FILE}"
 }
 
@@ -125,6 +161,24 @@ validate_env() {
     [[ -n "${S3_ACCESS_KEY:-}" ]] || fail "S3_ACCESS_KEY пустой"
     [[ -n "${S3_SECRET_KEY:-}" ]] || fail "S3_SECRET_KEY пустой"
     [[ -n "${S3_PUBLIC_URL:-}" ]] || fail "S3_PUBLIC_URL пустой"
+
+    if [[ "${S3_ENDPOINT}" == http://* || "${S3_ENDPOINT}" == https://* ]]; then
+      fail "S3_ENDPOINT должен быть без схемы. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
+    fi
+
+    if [[ "${S3_ENDPOINT}" == */* ]]; then
+      fail "S3_ENDPOINT должен быть без пути и без bucket. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
+    fi
+  fi
+
+  if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then
+    [[ -n "${BACKUP_S3_BUCKET:-${S3_BUCKET:-}}" ]] || fail "BACKUP_S3_ENABLED=true, но BACKUP_S3_BUCKET и S3_BUCKET пустые"
+    [[ -n "${BACKUP_S3_PREFIX:-}" ]] || fail "BACKUP_S3_PREFIX пустой"
+    [[ -n "${BACKUP_RETENTION_DAYS:-}" ]] || fail "BACKUP_RETENTION_DAYS пустой"
+    [[ "${BACKUP_RETENTION_DAYS}" =~ ^[0-9]+$ ]] || fail "BACKUP_RETENTION_DAYS должен быть числом"
+    [[ -n "${S3_ENDPOINT:-}" ]] || fail "S3_ENDPOINT пустой для S3 backup"
+    [[ -n "${S3_ACCESS_KEY:-}" ]] || fail "S3_ACCESS_KEY пустой для S3 backup"
+    [[ -n "${S3_SECRET_KEY:-}" ]] || fail "S3_SECRET_KEY пустой для S3 backup"
 
     if [[ "${S3_ENDPOINT}" == http://* || "${S3_ENDPOINT}" == https://* ]]; then
       fail "S3_ENDPOINT должен быть без схемы. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
@@ -252,19 +306,95 @@ BACKUP_DIR="$ROOT_DIR/backups"
 
 mkdir -p "$BACKUP_DIR"
 
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Env file not found: $ENV_FILE" >&2
+  exit 1
+fi
+
 set -a
+# shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
 
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-BACKUP_FILE="$BACKUP_DIR/${POSTGRES_DB}_${TIMESTAMP}.dump"
+BACKUP_NAME="${POSTGRES_DB}_${TIMESTAMP}.dump"
+BACKUP_FILE="$BACKUP_DIR/$BACKUP_NAME"
+
+echo "Creating PostgreSQL backup: $BACKUP_FILE"
 
 docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/infra/docker-compose.prod.yml" exec -T postgres \
   pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc > "$BACKUP_FILE"
 
-find "$BACKUP_DIR" -type f -name "*.dump" -mtime +14 -delete
+if [[ ! -s "$BACKUP_FILE" ]]; then
+  echo "Backup file is empty: $BACKUP_FILE" >&2
+  exit 1
+fi
 
-echo "Backup created: $BACKUP_FILE"
+echo "Local backup created: $BACKUP_FILE"
+
+LOCAL_RETENTION_DAYS="${LOCAL_BACKUP_RETENTION_DAYS:-14}"
+find "$BACKUP_DIR" -type f -name "*.dump" -mtime +"$LOCAL_RETENTION_DAYS" -delete
+
+if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then
+  BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-${S3_BUCKET:-}}"
+  BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX:-backups/postgres}"
+  BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
+  S3_SCHEME="${S3_SCHEME:-https}"
+
+  if [[ -z "${BACKUP_S3_BUCKET}" ]]; then
+    echo "BACKUP_S3_ENABLED=true, but BACKUP_S3_BUCKET is empty" >&2
+    exit 1
+  fi
+
+  if [[ -z "${S3_ENDPOINT:-}" || -z "${S3_ACCESS_KEY:-}" || -z "${S3_SECRET_KEY:-}" ]]; then
+    echo "S3_ENDPOINT, S3_ACCESS_KEY or S3_SECRET_KEY is empty" >&2
+    exit 1
+  fi
+
+  if [[ "${S3_ENDPOINT}" == http://* || "${S3_ENDPOINT}" == https://* ]]; then
+    echo "S3_ENDPOINT must be without scheme. Example: s3.twcstorage.ru" >&2
+    exit 1
+  fi
+
+  if [[ "${S3_ENDPOINT}" == */* ]]; then
+    echo "S3_ENDPOINT must be without path and without bucket. Example: s3.twcstorage.ru" >&2
+    exit 1
+  fi
+
+  BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX#/}"
+  BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX%/}"
+
+  echo "Uploading backup to S3: s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/${BACKUP_NAME}"
+
+  docker run --rm \
+    -v "$BACKUP_DIR:/backup:ro" \
+    -e S3_SCHEME="$S3_SCHEME" \
+    -e S3_ENDPOINT="$S3_ENDPOINT" \
+    -e S3_ACCESS_KEY="$S3_ACCESS_KEY" \
+    -e S3_SECRET_KEY="$S3_SECRET_KEY" \
+    -e BACKUP_S3_BUCKET="$BACKUP_S3_BUCKET" \
+    -e BACKUP_S3_PREFIX="$BACKUP_S3_PREFIX" \
+    -e BACKUP_NAME="$BACKUP_NAME" \
+    -e BACKUP_RETENTION_DAYS="$BACKUP_RETENTION_DAYS" \
+    minio/mc:latest sh -lc '
+      set -e
+
+      mc alias set backup-s3 "${S3_SCHEME}://${S3_ENDPOINT}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" --api S3v4
+
+      mc cp "/backup/${BACKUP_NAME}" "backup-s3/${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/${BACKUP_NAME}"
+
+      if [ "${BACKUP_RETENTION_DAYS}" -gt 0 ]; then
+        mc find "backup-s3/${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}" \
+          --name "*.dump" \
+          --older-than "${BACKUP_RETENTION_DAYS}d" \
+          --exec "mc rm {}"
+      fi
+    '
+
+  echo "S3 backup uploaded successfully"
+fi
+
+echo "Backup completed: $BACKUP_FILE"
 EOF
 
   cat > "${PROJECT_DIR}/scripts/restore-postgres.sh" <<'EOF'
@@ -425,6 +555,7 @@ Backup:
 Важно:
   DNS A-записи для ${DOMAIN} и www.${DOMAIN} должны указывать на IP сервера.
   S3_ENDPOINT должен быть без https:// и без bucket, например: s3.twcstorage.ru.
+  Если BACKUP_S3_ENABLED=true, dump базы дополнительно выгружается в S3.
 
 EOF
 }

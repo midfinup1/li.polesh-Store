@@ -1,6 +1,4 @@
 -- +goose Up
--- +goose StatementBegin
-
 CREATE TABLE artist (
     id          SERIAL PRIMARY KEY,
     name        TEXT NOT NULL DEFAULT '',
@@ -11,7 +9,7 @@ CREATE TABLE artist (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Seed initial artist row
+-- Seed the single artist row.
 INSERT INTO artist (name) VALUES ('');
 
 CREATE TABLE categories (
@@ -68,14 +66,11 @@ CREATE TABLE admins (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Indexes
-CREATE INDEX idx_artworks_status      ON artworks(status);
-CREATE INDEX idx_artworks_category_id ON artworks(category_id);
+CREATE INDEX idx_artworks_status         ON artworks(status);
+CREATE INDEX idx_artworks_category_id    ON artworks(category_id);
 CREATE INDEX idx_artwork_images_artwork_id ON artwork_images(artwork_id);
-CREATE INDEX idx_orders_artwork_id    ON orders(artwork_id);
-CREATE INDEX idx_orders_status        ON orders(status);
-
--- +goose StatementEnd
+CREATE INDEX idx_orders_artwork_id       ON orders(artwork_id);
+CREATE INDEX idx_orders_status           ON orders(status);
 
 -- +goose Down
 DROP TABLE IF EXISTS orders;

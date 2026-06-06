@@ -1,5 +1,14 @@
 import type { Artwork, Artist, Category, Order, CreateOrderRequest } from "@/types";
 
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 function baseURL() {
   if (typeof window === "undefined") return process.env.API_INTERNAL_URL || "http://localhost:8080/api/v1";
   return process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -13,7 +22,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${baseURL()}${path}`, { ...init, headers, cache, credentials: "same-origin" });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(error.error || `Request failed: ${res.status}`);
+    throw new ApiError(res.status, error.error || `Request failed: ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -31,8 +40,14 @@ export const api = {
       update: (id: number, data: Partial<Artwork>) => request<Artwork>(`/admin/artworks/${id}`, { method: "PUT", body: JSON.stringify(data) }),
       delete: (id: number) => request<void>(`/admin/artworks/${id}`, { method: "DELETE" }),
       uploadImage: (id: number, file: File) => { const form = new FormData(); form.append("image", file); return request<Artwork["images"][0]>(`/admin/artworks/${id}/images`, { method: "POST", body: form }); },
+      deleteImage: (id: number, imageId: number) => request<void>(`/admin/artworks/${id}/images/${imageId}`, { method: "DELETE" }),
+      reorderImages: (id: number, imageIds: number[]) => request<void>(`/admin/artworks/${id}/images/reorder`, { method: "PATCH", body: JSON.stringify({ image_ids: imageIds }) }),
     },
-    categories: { create: (data: Partial<Category>) => request<Category>("/admin/categories", { method: "POST", body: JSON.stringify(data) }) },
+    categories: {
+      create: (data: Partial<Category>) => request<Category>("/admin/categories", { method: "POST", body: JSON.stringify(data) }),
+      update: (id: number, data: Partial<Category>) => request<Category>(`/admin/categories/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+      delete: (id: number) => request<void>(`/admin/categories/${id}`, { method: "DELETE" }),
+    },
     orders: { list: () => request<Order[]>("/admin/orders"), updateStatus: (id: number, status: Order["status"]) => request<void>(`/admin/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }) },
     artist: { update: (data: Partial<Artist>) => request<Artist>("/admin/artist", { method: "PUT", body: JSON.stringify(data) }) },
   },

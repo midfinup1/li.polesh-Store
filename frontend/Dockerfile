@@ -4,7 +4,14 @@ COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 FROM node:24-alpine AS builder
+# NEXT_PUBLIC_* are inlined into the client bundle at build time, NOT read at
+# runtime — they must be present here or values like the canonical/og:url fall
+# back to localhost in production (breaking the SEO that Next was chosen for).
+ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_IMAGE_HOST
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_IMAGE_HOST=$NEXT_PUBLIC_IMAGE_HOST
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules

@@ -9,11 +9,12 @@ export function OrderForm({ artworkId, disabled }: { artworkId: number; disabled
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState("sending"); setError("");
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     try {
       await api.orders.create({ artwork_id: artworkId, name: String(data.get("name") || ""), email: String(data.get("email") || ""), phone: String(data.get("phone") || ""), message: String(data.get("message") || "") });
       setState("sent");
-      event.currentTarget.reset();
+      form.reset();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось отправить заявку");
       setState("error");

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -35,17 +34,17 @@ func (s *OrderService) GetByID(ctx context.Context, id int64) (*domain.Order, er
 func (s *OrderService) Create(ctx context.Context, o *domain.Order) (*domain.Order, error) {
 	o.Name, o.Email, o.Phone, o.Message = strings.TrimSpace(o.Name), strings.TrimSpace(o.Email), strings.TrimSpace(o.Phone), strings.TrimSpace(o.Message)
 	if o.Name == "" {
-		return nil, errors.New("name is required")
+		return nil, fmt.Errorf("%w: name is required", domain.ErrValidation)
 	}
 	if _, err := mail.ParseAddress(o.Email); err != nil {
-		return nil, errors.New("valid email is required")
+		return nil, fmt.Errorf("%w: valid email is required", domain.ErrValidation)
 	}
 	artwork, err := s.artworks.GetByID(ctx, o.ArtworkID)
 	if err != nil {
-		return nil, errors.New("artwork not found")
+		return nil, fmt.Errorf("%w: artwork", domain.ErrNotFound)
 	}
 	if artwork.Status != domain.ArtworkStatusAvailable {
-		return nil, errors.New("artwork is not available for purchase")
+		return nil, fmt.Errorf("%w: artwork is not available for purchase", domain.ErrConflict)
 	}
 	order, err := s.orders.Create(ctx, o)
 	if err != nil {
@@ -63,7 +62,7 @@ func (s *OrderService) Create(ctx context.Context, o *domain.Order) (*domain.Ord
 }
 func (s *OrderService) UpdateStatus(ctx context.Context, id int64, status domain.OrderStatus) error {
 	if status != domain.OrderStatusNew && status != domain.OrderStatusContacted && status != domain.OrderStatusCompleted && status != domain.OrderStatusCancelled {
-		return errors.New("invalid order status")
+		return fmt.Errorf("%w: invalid order status", domain.ErrValidation)
 	}
 	return s.orders.UpdateStatus(ctx, id, status)
 }

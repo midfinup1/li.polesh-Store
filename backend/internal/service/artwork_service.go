@@ -2,7 +2,8 @@ package service
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"strings"
 
@@ -37,7 +38,7 @@ func (s *ArtworkService) GetPublicByID(ctx context.Context, id int64) (*domain.A
 		return nil, err
 	}
 	if a.Status == domain.ArtworkStatusHidden {
-		return nil, errors.New("artwork not found")
+		return nil, fmt.Errorf("%w: artwork", domain.ErrNotFound)
 	}
 	return a, nil
 }
@@ -49,16 +50,16 @@ func validArtworkStatus(status domain.ArtworkStatus) bool {
 func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain.Artwork, error) {
 	a.Title = strings.TrimSpace(a.Title)
 	if a.Title == "" {
-		return nil, errors.New("title is required")
+		return nil, fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
 	if a.Status == "" {
 		a.Status = domain.ArtworkStatusAvailable
 	}
 	if !validArtworkStatus(a.Status) {
-		return nil, errors.New("invalid artwork status")
+		return nil, fmt.Errorf("%w: invalid artwork status", domain.ErrValidation)
 	}
 	if a.Price != nil && *a.Price < 0 {
-		return nil, errors.New("price cannot be negative")
+		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
 	return s.artworks.Create(ctx, a)
 }
@@ -66,33 +67,44 @@ func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain
 func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain.Artwork, error) {
 	a.Title = strings.TrimSpace(a.Title)
 	if a.Title == "" {
-		return nil, errors.New("title is required")
+		return nil, fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
 	if !validArtworkStatus(a.Status) {
-		return nil, errors.New("invalid artwork status")
+		return nil, fmt.Errorf("%w: invalid artwork status", domain.ErrValidation)
 	}
 	if a.Price != nil && *a.Price < 0 {
-		return nil, errors.New("price cannot be negative")
+		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
 	return s.artworks.Update(ctx, a)
 }
 
+// Delete removes an artwork. The DB row is deleted FIRST; storage objects are
+// purged only AFTER a successful delete. This guarantees that if the delete is
+// rejected (e.g. orders reference the artwork via ON DELETE RESTRICT — surfaced
+// as domain.ErrConflict), no image files are orphaned in storage.
 func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 	images, err := s.artworks.GetImagesByArtworkID(ctx, id)
 	if err != nil {
 		return err
 	}
+
+	if err := s.artworks.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Best-effort storage cleanup. The authoritative state (the DB) is already
+	// consistent; a failed object delete is logged but must not fail the request.
 	for _, image := range images {
 		if err := s.storage.Delete(ctx, image.OriginalURL); err != nil {
-			return err
+			slog.Error("failed to delete artwork image object", "url", image.OriginalURL, "error", err)
 		}
 		if image.ThumbURL != image.OriginalURL {
 			if err := s.storage.Delete(ctx, image.ThumbURL); err != nil {
-				return err
+				slog.Error("failed to delete artwork thumbnail object", "url", image.ThumbURL, "error", err)
 			}
 		}
 	}
-	return s.artworks.Delete(ctx, id)
+	return nil
 }
 
 func (s *ArtworkService) UploadImage(ctx context.Context, artworkID int64, file multipart.File, header *multipart.FileHeader) (*domain.ArtworkImage, error) {
@@ -105,7 +117,7 @@ func (s *ArtworkService) UploadImage(ctx context.Context, artworkID int64, file 
 		ArtworkID:   artworkID,
 		OriginalURL: originalURL,
 		ThumbURL:    thumbURL,
-		AltText:     header.Filename,
+		AltText:     "", // descriptive alt text is set later via the admin, not the filename
 	}
 	return s.artworks.AddImage(ctx, img)
 }
@@ -115,20 +127,23 @@ func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
 	if err != nil {
 		return err
 	}
-	if err := s.storage.Delete(ctx, image.OriginalURL); err != nil {
+	if err := s.artworks.DeleteImage(ctx, imageID); err != nil {
 		return err
+	}
+	if err := s.storage.Delete(ctx, image.OriginalURL); err != nil {
+		slog.Error("failed to delete artwork image object", "url", image.OriginalURL, "error", err)
 	}
 	if image.ThumbURL != image.OriginalURL {
 		if err := s.storage.Delete(ctx, image.ThumbURL); err != nil {
-			return err
+			slog.Error("failed to delete artwork thumbnail object", "url", image.ThumbURL, "error", err)
 		}
 	}
-	return s.artworks.DeleteImage(ctx, imageID)
+	return nil
 }
 
 func (s *ArtworkService) ReorderImages(ctx context.Context, artworkID int64, imageIDs []int64) error {
 	if len(imageIDs) == 0 {
-		return errors.New("image_ids must not be empty")
+		return fmt.Errorf("%w: image_ids must not be empty", domain.ErrValidation)
 	}
 	return s.artworks.ReorderImages(ctx, artworkID, imageIDs)
 }
@@ -150,7 +165,7 @@ func (s *CategoryService) List(ctx context.Context) ([]domain.Category, error) {
 func (s *CategoryService) Create(ctx context.Context, c *domain.Category) (*domain.Category, error) {
 	c.Name, c.Slug = strings.TrimSpace(c.Name), strings.TrimSpace(c.Slug)
 	if c.Name == "" || c.Slug == "" {
-		return nil, errors.New("name and slug are required")
+		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
 	}
 	return s.repo.Create(ctx, c)
 }
@@ -158,7 +173,7 @@ func (s *CategoryService) Create(ctx context.Context, c *domain.Category) (*doma
 func (s *CategoryService) Update(ctx context.Context, c *domain.Category) (*domain.Category, error) {
 	c.Name, c.Slug = strings.TrimSpace(c.Name), strings.TrimSpace(c.Slug)
 	if c.Name == "" || c.Slug == "" {
-		return nil, errors.New("name and slug are required")
+		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
 	}
 	return s.repo.Update(ctx, c)
 }
@@ -185,7 +200,7 @@ func (s *ArtistService) Get(ctx context.Context) (*domain.Artist, error) {
 func (s *ArtistService) Update(ctx context.Context, a *domain.Artist) (*domain.Artist, error) {
 	a.Name = strings.TrimSpace(a.Name)
 	if a.Name == "" {
-		return nil, errors.New("artist name is required")
+		return nil, fmt.Errorf("%w: artist name is required", domain.ErrValidation)
 	}
 	return s.repo.Update(ctx, a)
 }

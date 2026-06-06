@@ -19,15 +19,17 @@ Next.js зафиксирован на `14.2.35`: это исправленная
 - галерея с фильтрацией по категориям;
 - страница работы с описанием и формой заявки;
 - страницы «О художнице» и «Контакты»;
-- скрытые работы не выдаются публичным API.
+- скрытые работы не выдаются публичным API;
+- SEO: ISR-страницы работ, `generateMetadata` (canonical/OpenGraph), JSON-LD (`VisualArtwork`, `Person`), `sitemap.xml`, `robots.txt`.
 
-Админка:
+Админка (`/admin`, защищена `middleware.ts` + JWT на API):
 
-- вход с серверной HttpOnly cookie;
+- вход с серверной HttpOnly cookie, редирект на логин при 401;
 - редактирование профиля художницы;
-- добавление категорий;
-- добавление работ и переключение статуса `available`, `sold`, `hidden`;
-- загрузка JPEG, PNG и WebP до 20 MB;
+- категории: создание и удаление;
+- работы: создание, полное редактирование полей, удаление, переключение статуса `available`, `sold`, `hidden`;
+- изображения: загрузка JPEG/PNG/WebP до 20 MB, удаление, изменение порядка, генерация JPEG-миниатюры на загрузке;
+- удаление работы с заказами блокируется (HTTP 409) во избежание потери истории — её следует скрывать;
 - просмотр заявок и изменение их статуса;
 - CLI-команда создания администратора.
 
@@ -35,8 +37,13 @@ Next.js зафиксирован на `14.2.35`: это исправленная
 
 - development и production Docker Compose;
 - Caddy reverse proxy с HTTPS и security headers;
-- CI и deployment workflows GitHub Actions;
-- скрипт локального резервного копирования PostgreSQL.
+- CI (`.github/workflows/ci.yml`): vet/build/test бэка, lint/type-check/build фронта;
+- Deploy (`.github/workflows/deploy.yml`): сборка и push образов в GHCR + `docker compose pull && up -d` на VPS по SSH;
+- per-IP rate limiting на `/auth/login` и `/orders` (stdlib, без внешних зависимостей);
+- скрипт резервного копирования PostgreSQL с опциональной выгрузкой в S3.
+
+> Драйвер БД — `lib/pq` (как в текущем go.sum). Миграции переведены на идиоматичный формат goose (без единого `StatementBegin/End`), поэтому переход на рекомендованный `pgx/v5` не потребует правок SQL — только смены драйвера и `go mod tidy`.
+> Миниатюры генерируются стандартной библиотекой (JPEG, area-average downscale, без новых зависимостей). Кодирование WebP/AVIF потребует добавления модуля (`golang.org/x/image` или webp-энкодер) и оставлено отдельным шагом.
 
 ## Первый запуск локально
 
@@ -84,42 +91,46 @@ http://localhost:3000/admin/login
 ## Основные API endpoints
 
 ```text
-GET    /api/v1/health
+GET    /api/v1/health          # liveness
+GET    /api/v1/ready           # readiness (checks DB)
 GET    /api/v1/artworks
 GET    /api/v1/artworks/{id}
 GET    /api/v1/categories
 GET    /api/v1/artist
-POST   /api/v1/orders
-POST   /api/v1/auth/login
+POST   /api/v1/orders          # rate-limited (10/hour/IP)
+POST   /api/v1/auth/login      # rate-limited (10/min/IP)
 POST   /api/v1/auth/logout
 
 GET    /api/v1/admin/artworks
 POST   /api/v1/admin/artworks
 PUT    /api/v1/admin/artworks/{id}
+DELETE /api/v1/admin/artworks/{id}
 POST   /api/v1/admin/artworks/{id}/images
+DELETE /api/v1/admin/artworks/{id}/images/{imageId}
 PATCH  /api/v1/admin/artworks/{id}/images/reorder
 GET    /api/v1/admin/orders
+GET    /api/v1/admin/orders/{id}
 PATCH  /api/v1/admin/orders/{id}/status
 PUT    /api/v1/admin/artist
 POST   /api/v1/admin/categories
+PUT    /api/v1/admin/categories/{id}
+DELETE /api/v1/admin/categories/{id}
 ```
 
 ## Production deployment
 
-1. На VPS создать каталог `/opt/artist-portfolio` и файл `.env` по образцу `infra/.env.prod.example`.
-2. В GitHub repository secrets задать `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
-3. В GitHub repository variable задать `NEXT_PUBLIC_IMAGE_HOST`, то есть домен CDN или S3 public URL без протокола.
-4. Настроить DNS домена на VPS и Cloudflare proxy при необходимости.
-5. Push в `main` собирает images в GHCR и выполняет `docker compose pull` и `up -d` на VPS.
+1. На VPS создать каталог (например `/opt/artist-portfolio`), положить рядом `docker-compose.prod.yml`, `Caddyfile` и `.env` по образцу `infra/.env.prod.example`.
+2. В GitHub repository secrets задать `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_APP_DIR` (путь к каталогу из п.1).
+3. В GitHub repository variables задать `NEXT_PUBLIC_SITE_URL` (полный https-адрес сайта) и `NEXT_PUBLIC_IMAGE_HOST` (домен CDN/S3 без протокола) — оба вшиваются в клиентский бандл на этапе сборки образа.
+4. Настроить DNS домена на VPS, при необходимости Cloudflare proxy.
+5. Push в `main` запускает CI, собирает образы в GHCR и выполняет `docker compose pull && up -d` на VPS.
 
 В production приложение не стартует без реального `JWT_SECRET` длиной не менее 32 символов и без настроенного S3 storage: изображения нельзя безопасно хранить внутри контейнера.
 
-## Что следует реализовать следующим этапом
+## Что осталось на следующий этап
 
-- генерацию thumbnails и WebP/AVIF при загрузке изображения;
-- удаление объектов из S3 при удалении изображения или работы;
-- rate limiting и CAPTCHA на публичной форме заявки;
-- integration tests API через testcontainers и e2e tests Playwright;
-- загрузку резервных копий PostgreSQL в S3 с проверкой восстановления;
-- метрики Prometheus, Grafana и алерты доступности;
-- SEO: sitemap, robots, Open Graph изображение и schema.org для работ.
+- кодирование WebP/AVIF-вариантов миниатюр (нужен дополнительный Go-модуль + `go mod tidy`);
+- переход с `lib/pq` на `pgx/v5` (SQL уже совместим);
+- integration-тесты API через testcontainers и e2e-тесты Playwright;
+- регулярная проверка восстановления из бэкапа (restore drill);
+- наблюдаемость: метрики Prometheus, дашборды Grafana/Loki, алерты (Uptime Kuma) — это операционная настройка, а не код репозитория.

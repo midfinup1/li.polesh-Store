@@ -71,7 +71,7 @@ func (h *ArtworkHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.svc.Create(r.Context(), &a)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to create artwork")
 		return
 	}
 	respondCreated(w, created)
@@ -93,7 +93,7 @@ func (h *ArtworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := h.svc.Update(r.Context(), &a)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to update artwork")
 		return
 	}
 	respondOK(w, updated)
@@ -107,7 +107,7 @@ func (h *ArtworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to delete artwork")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -133,7 +133,7 @@ func (h *ArtworkHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 	img, err := h.svc.UploadImage(r.Context(), id, file, header)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to upload image")
 		return
 	}
 	respondCreated(w, img)
@@ -147,7 +147,7 @@ func (h *ArtworkHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DeleteImage(r.Context(), imageID); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to delete image")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -169,7 +169,7 @@ func (h *ArtworkHandler) ReorderImages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.ReorderImages(r.Context(), id, body.ImageIDs); err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondServiceError(w, err, "failed to reorder images")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

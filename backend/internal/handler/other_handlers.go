@@ -15,10 +15,11 @@ import (
 type AuthHandler struct {
 	svc          *service.AuthService
 	secureCookie bool
+	maxAge       int
 }
 
-func NewAuthHandler(svc *service.AuthService, secureCookie bool) *AuthHandler {
-	return &AuthHandler{svc: svc, secureCookie: secureCookie}
+func NewAuthHandler(svc *service.AuthService, secureCookie bool, maxAge int) *AuthHandler {
+	return &AuthHandler{svc: svc, secureCookie: secureCookie, maxAge: maxAge}
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +37,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "admin_session", Value: token, Path: "/", HttpOnly: true, Secure: h.secureCookie, SameSite: http.SameSiteStrictMode, MaxAge: 12 * 60 * 60})
+	http.SetCookie(w, &http.Cookie{Name: "admin_session", Value: token, Path: "/", HttpOnly: true, Secure: h.secureCookie, SameSite: http.SameSiteStrictMode, MaxAge: h.maxAge})
 	respondOK(w, map[string]string{"status": "authenticated"})
 }
 
@@ -70,7 +71,7 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	created, err := h.svc.Create(r.Context(), &c)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to create category")
 		return
 	}
 	respondCreated(w, created)
@@ -90,7 +91,7 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	c.ID = id
 	updated, err := h.svc.Update(r.Context(), &c)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to update category")
 		return
 	}
 	respondOK(w, updated)
@@ -103,7 +104,7 @@ func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.Delete(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to delete category")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -166,7 +167,7 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.UpdateStatus(r.Context(), id, body.Status); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to update order status")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -195,7 +196,7 @@ func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	updated, err := h.svc.Update(r.Context(), &a)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondServiceError(w, err, "failed to update artist")
 		return
 	}
 	respondOK(w, updated)

@@ -14,6 +14,11 @@ import (
 
 var ErrInvalidCredentials = errors.New("invalid email or password")
 
+// dummyHash is a valid bcrypt hash compared against when no admin row exists, so
+// that a missing account and a wrong password take the same amount of time
+// (mitigates user-enumeration via timing). Value: bcrypt of a random string.
+const dummyHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+
 type AuthService struct {
 	admins domain.AdminRepository
 	cfg    config.JWTConfig
@@ -32,6 +37,8 @@ type TokenClaims struct {
 func (s *AuthService) Login(ctx context.Context, email, password string) (string, error) {
 	admin, err := s.admins.GetByEmail(ctx, email)
 	if err != nil {
+		// Compare against a fixed hash to keep timing constant, then fail.
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
 		return "", ErrInvalidCredentials
 	}
 

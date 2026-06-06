@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jmoiron/sqlx"
 	"github.com/midfinup1/li.polesh-Store/backend/config"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/middleware"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/service"
@@ -16,6 +19,7 @@ type Deps struct {
 	Services *service.Services
 	Config   *config.Config
 	Logger   *slog.Logger
+	DB       *sqlx.DB
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -32,19 +36,36 @@ func NewRouter(d Deps) http.Handler {
 	artworks := NewArtworkHandler(d.Services.Artworks)
 	categories := NewCategoryHandler(d.Services.Categories)
 	orders := NewOrderHandler(d.Services.Orders)
-	auth := NewAuthHandler(d.Services.Auth, d.Config.App.Env == "production")
+	auth := NewAuthHandler(d.Services.Auth, d.Config.App.Env == "production", int(d.Config.JWT.ExpiresIn.Seconds()))
 	artist := NewArtistHandler(d.Services.Artist)
 	required := middleware.NewAuth(d.Services.Auth)
 
+	// Per-IP limiters for abuse-prone public endpoints.
+	loginLimiter := middleware.RateLimit(10, time.Minute)
+	orderLimiter := middleware.RateLimit(10, time.Hour)
+
 	r.Route("/api/v1", func(r chi.Router) {
+		// Liveness: process is up. Used by container healthchecks.
 		r.Get("/health", func(w http.ResponseWriter, _ *http.Request) { respondOK(w, map[string]string{"status": "ok"}) })
+		// Readiness: dependencies (DB) reachable.
+		r.Get("/ready", func(w http.ResponseWriter, req *http.Request) {
+			ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
+			defer cancel()
+			if d.DB == nil || d.DB.PingContext(ctx) != nil {
+				respondError(w, http.StatusServiceUnavailable, "database unavailable")
+				return
+			}
+			respondOK(w, map[string]string{"status": "ready"})
+		})
+
 		r.Get("/artworks", artworks.List)
 		r.Get("/artworks/{id}", artworks.GetByID)
 		r.Get("/categories", categories.List)
 		r.Get("/artist", artist.Get)
-		r.Post("/orders", orders.Create)
-		r.Post("/auth/login", auth.Login)
+		r.With(orderLimiter).Post("/orders", orders.Create)
+		r.With(loginLimiter).Post("/auth/login", auth.Login)
 		r.Post("/auth/logout", auth.Logout)
+
 		r.Group(func(r chi.Router) {
 			r.Use(required.Require)
 			r.Get("/admin/artworks", artworks.ListAdmin)

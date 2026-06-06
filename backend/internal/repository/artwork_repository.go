@@ -2,9 +2,11 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
 )
 
@@ -187,6 +189,13 @@ func (r *artworkRepository) Delete(ctx context.Context, id int64) error {
 		`DELETE FROM artworks WHERE id = $1`,
 		id,
 	)
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "23503" {
+		// foreign_key_violation: an order still references this artwork
+		// (orders.artwork_id ON DELETE RESTRICT). Surface as a conflict so the
+		// admin can hide the work instead of destroying order history.
+		return fmt.Errorf("%w: artwork has related orders; hide it instead of deleting", domain.ErrConflict)
+	}
 
 	return err
 }

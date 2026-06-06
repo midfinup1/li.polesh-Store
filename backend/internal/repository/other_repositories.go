@@ -48,28 +48,26 @@ func (r *categoryRepository) GetByID(ctx context.Context, id int64) (*domain.Cat
 	return &category, nil
 }
 
-func (r *orderRepository) Create(ctx context.Context, order *domain.Order) (*domain.Order, error) {
-	var id int64
-
+func (r *categoryRepository) Create(ctx context.Context, category *domain.Category) (*domain.Category, error) {
 	err := r.db.QueryRowContext(
 		ctx,
 		`
-			INSERT INTO orders (artwork_id, name, email, phone, message, status)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			RETURNING id
+			INSERT INTO categories (name, slug, sort_order)
+			VALUES ($1, $2, $3)
+			RETURNING id, created_at
 		`,
-		order.ArtworkID,
-		order.Name,
-		order.Email,
-		order.Phone,
-		order.Message,
-		domain.OrderStatusNew,
-	).Scan(&id)
+		category.Name,
+		category.Slug,
+		category.SortOrder,
+	).Scan(
+		&category.ID,
+		&category.CreatedAt,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.GetByID(ctx, id)
+	return category, nil
 }
 
 func (r *categoryRepository) Update(ctx context.Context, category *domain.Category) (*domain.Category, error) {
@@ -161,6 +159,71 @@ func (r *orderRepository) GetAll(ctx context.Context, status *domain.OrderStatus
 	return orders, nil
 }
 
+func (r *orderRepository) GetByID(ctx context.Context, id int64) (*domain.Order, error) {
+	var order domain.Order
+
+	err := r.db.GetContext(
+		ctx,
+		&order,
+		`SELECT * FROM orders WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	artworksByID, err := r.getArtworksByIDs(ctx, []int64{order.ArtworkID})
+	if err != nil {
+		return nil, err
+	}
+
+	if artwork, exists := artworksByID[order.ArtworkID]; exists {
+		order.Artwork = artwork
+	}
+
+	return &order, nil
+}
+
+func (r *orderRepository) Create(ctx context.Context, order *domain.Order) (*domain.Order, error) {
+	var id int64
+
+	err := r.db.QueryRowContext(
+		ctx,
+		`
+			INSERT INTO orders (artwork_id, name, email, phone, message, status)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id
+		`,
+		order.ArtworkID,
+		order.Name,
+		order.Email,
+		order.Phone,
+		order.Message,
+		domain.OrderStatusNew,
+	).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.GetByID(ctx, id)
+}
+
+func (r *orderRepository) UpdateStatus(ctx context.Context, id int64, status domain.OrderStatus) error {
+	_, err := r.db.ExecContext(
+		ctx,
+		`
+			UPDATE orders
+			SET status = $1,
+				updated_at = NOW()
+			WHERE id = $2
+		`,
+		status,
+		id,
+	)
+
+	return err
+}
+
 func (r *orderRepository) getArtworksByIDs(ctx context.Context, ids []int64) (map[int64]*domain.Artwork, error) {
 	result := make(map[int64]*domain.Artwork)
 
@@ -195,74 +258,6 @@ func (r *orderRepository) getArtworksByIDs(ctx context.Context, ids []int64) (ma
 	}
 
 	return result, nil
-}
-
-func (r *orderRepository) GetByID(ctx context.Context, id int64) (*domain.Order, error) {
-	var order domain.Order
-
-	err := r.db.GetContext(
-		ctx,
-		&order,
-		`SELECT * FROM orders WHERE id = $1`,
-		id,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	artworksByID, err := r.getArtworksByIDs(ctx, []int64{order.ArtworkID})
-	if err != nil {
-		return nil, err
-	}
-
-	if artwork, exists := artworksByID[order.ArtworkID]; exists {
-		order.Artwork = artwork
-	}
-
-	return &order, nil
-}
-
-func (r *orderRepository) Create(ctx context.Context, order *domain.Order) (*domain.Order, error) {
-	err := r.db.QueryRowContext(
-		ctx,
-		`
-			INSERT INTO orders (artwork_id, name, email, phone, message, status)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			RETURNING id, created_at
-		`,
-		order.ArtworkID,
-		order.Name,
-		order.Email,
-		order.Phone,
-		order.Message,
-		domain.OrderStatusNew,
-	).Scan(
-		&order.ID,
-		&order.CreatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	order.Status = domain.OrderStatusNew
-
-	return order, nil
-}
-
-func (r *orderRepository) UpdateStatus(ctx context.Context, id int64, status domain.OrderStatus) error {
-	_, err := r.db.ExecContext(
-		ctx,
-		`
-			UPDATE orders
-			SET status = $1,
-				updated_at = NOW()
-			WHERE id = $2
-		`,
-		status,
-		id,
-	)
-
-	return err
 }
 
 // Admin

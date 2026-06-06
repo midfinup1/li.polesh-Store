@@ -40,8 +40,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - backend_uploads:/app/uploads
     networks:
       - app
 
@@ -62,7 +60,6 @@ services:
 
 volumes:
   postgres_data:
-  backend_uploads:
   caddy_data:
   caddy_config:
 

@@ -48,26 +48,28 @@ func (r *categoryRepository) GetByID(ctx context.Context, id int64) (*domain.Cat
 	return &category, nil
 }
 
-func (r *categoryRepository) Create(ctx context.Context, category *domain.Category) (*domain.Category, error) {
+func (r *orderRepository) Create(ctx context.Context, order *domain.Order) (*domain.Order, error) {
+	var id int64
+
 	err := r.db.QueryRowContext(
 		ctx,
 		`
-			INSERT INTO categories (name, slug, sort_order)
-			VALUES ($1, $2, $3)
-			RETURNING id, created_at
+			INSERT INTO orders (artwork_id, name, email, phone, message, status)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id
 		`,
-		category.Name,
-		category.Slug,
-		category.SortOrder,
-	).Scan(
-		&category.ID,
-		&category.CreatedAt,
-	)
+		order.ArtworkID,
+		order.Name,
+		order.Email,
+		order.Phone,
+		order.Message,
+		domain.OrderStatusNew,
+	).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
 
-	return category, nil
+	return r.GetByID(ctx, id)
 }
 
 func (r *categoryRepository) Update(ctx context.Context, category *domain.Category) (*domain.Category, error) {
@@ -113,7 +115,12 @@ func NewOrderRepository(db *sqlx.DB) domain.OrderRepository {
 }
 
 func (r *orderRepository) GetAll(ctx context.Context, status *domain.OrderStatus) ([]domain.Order, error) {
-	query := `SELECT o.* FROM orders o WHERE 1 = 1`
+	query := `
+		SELECT o.*
+		FROM orders o
+		WHERE 1 = 1
+	`
+
 	args := make([]any, 0)
 
 	if status != nil {
@@ -130,7 +137,64 @@ func (r *orderRepository) GetAll(ctx context.Context, status *domain.OrderStatus
 		return nil, err
 	}
 
+	if len(orders) == 0 {
+		return orders, nil
+	}
+
+	artworkIDs := make([]int64, 0, len(orders))
+	for _, order := range orders {
+		artworkIDs = append(artworkIDs, order.ArtworkID)
+	}
+
+	artworksByID, err := r.getArtworksByIDs(ctx, artworkIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for index := range orders {
+		artwork, exists := artworksByID[orders[index].ArtworkID]
+		if exists {
+			orders[index].Artwork = artwork
+		}
+	}
+
 	return orders, nil
+}
+
+func (r *orderRepository) getArtworksByIDs(ctx context.Context, ids []int64) (map[int64]*domain.Artwork, error) {
+	result := make(map[int64]*domain.Artwork)
+
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	query, args, err := sqlx.In(
+		`
+			SELECT *
+			FROM artworks
+			WHERE id IN (?)
+		`,
+		ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	query = r.db.Rebind(query)
+
+	artworks := make([]domain.Artwork, 0)
+
+	if err := r.db.SelectContext(ctx, &artworks, query, args...); err != nil {
+		return nil, err
+	}
+
+	for index := range artworks {
+		artwork := artworks[index]
+		artwork.Images = make([]domain.ArtworkImage, 0)
+		result[artwork.ID] = &artwork
+	}
+
+	return result, nil
 }
 
 func (r *orderRepository) GetByID(ctx context.Context, id int64) (*domain.Order, error) {
@@ -144,6 +208,15 @@ func (r *orderRepository) GetByID(ctx context.Context, id int64) (*domain.Order,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	artworksByID, err := r.getArtworksByIDs(ctx, []int64{order.ArtworkID})
+	if err != nil {
+		return nil, err
+	}
+
+	if artwork, exists := artworksByID[order.ArtworkID]; exists {
+		order.Artwork = artwork
 	}
 
 	return &order, nil

@@ -2,37 +2,69 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArtworkCard } from "@/components/artwork-card";
-import { api } from "@/lib/api";
+import type { Artwork, Category } from "@/types";
 
 export const metadata: Metadata = {
   title: "Галерея",
 };
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type GalleryPageProps = {
-  searchParams: {
+  searchParams?: {
     category_id?: string;
   };
 };
 
+function getAPIURL() {
+  return process.env.API_INTERNAL_URL || "http://backend:8080/api/v1";
+}
+
+function parseCategoryID(value: string | undefined) {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return undefined;
+  }
+
+  return parsed;
+}
+
+async function getJSON<T>(path: string): Promise<T> {
+  const response = await fetch(`${getAPIURL()}${path}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export default async function GalleryPage({
   searchParams,
 }: GalleryPageProps) {
-  const parsedCategoryID = searchParams.category_id
-    ? Number(searchParams.category_id)
-    : undefined;
+  const categoryID = parseCategoryID(searchParams?.category_id);
 
-  const categoryID =
-    parsedCategoryID !== undefined && Number.isInteger(parsedCategoryID)
-      ? parsedCategoryID
-      : undefined;
+  const artworksPath =
+    categoryID !== undefined
+      ? `/artworks?category_id=${categoryID}`
+      : "/artworks";
 
   const [artworksResponse, categoriesResponse] = await Promise.all([
-    api.artworks
-      .list(categoryID !== undefined ? { category_id: categoryID } : undefined)
-      .catch(() => []),
-    api.categories.list().catch(() => []),
+    getJSON<Artwork[]>(artworksPath).catch((error) => {
+      console.error("Failed to load artworks", error);
+      return [];
+    }),
+    getJSON<Category[]>("/categories").catch((error) => {
+      console.error("Failed to load categories", error);
+      return [];
+    }),
   ]);
 
   const artworks = Array.isArray(artworksResponse) ? artworksResponse : [];
@@ -42,9 +74,7 @@ export default async function GalleryPage({
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-7xl px-8 py-16">
-      <h1 className="mb-4 text-5xl md:text-6xl">
-        Галерея
-      </h1>
+      <h1 className="mb-4 text-5xl md:text-6xl">Галерея</h1>
 
       <p className="mb-10 max-w-2xl text-ink-light">
         Оригинальные произведения, доступные для просмотра и приобретения.
@@ -86,10 +116,7 @@ export default async function GalleryPage({
       ) : (
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {artworks.map((artwork) => (
-            <ArtworkCard
-              key={artwork.id}
-              artwork={artwork}
-            />
+            <ArtworkCard key={artwork.id} artwork={artwork} />
           ))}
         </div>
       )}

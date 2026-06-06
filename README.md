@@ -134,3 +134,49 @@ DELETE /api/v1/admin/categories/{id}
 - integration-тесты API через testcontainers и e2e-тесты Playwright;
 - регулярная проверка восстановления из бэкапа (restore drill);
 - наблюдаемость: метрики Prometheus, дашборды Grafana/Loki, алерты (Uptime Kuma) — это операционная настройка, а не код репозитория.
+
+## Next production-hardening stage
+
+This repository now includes the next hardening pass:
+
+- generated files are excluded through `.gitignore`;
+- GitHub Actions CI and deploy workflows are present in `.github/workflows`;
+- backend database driver is `pgx/v5` through `sqlx`;
+- API integration tests are placed in `backend/internal/integration` and use Testcontainers PostgreSQL;
+- Playwright smoke e2e tests are placed in `frontend/e2e`;
+- image processing is isolated in `backend/internal/imageprocessor`;
+- uploaded artwork images get JPEG thumbnails, optional WebP thumbnails through `cwebp`, and optional AVIF thumbnails through `avifenc`;
+- restore drill documentation is in `docs/ops/restore-drill.md`;
+- monitoring stack is in `infra/docker-compose.monitoring.yml` with Prometheus, Grafana, Loki, Promtail and Uptime Kuma.
+
+### Local checks
+
+```bash
+cd backend
+go mod tidy
+go test ./...
+
+cd ../frontend
+npm ci
+npm run type-check
+npm run lint
+npm run build
+npm run e2e
+```
+
+### Monitoring locally
+
+```bash
+docker compose --env-file infra/.env \
+  -f infra/docker-compose.yml \
+  -f infra/docker-compose.monitoring.yml \
+  up -d
+```
+
+Open:
+
+```text
+Prometheus:  http://localhost:9090
+Grafana:     http://localhost:3001
+Uptime Kuma: http://localhost:3002
+```

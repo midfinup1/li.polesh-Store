@@ -74,7 +74,7 @@ export default async function HomePage() {
                   <div className="relative mb-4 aspect-[3/4] overflow-hidden bg-paper-dark">
                     {cover ? (
                       <Image
-                        src={cover.thumb_url}
+                        src={cover.thumb_avif_url || cover.thumb_webp_url || cover.thumb_url}
                         alt={cover.alt_text || artwork.title}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"

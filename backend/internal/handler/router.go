@@ -13,6 +13,7 @@ import (
 	"github.com/midfinup1/li.polesh-Store/backend/config"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/middleware"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/service"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Deps struct {
@@ -25,6 +26,7 @@ type Deps struct {
 func NewRouter(d Deps) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID, chimiddleware.RealIP, chimiddleware.Recoverer)
+	r.Use(middleware.Metrics)
 	r.Use(chimiddleware.RequestLogger(&chimiddleware.DefaultLogFormatter{Logger: slog.NewLogLogger(d.Logger.Handler(), slog.LevelInfo), NoColor: true}))
 	r.Use(cors.Handler(cors.Options{AllowedOrigins: d.Config.App.CORSAllowedOrigins, AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}, AllowedHeaders: []string{"Accept", "Authorization", "Content-Type"}, AllowCredentials: true, MaxAge: 300}))
 
@@ -43,6 +45,8 @@ func NewRouter(d Deps) http.Handler {
 	// Per-IP limiters for abuse-prone public endpoints.
 	loginLimiter := middleware.RateLimit(10, time.Minute)
 	orderLimiter := middleware.RateLimit(10, time.Hour)
+
+	r.Handle("/metrics", promhttp.Handler())
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// Liveness: process is up. Used by container healthchecks.

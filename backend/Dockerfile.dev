@@ -2,7 +2,7 @@ FROM golang:1.26-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache git && \
+RUN apk add --no-cache git libavif-apps libwebp-tools && \
     go install github.com/air-verse/air@latest
 
 COPY go.mod go.sum* ./

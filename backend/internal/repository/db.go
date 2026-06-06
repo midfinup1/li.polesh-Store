@@ -2,13 +2,13 @@ package repository
 
 import (
 	"context"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	"time"
 )
 
 func NewDB(databaseURL string) (*sqlx.DB, error) {
-	db, err := sqlx.Open("postgres", databaseURL)
+	db, err := sqlx.Open("pgx", databaseURL)
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Artist Portfolio
+    orgId: 1
+    folder: Artist Portfolio
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

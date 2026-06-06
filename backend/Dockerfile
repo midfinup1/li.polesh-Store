@@ -3,7 +3,7 @@ FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git
+RUN apk add --no-cache git libavif-apps libwebp-tools
 
 COPY go.mod go.sum* ./
 RUN go mod download
@@ -17,7 +17,7 @@ FROM alpine:3.19
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata libavif-apps libwebp-tools
 
 COPY --from=builder /server /app/server
 COPY --from=builder /create-admin /app/create-admin

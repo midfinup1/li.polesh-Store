@@ -370,7 +370,7 @@ export default function AdminPage() {
                     {artwork.images.map((image, index) => (
                       <div key={image.id} className="w-28">
                         <div className="relative aspect-square overflow-hidden bg-paper-dark">
-                          <img src={image.thumb_url} alt={image.alt_text || artwork.title} className="h-full w-full object-cover" />
+                          <img src={image.thumb_webp_url || image.thumb_url} alt={image.alt_text || artwork.title} className="h-full w-full object-cover" />
                         </div>
                         <div className="mt-1 flex items-center justify-between text-xs text-ink-light">
                           <button type="button" disabled={index === 0} onClick={() => void reorderImage(artwork, index, index - 1)} className="disabled:opacity-30" aria-label="Сдвинуть влево">←</button>
@@ -394,20 +394,92 @@ export default function AdminPage() {
       {/* Orders */}
       <section className="mt-16">
         <h2 className="text-3xl">Заявки</h2>
+
         {orders.length === 0 ? (
           <p className="mt-6 text-ink-light">Заявок пока нет.</p>
         ) : (
           <div className="mt-6 space-y-4">
             {orders.map((order) => (
               <div key={order.id} className="border border-ink/10 p-5">
-                <p className="font-medium">{order.name} — {order.email}</p>
-                {order.phone && <p className="mt-2 text-sm text-ink-light">{order.phone}</p>}
-                {order.message && <p className="mt-2 text-sm text-ink-light">{order.message}</p>}
-                <select value={order.status} onChange={(e) => void updateOrderStatus(order.id, e.target.value as Order["status"])} className="mt-4 border border-ink/20 bg-paper px-3 py-2">
-                  {(Object.keys(orderStatusLabel) as Order["status"][]).map((s) => (
-                    <option key={s} value={s}>{orderStatusLabel[s]}</option>
-                  ))}
-                </select>
+                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                  <div>
+                    <p className="text-lg font-medium">Заявка #{order.id}</p>
+
+                    <dl className="mt-4 space-y-2 text-sm">
+                      <div>
+                        <dt className="inline text-ink-light">Покупатель: </dt>
+                        <dd className="inline">{order.name}</dd>
+                      </div>
+
+                      <div>
+                        <dt className="inline text-ink-light">Email: </dt>
+                        <dd className="inline">
+                          <a
+                            href={`mailto:${order.email}`}
+                            className="hover:text-accent"
+                          >
+                            {order.email}
+                          </a>
+                        </dd>
+                      </div>
+
+                      {order.phone && (
+                        <div>
+                          <dt className="inline text-ink-light">Телефон: </dt>
+                          <dd className="inline">{order.phone}</dd>
+                        </div>
+                      )}
+
+                      {order.message && (
+                        <div>
+                          <dt className="inline text-ink-light">Сообщение: </dt>
+                          <dd className="inline">{order.message}</dd>
+                        </div>
+                      )}
+
+                      <div>
+                        <dt className="inline text-ink-light">Работа: </dt>
+                        <dd className="inline">
+                          <a
+                            href={`/artwork/${order.artwork_id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-accent"
+                          >
+                            {order.artwork?.title
+                              ? `${order.artwork.title} #${order.artwork_id}`
+                              : `ID ${order.artwork_id}`}
+                          </a>
+                        </dd>
+                      </div>
+
+                      {order.created_at && (
+                        <div>
+                          <dt className="inline text-ink-light">Создана: </dt>
+                          <dd className="inline">
+                            {new Date(order.created_at).toLocaleString("ru-RU")}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  </div>
+
+                  <select
+                    value={order.status}
+                    onChange={(event) =>
+                      void updateOrderStatus(
+                        order.id,
+                        event.target.value as Order["status"],
+                      )
+                    }
+                    className="border border-ink/20 bg-paper px-3 py-2"
+                  >
+                    <option value="new">Новая</option>
+                    <option value="contacted">Связались</option>
+                    <option value="completed">Завершена</option>
+                    <option value="cancelled">Отменена</option>
+                  </select>
+                </div>
               </div>
             ))}
           </div>

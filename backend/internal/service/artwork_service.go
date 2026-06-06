@@ -98,9 +98,12 @@ func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 		if err := s.storage.Delete(ctx, image.OriginalURL); err != nil {
 			slog.Error("failed to delete artwork image object", "url", image.OriginalURL, "error", err)
 		}
-		if image.ThumbURL != image.OriginalURL {
-			if err := s.storage.Delete(ctx, image.ThumbURL); err != nil {
-				slog.Error("failed to delete artwork thumbnail object", "url", image.ThumbURL, "error", err)
+		for _, url := range []string{image.ThumbURL, image.ThumbWebPURL, image.ThumbAVIFURL} {
+			if url == "" || url == image.OriginalURL {
+				continue
+			}
+			if err := s.storage.Delete(ctx, url); err != nil {
+				slog.Error("failed to delete artwork thumbnail object", "url", url, "error", err)
 			}
 		}
 	}
@@ -108,16 +111,18 @@ func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 }
 
 func (s *ArtworkService) UploadImage(ctx context.Context, artworkID int64, file multipart.File, header *multipart.FileHeader) (*domain.ArtworkImage, error) {
-	originalURL, thumbURL, err := s.storage.UploadArtworkImage(ctx, artworkID, file, header)
+	uploaded, err := s.storage.UploadArtworkImage(ctx, artworkID, file, header)
 	if err != nil {
 		return nil, err
 	}
 
 	img := &domain.ArtworkImage{
-		ArtworkID:   artworkID,
-		OriginalURL: originalURL,
-		ThumbURL:    thumbURL,
-		AltText:     "", // descriptive alt text is set later via the admin, not the filename
+		ArtworkID:    artworkID,
+		OriginalURL:  uploaded.OriginalURL,
+		ThumbURL:     uploaded.ThumbURL,
+		ThumbWebPURL: uploaded.ThumbWebPURL,
+		ThumbAVIFURL: uploaded.ThumbAVIFURL,
+		AltText:      "", // descriptive alt text is set later via the admin, not the filename
 	}
 	return s.artworks.AddImage(ctx, img)
 }
@@ -133,9 +138,12 @@ func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
 	if err := s.storage.Delete(ctx, image.OriginalURL); err != nil {
 		slog.Error("failed to delete artwork image object", "url", image.OriginalURL, "error", err)
 	}
-	if image.ThumbURL != image.OriginalURL {
-		if err := s.storage.Delete(ctx, image.ThumbURL); err != nil {
-			slog.Error("failed to delete artwork thumbnail object", "url", image.ThumbURL, "error", err)
+	for _, url := range []string{image.ThumbURL, image.ThumbWebPURL, image.ThumbAVIFURL} {
+		if url == "" || url == image.OriginalURL {
+			continue
+		}
+		if err := s.storage.Delete(ctx, url); err != nil {
+			slog.Error("failed to delete artwork thumbnail object", "url", url, "error", err)
 		}
 	}
 	return nil

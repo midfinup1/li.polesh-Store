@@ -1,119 +1,195 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { api } from "@/lib/api";
+import Link from "next/link";
 import { useSiteSettings } from "@/lib/site-settings";
+import { api } from "@/lib/api";
 
 type OrderFormProps = {
   artworkId: number;
   disabled?: boolean;
 };
 
+type SubmitStatus = "idle" | "loading" | "success" | "error";
+
+const dictionary = {
+  ru: {
+    title: "Оставить заявку",
+    description:
+      "Оставьте контакт, и художница свяжется с вами лично, чтобы обсудить работу и возможное приобретение.",
+    name: "Ваше имя",
+    contact: "Укажите желаемый способ связи",
+    message: "Комментарий",
+    consentStart: "Я согласен на обработку персональных данных и ознакомлен с",
+    privacy: "политикой конфиденциальности",
+    submit: "Оставить заявку",
+    loading: "Отправка...",
+    success: "Заявка отправлена. Художница свяжется с вами.",
+    error: "Не удалось отправить заявку. Попробуйте позже.",
+    validation: "Заполните имя, контакт и подтвердите согласие.",
+    disabled: "Эта работа сейчас недоступна для заявки.",
+  },
+  en: {
+    title: "Leave a request",
+    description:
+      "Leave your contact, and the artist will contact you personally to discuss the artwork and possible acquisition.",
+    name: "Your name",
+    contact: "Preferred contact method",
+    message: "Comment",
+    consentStart:
+      "I agree to the processing of personal data and have read the",
+    privacy: "privacy policy",
+    submit: "Leave a request",
+    loading: "Sending...",
+    success: "Request sent. The artist will contact you.",
+    error: "Could not send the request. Please try again later.",
+    validation: "Please fill in your name, contact and confirm consent.",
+    disabled: "This artwork is currently unavailable for request.",
+  },
+};
+
 export function OrderForm({ artworkId, disabled = false }: OrderFormProps) {
-  const { t } = useSiteSettings();
-  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const { language } = useSiteSettings();
+  const t = dictionary[language];
+
+  const [status, setStatus] = useState<SubmitStatus>("idle");
   const [error, setError] = useState("");
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (disabled || status === "sending") return;
 
-    const form = new FormData(event.currentTarget);
-    const name = String(form.get("name") || "").trim();
-    const email = String(form.get("email") || "").trim();
-    const phone = String(form.get("phone") || "").trim();
-    const message = String(form.get("message") || "").trim();
-    const consent = form.get("consent") === "on";
-
-    if (!consent) {
-      setStatus("error");
-      setError(t.order.consentError);
+    if (disabled || status === "loading") {
       return;
     }
 
-    try {
-      setStatus("sending");
-      setError("");
+    const formData = new FormData(event.currentTarget);
 
-      await api.orders.create({ artwork_id: artworkId, name, email, phone, message });
+    const name = String(formData.get("name") || "").trim();
+    const contact = String(formData.get("contact") || "").trim();
+    const message = String(formData.get("message") || "").trim();
+    const consent = formData.get("consent") === "on";
 
-      event.currentTarget.reset();
-      setStatus("success");
-    } catch (err) {
+    if (!name || !contact || !consent) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : t.order.submitError);
+      setError(t.validation);
+      return;
+    }
+
+    setStatus("loading");
+    setError("");
+
+    try {
+      await api.orders.create({
+        artwork_id: artworkId,
+        name,
+        email: "no-email@lipolesh.art",
+        phone: contact,
+        message: [
+          `Контакт: ${contact}`,
+          message ? `Комментарий: ${message}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      });
+
+      setStatus("success");
+      event.currentTarget.reset();
+    } catch {
+      setStatus("error");
+      setError(t.error);
     }
   }
 
-  const fieldClass =
-    "w-full rounded-[8px] border border-border bg-transparent px-4 py-3 text-[16px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink";
-
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <h2 className="text-[24px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
-        {t.order.title}
-      </h2>
-      <p className="text-[16px] font-medium leading-[150%] text-ink-light">
-        {t.order.description}
-      </p>
+    <form onSubmit={onSubmit} autoComplete="off" className="space-y-7">
+      <div>
+        <h2 className="text-[18px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
+          {t.title}
+        </h2>
+
+        <p className="mt-5 max-w-[760px] text-[16px] font-medium leading-[150%] text-ink-light">
+          {t.description}
+        </p>
+      </div>
 
       <input
-        required
         name="name"
-        placeholder={t.order.name}
-        className={fieldClass}
-        disabled={disabled || status === "sending"}
-      />
-      <input
+        type="text"
         required
-        name="email"
-        type="email"
-        placeholder={t.order.email}
-        className={fieldClass}
-        disabled={disabled || status === "sending"}
+        autoComplete="off"
+        disabled={disabled || status === "loading"}
+        placeholder={t.name}
+        className={inputClassName}
       />
+
       <input
-        name="phone"
-        placeholder={t.order.phone}
-        className={fieldClass}
-        disabled={disabled || status === "sending"}
+        name="contact"
+        type="text"
+        required
+        autoComplete="off"
+        disabled={disabled || status === "loading"}
+        placeholder={t.contact}
+        className={inputClassName}
       />
+
       <textarea
         name="message"
-        rows={4}
-        placeholder={t.order.message}
-        className={fieldClass}
-        disabled={disabled || status === "sending"}
+        rows={5}
+        autoComplete="off"
+        disabled={disabled || status === "loading"}
+        placeholder={t.message}
+        className={inputClassName}
       />
 
       <label className="flex items-start gap-3 text-[14px] font-medium leading-[150%] text-ink-light">
         <input
-          required
           name="consent"
           type="checkbox"
-          className="mt-1 h-4 w-4 rounded-[8px]"
-          disabled={disabled || status === "sending"}
+          required
+          disabled={disabled || status === "loading"}
+          className="mt-1 h-4 w-4 rounded-[4px] border border-border bg-transparent accent-current"
         />
+
         <span>
-          {t.order.consentBefore}{" "}
-          <Link href="/privacy" className="text-ink underline underline-offset-4">
-            {t.order.privacy}
+          {t.consentStart}{" "}
+          <Link
+            href="/privacy"
+            className="text-ink underline underline-offset-4"
+          >
+            {t.privacy}
           </Link>
           .
         </span>
       </label>
 
       <button
-        disabled={disabled || status === "sending"}
-        className="flex h-[52px] w-full items-center justify-center rounded-[8px] bg-ink px-6 text-[16px] font-medium leading-[150%] text-paper shadow-sm transition-opacity disabled:opacity-50"
+        type="submit"
+        disabled={disabled || status === "loading"}
+        className="flex h-[52px] w-full items-center justify-center rounded-[8px] bg-ink px-6 text-[16px] font-medium leading-[150%] text-paper shadow-sm transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {status === "sending" ? t.order.sending : t.order.submit}
+        {status === "loading" ? t.loading : t.submit}
       </button>
 
-      {disabled && <p className="text-[16px] font-medium leading-[150%] text-ink-light">{t.order.disabled}</p>}
-      {status === "success" && <p className="text-[16px] font-medium leading-[150%] text-ink-light">{t.order.success}</p>}
-      {status === "error" && error && <p className="text-[16px] font-medium leading-[150%] text-red-600">{error}</p>}
+      {disabled && (
+        <p className="text-[16px] font-medium leading-[150%] text-ink-light">
+          {t.disabled}
+        </p>
+      )}
+
+      {status === "success" && (
+        <p className="text-[16px] font-medium leading-[150%] text-ink-light">
+          {t.success}
+        </p>
+      )}
+
+      {status === "error" && error && (
+        <p className="text-[16px] font-medium leading-[150%] text-red-600">
+          {error}
+        </p>
+      )}
     </form>
   );
 }
+
+const inputClassName =
+  "w-full rounded-[8px] border border-border bg-transparent px-4 py-3 text-[16px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50";

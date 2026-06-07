@@ -78,7 +78,8 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
   const cover = images[0];
   const coverUrl = getImageUrl(cover);
   const price = formatPrice(artwork.price);
-  const isUnavailable = artwork.status === "sold" || artwork.status === "hidden";
+  const isUnavailable =
+    artwork.status === "sold" || artwork.status === "hidden";
 
   const details = [
     artwork.materials,
@@ -146,23 +147,25 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
 
         <aside className="pt-0">
           <div className="flex max-w-[515px] flex-col gap-6">
-            <h1 className="text-[40px] font-semibold leading-[120%] text-ink">
+            <h1 className="text-[32px] font-semibold leading-[120%] text-ink">
               {artwork.title}
             </h1>
 
-            {artwork.size && (
-              <p className="text-[24px] font-normal leading-[150%] text-ink-light">
-                {artwork.size}
-              </p>
-            )}
+            <div className="space-y-1">
+              {artwork.size && (
+                <p className="text-[16px] font-normal leading-[150%] text-ink-light">
+                  {artwork.size}
+                </p>
+              )}
 
-            {details && (
-              <p className="text-[20px] font-normal leading-[150%] text-ink-light">
-                {details}
-              </p>
-            )}
+              {details && (
+                <p className="text-[16px] font-normal leading-[150%] text-ink-light">
+                  {details}
+                </p>
+              )}
+            </div>
 
-            <p className="text-[24px] font-medium leading-[150%] text-ink">
+            <p className="mt-4 text-[16px] font-medium leading-[150%] text-ink">
               {price || (
                 <LocalizedText ru="Цена по запросу" en="Price on request" />
               )}

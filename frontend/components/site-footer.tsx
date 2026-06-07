@@ -7,11 +7,11 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[1280px] border-t border-border px-6 py-12 md:px-10">
         <div className="grid gap-14 md:grid-cols-[1.55fr_0.68fr_0.76fr_0.78fr]">
           <div>
-            <h2 className="mb-5 text-[24px] font-normal lowercase leading-[150%] text-[#7C7C7C] dark:text-ink-light">
+            <h2 className="mb-4 text-[22px] font-normal lowercase leading-[150%] text-[#7C7C7C] dark:text-ink-light">
               <LocalizedText ru="социальные сети" en="social media" />
             </h2>
 
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-3">
               <SocialLink href="https://t.me/li_polesh_sklad" label="Telegram">
                 <TelegramIcon />
               </SocialLink>
@@ -133,8 +133,13 @@ function TelegramIcon() {
 
 function VkIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-10 w-10" fill="currentColor">
-      <path d="M4.2 5.4C3 5.4 2.6 6 2.6 7.1v9.8c0 1.1.4 1.7 1.6 1.7h15.6c1.2 0 1.6-.6 1.6-1.7V7.1c0-1.1-.4-1.7-1.6-1.7H4.2Zm2.1 4.1h2.1c.1 2.5 1.2 3.6 2 3.8V9.5h2v2.2c.8-.1 1.7-1.1 2-2.2h2c-.3 1.4-1.5 2.4-2.3 2.8.8.3 2.2 1.2 2.7 3h-2.2c-.4-1.1-1.2-2-2.2-2.1v2.1h-.2c-4.1 0-6.2-2.7-6.3-5.8Z" />
+    <svg
+      viewBox="0 0 48 48"
+      aria-hidden="true"
+      className="h-11 w-11"
+      fill="currentColor"
+    >
+      <path d="M25.54 34.5C11.92 34.5 4.15 25.16 3.83 9.62h6.82c.22 11.4 5.25 16.23 9.23 17.22V9.62h6.43v9.83c3.93-.43 8.07-4.9 9.46-9.83h6.43c-1.07 6.07-5.57 10.54-8.77 12.38 3.2 1.5 8.34 5.4 10.29 12.5h-7.08c-1.52-4.73-5.3-8.39-10.33-8.9v8.9h-.77Z" />
     </svg>
   );
 }

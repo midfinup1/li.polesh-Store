@@ -31,14 +31,14 @@ export default async function HomePage() {
                 className="h-auto w-full object-contain grayscale"
               />
             ) : (
-              <div className="flex aspect-[494/659] items-center justify-center rounded-[8px] text-[20px] text-ink-light">
+              <div className="flex aspect-[494/659] items-center justify-center rounded-[8px] text-[14px] text-ink-light">
                 <LocalizedText ru="Фото художницы" en="Artist photo" />
               </div>
             )}
           </div>
 
           <div className="pt-[108px]">
-            <h1 className="max-w-[713px] text-[48px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[64px] md:leading-[77px]">
+            <h1 className="max-w-[713px] text-[36px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.1]">
               {artist?.name || (
                 <LocalizedText
                   ru="Елизавета Полещенко"
@@ -50,18 +50,18 @@ export default async function HomePage() {
         </div>
 
         <section className="mt-[101px] max-w-[1264px]">
-          <h2 className="text-[48px] font-bold leading-[1.12] tracking-[-0.02em] text-ink md:text-[64px] md:leading-[77px]">
+          <h2 className="text-[36px] font-bold leading-[1.12] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.1]">
             Artist statement
           </h2>
 
           {artist?.bio ? (
-            <p className="mt-6 max-w-[1261px] text-[20px] font-normal leading-[150%] text-black/75 dark:text-ink-light md:text-[24px]">
+            <p className="mt-6 max-w-[1261px] text-[20px] font-normal leading-[150%] text-black/75 dark:text-ink-light md:text-[16px]">
               {artist.bio}
             </p>
           ) : (
             <LocalizedText
               as="p"
-              className="mt-6 max-w-[1261px] text-[20px] font-normal leading-[150%] text-black/75 dark:text-ink-light md:text-[24px]"
+              className="mt-6 max-w-[1261px] text-[20px] font-normal leading-[150%] text-black/75 dark:text-ink-light md:text-[16px]"
               ru="В своей художественной практике я обращаюсь к познанию личного и эмоционального, через анализ мимолетных образов, формируя из интуитивного целостные образы и сюжеты. Через анималистичные образы рассуждаю о внутреннем, о привязанностях, о поиске объяснения своих действий и чувств. Человек в моих работах чаще находится в роли наблюдателя и больше выражает процесс обдумывания нежели процесс прямых и активных действий. В начале своей работы над картиной мне важны первые интуитивные зарисовки и мазки, из которых потом формируется целостный образ."
               en="In her artistic practice, the artist turns to personal and emotional experience through fleeting images, memory and internal states. Animalistic imagery reveals themes of tension, vulnerability and acceptance. The human figure often appears as an observer, expressing a process of reflection rather than direct action."
             />
@@ -69,7 +69,7 @@ export default async function HomePage() {
 
           <Link
             href="#catalog"
-            className="mt-[52px] inline-flex h-[76px] items-center rounded-[8px] bg-ink px-8 text-[24px] font-medium leading-[150%] text-paper shadow-sm transition-opacity hover:opacity-80"
+            className="mt-[52px] inline-flex h-[52px] items-center rounded-[8px] bg-ink px-6 text-[16px] font-medium leading-[150%] text-paper shadow-sm transition-opacity hover:opacity-80"
           >
             <LocalizedText ru="Смотреть каталог" en="View catalog" />
           </Link>
@@ -78,30 +78,30 @@ export default async function HomePage() {
 
       <section
         id="catalog"
-        className="mx-auto max-w-[1280px] scroll-mt-[120px] px-6 pb-32 md:px-10"
+        className="mx-auto max-w-[1280px] scroll-mt-[120px] px-6 pb-32 pt-[170px] md:px-10"
       >
-        <h2 className="text-[42px] font-semibold leading-[1.2] tracking-[-0.02em] text-ink md:text-[48px]">
+        <h2 className="text-[30px] font-semibold leading-[1.2] tracking-[-0.02em] text-ink md:text-[48px]">
           <LocalizedText ru="Каталог" en="Catalog" />
         </h2>
 
         <div className="mt-12 flex flex-wrap gap-4">
           <a
             href="#catalog"
-            className="inline-flex h-[60px] items-center rounded-[8px] bg-ink px-6 text-[24px] font-medium leading-[150%] text-paper shadow-sm"
+            className="inline-flex h-[44px] items-center rounded-[8px] bg-ink px-5 text-[16px] font-medium leading-[150%] text-paper shadow-sm"
           >
             <LocalizedText ru="картины" en="paintings" />
           </a>
 
           <a
             href="#catalog"
-            className="inline-flex h-[60px] items-center rounded-[8px] bg-paper-dark px-6 text-[24px] font-medium leading-[150%] text-ink shadow-sm transition-opacity hover:opacity-70"
+            className="inline-flex h-[44px] items-center rounded-[8px] bg-paper-dark px-5 text-[16px] font-medium leading-[150%] text-ink shadow-sm transition-opacity hover:opacity-70"
           >
             <LocalizedText ru="постеры" en="posters" />
           </a>
 
           <a
             href="#catalog"
-            className="inline-flex h-[60px] items-center rounded-[8px] bg-paper-dark px-6 text-[24px] font-medium leading-[150%] text-ink shadow-sm transition-opacity hover:opacity-70"
+            className="inline-flex h-[44px] items-center rounded-[8px] bg-paper-dark px-5 text-[16px] font-medium leading-[150%] text-ink shadow-sm transition-opacity hover:opacity-70"
           >
             <LocalizedText ru="керамика" en="ceramics" />
           </a>
@@ -122,7 +122,7 @@ export default async function HomePage() {
             </div>
           </div>
         ) : (
-          <div className="mt-16 flex min-h-[320px] items-center justify-center rounded-[8px] bg-paper-dark text-[20px] text-ink-light">
+          <div className="mt-16 flex min-h-[320px] items-center justify-center rounded-[8px] bg-paper-dark text-[14px] text-ink-light">
             <LocalizedText ru="Работы пока не добавлены" en="No artworks yet" />
           </div>
         )}

@@ -1,53 +1,68 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 import { useSiteSettings } from "@/lib/site-settings";
 
 type Language = "ru" | "en";
 type Theme = "light" | "dark" | "system";
+type ResolvedTheme = "light" | "dark";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
-  const [themeOpen, setThemeOpen] = useState(false);
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>("light");
+
   const { language, setLanguage, theme, setTheme } = useSiteSettings();
-  const themeMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function onClickOutside(event: MouseEvent) {
-      if (
-        themeMenuRef.current &&
-        !themeMenuRef.current.contains(event.target as Node)
-      ) {
-        setThemeOpen(false);
-      }
-    }
-
     function onEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setThemeOpen(false);
         setOpen(false);
       }
     }
 
-    document.addEventListener("mousedown", onClickOutside);
     document.addEventListener("keydown", onEscape);
 
     return () => {
-      document.removeEventListener("mousedown", onClickOutside);
       document.removeEventListener("keydown", onEscape);
     };
   }, []);
 
-  function selectLanguage(value: Language) {
-    setLanguage(value);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function updateSystemTheme() {
+      setSystemTheme(mediaQuery.matches ? "dark" : "light");
+    }
+
+    updateSystemTheme();
+
+    mediaQuery.addEventListener("change", updateSystemTheme);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateSystemTheme);
+    };
+  }, []);
+
+  const resolvedTheme = useMemo<ResolvedTheme>(() => {
+    if (theme === "system") {
+      return systemTheme;
+    }
+
+    return theme;
+  }, [theme, systemTheme]);
+
+  function toggleLanguage() {
+    setLanguage(language === "ru" ? "en" : "ru");
   }
 
-  function selectTheme(value: Theme) {
-    setTheme(value);
-    setThemeOpen(false);
+  function toggleTheme() {
+    setTheme(resolvedTheme === "light" ? "dark" : "light");
   }
+
+  const languageButtonText = language === "ru" ? "EN" : "RU";
+  const isLightTheme = resolvedTheme === "light";
 
   return (
     <>
@@ -60,66 +75,32 @@ export function SiteHeader() {
             lipolesh.art
           </Link>
 
-          <div className="flex items-center gap-[15px]">
-            <div className="flex items-center gap-[9px] text-[20px] font-medium leading-[150%]">
-              <button
-                type="button"
-                onClick={() => selectLanguage("ru")}
-                className={language === "ru" ? "text-ink" : "text-ink-light"}
-                aria-label="Включить русский язык"
-              >
-                RU
-              </button>
+          <div className="flex items-center gap-5">
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="flex h-[52px] items-center justify-center rounded-[8px] text-[16px] font-medium leading-[150%] text-ink transition-opacity hover:opacity-60"
+              aria-label={
+                language === "ru"
+                  ? "Enable English language"
+                  : "Включить русский язык"
+              }
+            >
+              {languageButtonText}
+            </button>
 
-              <button
-                type="button"
-                onClick={() => selectLanguage("en")}
-                className={language === "en" ? "text-ink" : "text-ink-light"}
-                aria-label="Enable English language"
-              >
-                EN
-              </button>
-            </div>
-
-            <div ref={themeMenuRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setThemeOpen((value) => !value)}
-                className="flex h-[52px] w-[52px] items-center justify-center rounded-[8px] border border-border text-ink-light transition-colors hover:text-ink"
-                aria-label="Выбрать тему сайта"
-                aria-expanded={themeOpen}
-              >
-                <ThemeIcon theme={theme} />
-              </button>
-
-              {themeOpen && (
-                <div className="absolute right-0 top-[64px] z-50 w-48 rounded-[8px] border border-border bg-paper p-2 shadow-sm">
-                  <ThemeOption
-                    active={theme === "light"}
-                    onClick={() => selectTheme("light")}
-                    icon={<SunIcon />}
-                    labelRu="Светлая"
-                    labelEn="Light"
-                  />
-
-                  <ThemeOption
-                    active={theme === "dark"}
-                    onClick={() => selectTheme("dark")}
-                    icon={<MoonIcon />}
-                    labelRu="Тёмная"
-                    labelEn="Dark"
-                  />
-
-                  <ThemeOption
-                    active={theme === "system"}
-                    onClick={() => selectTheme("system")}
-                    icon={<SystemIcon />}
-                    labelRu="Системная"
-                    labelEn="System"
-                  />
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="group flex h-[36px] w-[36px] items-center justify-center rounded-[8px] bg-transparent text-ink transition-colors duration-200 hover:bg-paper-dark"
+              aria-label={
+                isLightTheme
+                  ? "Переключить на тёмную тему"
+                  : "Переключить на светлую тему"
+              }
+            >
+              <BulbIcon active={isLightTheme} />
+            </button>
 
             <button
               type="button"
@@ -134,8 +115,14 @@ export function SiteHeader() {
       </header>
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-sm">
-          <div className="ml-auto flex h-full w-full max-w-md flex-col bg-paper px-8 py-8 shadow-sm">
+        <div
+          className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="ml-auto flex h-full w-full max-w-md flex-col bg-paper px-8 py-8 shadow-sm"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-16 flex items-center justify-between">
               <Link
                 href="/"
@@ -155,7 +142,7 @@ export function SiteHeader() {
               </button>
             </div>
 
-            <nav className="flex flex-col gap-6 text-[40px] font-semibold leading-[110%] tracking-[-0.02em]">
+            <nav className="flex flex-col gap-6 text-[28px] font-semibold leading-[110%] tracking-[-0.02em]">
               <Link
                 href="/#catalog"
                 onClick={() => setOpen(false)}
@@ -203,14 +190,6 @@ export function SiteHeader() {
                   en="Personal data processing"
                 />
               </Link>
-
-              <Link
-                href="/admin/login"
-                onClick={() => setOpen(false)}
-                className="block pt-4 transition-colors hover:text-ink"
-              >
-                <LocalizedText ru="Вход для администратора" en="Admin login" />
-              </Link>
             </div>
           </div>
         </div>
@@ -219,101 +198,37 @@ export function SiteHeader() {
   );
 }
 
-function ThemeOption({
-  active,
-  onClick,
-  icon,
-  labelRu,
-  labelEn,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  labelRu: string;
-  labelEn: string;
-}) {
+function BulbIcon({ active }: { active: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
       className={[
-        "flex w-full items-center gap-3 rounded-[8px] px-3 py-2 text-left text-[16px] font-medium leading-[150%] transition-colors",
-        active
-          ? "bg-ink text-paper"
-          : "text-ink-light hover:bg-paper-dark hover:text-ink",
+        "h-6 w-6 transition-all duration-300 ease-out",
+        active ? "rotate-0 opacity-100" : "-rotate-6 opacity-45",
       ].join(" ")}
-    >
-      <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
-      <span>
-        <LocalizedText ru={labelRu} en={labelEn} />
-      </span>
-    </button>
-  );
-}
-
-function ThemeIcon({ theme }: { theme: Theme }) {
-  if (theme === "light") return <SunIcon />;
-  if (theme === "dark") return <MoonIcon />;
-  return <SystemIcon />;
-}
-
-function SunIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-5 w-5"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2" />
-      <path d="M12 20v2" />
-      <path d="M4.93 4.93l1.41 1.41" />
-      <path d="M17.66 17.66l1.41 1.41" />
-      <path d="M2 12h2" />
-      <path d="M20 12h2" />
-      <path d="M4.93 19.07l1.41-1.41" />
-      <path d="M17.66 6.34l1.41-1.41" />
-    </svg>
-  );
-}
+      <path d="M9 18h6" />
+      <path d="M10 22h4" />
+      <path d="M8.2 14.6C6.8 13.4 6 11.7 6 9.8C6 6.5 8.7 4 12 4C15.3 4 18 6.5 18 9.8C18 11.7 17.2 13.4 15.8 14.6C15.1 15.2 14.8 16 14.8 16.8V17H9.2V16.8C9.2 16 8.9 15.2 8.2 14.6Z" />
 
-function MoonIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3a7 7 0 1 0 11.5 11.5Z" />
-    </svg>
-  );
-}
-
-function SystemIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="4" y="5" width="16" height="11" rx="1.5" />
-      <path d="M9 20h6" />
-      <path d="M12 16v4" />
+      <g
+        className={[
+          "origin-center transition-all duration-300 ease-out",
+          active ? "scale-100 opacity-100" : "scale-90 opacity-0",
+        ].join(" ")}
+      >
+        <path d="M12 1.8V1" />
+        <path d="M4.9 4.2L4.2 3.5" />
+        <path d="M19.1 4.2L19.8 3.5" />
+        <path d="M2.4 10H1.4" />
+        <path d="M22.6 10H21.6" />
+      </g>
     </svg>
   );
 }

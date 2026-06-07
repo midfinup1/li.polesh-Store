@@ -17,7 +17,7 @@ export default async function AboutPage() {
       <section className="mx-auto max-w-[1280px] px-6 pb-32 pt-[124px] md:px-10">
         <div className="grid gap-16 md:grid-cols-[minmax(0,699px)_minmax(0,492px)] md:items-start md:gap-[89px]">
           <div>
-            <h1 className="text-[48px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[64px] md:leading-[77px]">
+            <h1 className="text-[36px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.1]">
               <LocalizedText ru="Об авторе" en="About" />
             </h1>
 
@@ -26,10 +26,10 @@ export default async function AboutPage() {
             </p>
 
             <div className="mt-10">
-              <h2 className="text-[24px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
+              <h2 className="text-[18px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
                 <LocalizedText ru="Медиум" en="Medium" />
               </h2>
-              <p className="mt-4 text-[20px] font-medium leading-[150%] text-ink">
+              <p className="mt-4 text-[16px] font-medium leading-[150%] text-ink">
                 <LocalizedText
                   ru="масляная и акварельная живопись, графика, скульптура, фотография"
                   en="oil and watercolor painting, graphics, sculpture, photography"
@@ -38,11 +38,11 @@ export default async function AboutPage() {
             </div>
 
             <div className="mt-[84px]">
-              <h2 className="text-[24px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
+              <h2 className="text-[18px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
                 <LocalizedText ru="Контакты" en="Contacts" />
               </h2>
 
-              <div className="mt-6 space-y-[22px] text-[20px] font-medium leading-[150%]">
+              <div className="mt-6 space-y-[22px] text-[16px] font-medium leading-[150%]">
                 <div>
                   <p className="text-[#888888] dark:text-ink-light">Telegram канал</p>
                   <a
@@ -143,13 +143,13 @@ function TextSection({
 }) {
   return (
     <section className={className}>
-      <h2 className="text-[42px] font-semibold leading-[51px] tracking-[-0.02em] text-ink">
+      <h2 className="text-[30px] font-semibold leading-[51px] tracking-[-0.02em] text-ink">
         <LocalizedText ru={titleRu} en={titleEn} />
       </h2>
 
       <LocalizedText
         as="p"
-        className="mt-10 max-w-[1075px] whitespace-pre-line text-[20px] font-medium leading-[150%] text-ink"
+        className="mt-10 max-w-[1075px] whitespace-pre-line text-[16px] font-medium leading-[150%] text-ink"
         ru={ru}
         en={en}
       />

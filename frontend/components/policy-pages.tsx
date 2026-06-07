@@ -5,10 +5,10 @@ import { useSiteSettings } from "@/lib/site-settings";
 function Section({ title, text }: { title: string; text: string }) {
   return (
     <section>
-      <h2 className="mb-4 text-[24px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
+      <h2 className="mb-4 text-[18px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
         {title}
       </h2>
-      <p className="text-[20px] font-medium leading-[150%] text-ink">{text}</p>
+      <p className="text-[16px] font-medium leading-[150%] text-ink">{text}</p>
     </section>
   );
 }
@@ -23,7 +23,7 @@ export function PrivacyContent() {
         {t.common.documents}
       </p>
 
-      <h1 className="mb-12 text-[48px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[64px] md:leading-[77px]">
+      <h1 className="mb-12 text-[36px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.1]">
         {p.title}
       </h1>
 
@@ -50,7 +50,7 @@ export function PersonalDataContent() {
         {t.common.documents}
       </p>
 
-      <h1 className="mb-12 text-[48px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[64px] md:leading-[77px]">
+      <h1 className="mb-12 text-[36px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.1]">
         {p.title}
       </h1>
 

@@ -38,17 +38,17 @@ export function ArtworkCard({ artwork, large = false }: { artwork: Artwork; larg
       </div>
 
       <div className="space-y-1">
-        <h3 className="text-[30px] font-medium leading-[150%] text-ink">
+        <h3 className="text-[18px] font-medium leading-[150%] text-ink">
           {artwork.title}
         </h3>
 
         {artwork.size && (
-          <p className="text-[20px] font-normal leading-[150%] text-ink-light">
+          <p className="text-[14px] font-normal leading-[150%] text-ink-light">
             {artwork.size}
           </p>
         )}
 
-        <p className="text-[24px] font-medium leading-[150%] text-ink">
+        <p className="text-[16px] font-medium leading-[150%] text-ink">
           {artwork.price === null
             ? t.common.priceOnRequest
             : `${artwork.price.toLocaleString(language === "ru" ? "ru-RU" : "en-US")} ${t.common.rub}`}

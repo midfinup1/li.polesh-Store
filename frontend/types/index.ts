@@ -1,5 +1,3 @@
-// Mirrors backend domain entities
-
 export type ArtworkStatus = "available" | "sold" | "hidden";
 
 export interface ArtworkImage {
@@ -16,21 +14,27 @@ export interface ArtworkImage {
 export interface Category {
   id: number;
   name: string;
+  name_en: string;
   slug: string;
   sort_order: number;
+  created_at?: string;
 }
 
 export interface Artwork {
   id: number;
   title: string;
+  title_en: string;
   description: string;
-  price: number | null;        // null = price on request
+  description_en: string;
+  price: number | null;
   status: ArtworkStatus;
   category_id: number | null;
   category?: Category;
   year: number | null;
   size: string;
+  size_en: string;
   materials: string;
+  materials_en: string;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -54,13 +58,13 @@ export interface Order {
 export interface Artist {
   id: number;
   name: string;
+  name_en: string;
   bio: string;
+  bio_en: string;
   photo_url: string;
   email: string;
   instagram: string;
 }
-
-// ─── API request/response types ───────────────────────────────────────────────
 
 export interface CreateOrderRequest {
   artwork_id: number;

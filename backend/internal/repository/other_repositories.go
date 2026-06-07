@@ -52,11 +52,12 @@ func (r *categoryRepository) Create(ctx context.Context, category *domain.Catego
 	err := r.db.QueryRowContext(
 		ctx,
 		`
-			INSERT INTO categories (name, slug, sort_order)
-			VALUES ($1, $2, $3)
+			INSERT INTO categories (name, name_en, slug, sort_order)
+			VALUES ($1, $2, $3, $4)
 			RETURNING id, created_at
 		`,
 		category.Name,
+		category.NameEN,
 		category.Slug,
 		category.SortOrder,
 	).Scan(
@@ -76,11 +77,13 @@ func (r *categoryRepository) Update(ctx context.Context, category *domain.Catego
 		`
 			UPDATE categories
 			SET name = $1,
-				slug = $2,
-				sort_order = $3
-			WHERE id = $4
+				name_en = $2,
+				slug = $3,
+				sort_order = $4
+			WHERE id = $5
 		`,
 		category.Name,
+		category.NameEN,
 		category.Slug,
 		category.SortOrder,
 		category.ID,
@@ -318,10 +321,12 @@ func (r *artistRepository) Update(ctx context.Context, artist *domain.Artist) (*
 		`
 			UPDATE artist
 			SET name = $1,
-				bio = $2,
-				photo_url = $3,
-				email = $4,
-				instagram = $5,
+				name_en = $2,
+				bio = $3,
+				bio_en = $4,
+				photo_url = $5,
+				email = $6,
+				instagram = $7,
 				updated_at = NOW()
 			WHERE id = (
 				SELECT id
@@ -332,7 +337,9 @@ func (r *artistRepository) Update(ctx context.Context, artist *domain.Artist) (*
 			RETURNING *
 		`,
 		artist.Name,
+		artist.NameEN,
 		artist.Bio,
+		artist.BioEN,
 		artist.PhotoURL,
 		artist.Email,
 		artist.Instagram,

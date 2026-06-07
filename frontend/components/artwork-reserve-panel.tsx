@@ -3,19 +3,25 @@
 import { useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 import { OrderForm } from "@/components/order-form";
+import { useSiteSettings } from "@/lib/site-settings";
+import { pickLocalized } from "@/lib/i18n";
 
 type ArtworkReservePanelProps = {
   artworkId: number;
   disabled?: boolean;
   comment?: string | null;
+  commentEn?: string | null;
 };
 
 export function ArtworkReservePanel({
   artworkId,
   disabled = false,
   comment,
+  commentEn,
 }: ArtworkReservePanelProps) {
   const [formOpen, setFormOpen] = useState(false);
+  const { language } = useSiteSettings();
+  const localizedComment = pickLocalized(language, comment, commentEn);
 
   return (
     <div>
@@ -30,9 +36,9 @@ export function ArtworkReservePanel({
         </button>
       )}
 
-      {comment && !formOpen && (
+      {localizedComment && !formOpen && (
         <p className="mt-6 text-[16px] font-medium leading-[150%] text-ink-light">
-          {comment}
+          {localizedComment}
         </p>
       )}
 

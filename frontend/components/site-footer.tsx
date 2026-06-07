@@ -16,7 +16,7 @@ export function SiteFooter() {
                 <TelegramIcon />
               </SocialLink>
 
-              <SocialLink href="https://vk.com/" label="VK">
+              <SocialLink href="https://vk.com/li.poles" label="VK">
                 <VkIcon />
               </SocialLink>
 
@@ -61,9 +61,9 @@ export function SiteFooter() {
             >
               lis.polesh@gmail.com
             </a>
-            <p>
+            {/* <p>
               <LocalizedText ru="телефон" en="phone" />
-            </p>
+            </p> */}
           </FooterColumn>
         </div>
       </div>

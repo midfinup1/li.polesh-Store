@@ -49,6 +49,13 @@ func validArtworkStatus(status domain.ArtworkStatus) bool {
 
 func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain.Artwork, error) {
 	a.Title = strings.TrimSpace(a.Title)
+	a.TitleEN = strings.TrimSpace(a.TitleEN)
+	a.Description = strings.TrimSpace(a.Description)
+	a.DescriptionEN = strings.TrimSpace(a.DescriptionEN)
+	a.Size = strings.TrimSpace(a.Size)
+	a.SizeEN = strings.TrimSpace(a.SizeEN)
+	a.Materials = strings.TrimSpace(a.Materials)
+	a.MaterialsEN = strings.TrimSpace(a.MaterialsEN)
 	if a.Title == "" {
 		return nil, fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
@@ -66,6 +73,13 @@ func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain
 
 func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain.Artwork, error) {
 	a.Title = strings.TrimSpace(a.Title)
+	a.TitleEN = strings.TrimSpace(a.TitleEN)
+	a.Description = strings.TrimSpace(a.Description)
+	a.DescriptionEN = strings.TrimSpace(a.DescriptionEN)
+	a.Size = strings.TrimSpace(a.Size)
+	a.SizeEN = strings.TrimSpace(a.SizeEN)
+	a.Materials = strings.TrimSpace(a.Materials)
+	a.MaterialsEN = strings.TrimSpace(a.MaterialsEN)
 	if a.Title == "" {
 		return nil, fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
@@ -171,7 +185,9 @@ func (s *CategoryService) List(ctx context.Context) ([]domain.Category, error) {
 }
 
 func (s *CategoryService) Create(ctx context.Context, c *domain.Category) (*domain.Category, error) {
-	c.Name, c.Slug = strings.TrimSpace(c.Name), strings.TrimSpace(c.Slug)
+	c.Name = strings.TrimSpace(c.Name)
+	c.NameEN = strings.TrimSpace(c.NameEN)
+	c.Slug = strings.TrimSpace(c.Slug)
 	if c.Name == "" || c.Slug == "" {
 		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
 	}
@@ -179,7 +195,9 @@ func (s *CategoryService) Create(ctx context.Context, c *domain.Category) (*doma
 }
 
 func (s *CategoryService) Update(ctx context.Context, c *domain.Category) (*domain.Category, error) {
-	c.Name, c.Slug = strings.TrimSpace(c.Name), strings.TrimSpace(c.Slug)
+	c.Name = strings.TrimSpace(c.Name)
+	c.NameEN = strings.TrimSpace(c.NameEN)
+	c.Slug = strings.TrimSpace(c.Slug)
 	if c.Name == "" || c.Slug == "" {
 		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
 	}
@@ -207,6 +225,12 @@ func (s *ArtistService) Get(ctx context.Context) (*domain.Artist, error) {
 
 func (s *ArtistService) Update(ctx context.Context, a *domain.Artist) (*domain.Artist, error) {
 	a.Name = strings.TrimSpace(a.Name)
+	a.NameEN = strings.TrimSpace(a.NameEN)
+	a.Bio = strings.TrimSpace(a.Bio)
+	a.BioEN = strings.TrimSpace(a.BioEN)
+	a.PhotoURL = strings.TrimSpace(a.PhotoURL)
+	a.Email = strings.TrimSpace(a.Email)
+	a.Instagram = strings.TrimSpace(a.Instagram)
 	if a.Name == "" {
 		return nil, fmt.Errorf("%w: artist name is required", domain.ErrValidation)
 	}

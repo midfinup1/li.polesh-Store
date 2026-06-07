@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArtworkCard } from "@/components/artwork-card";
+import { LocalizedText } from "@/components/localized-text";
 import { api } from "@/lib/api";
 
 export const revalidate = 60;
@@ -10,167 +12,121 @@ export default async function HomePage() {
     api.artworks.list().catch(() => []),
   ]);
 
-  const visibleArtworks = Array.isArray(artworks) ? artworks.slice(0, 4) : [];
-  const mainArtwork = visibleArtworks[0];
-  const sideArtworks = visibleArtworks.slice(1, 3);
-  const wideArtwork = visibleArtworks[3];
+  const visibleArtworks = Array.isArray(artworks) ? artworks : [];
+  const leftArtworks = visibleArtworks.filter((_, index) => index % 2 === 0);
+  const rightArtworks = visibleArtworks.filter((_, index) => index % 2 === 1);
 
   return (
     <main className="bg-paper text-ink">
-      <section className="mx-auto max-w-6xl px-6 pb-20 pt-10 md:px-10">
-        <section className="grid items-center gap-10 md:grid-cols-[0.9fr_1.1fr]">
-          <div className="relative aspect-[4/5] max-w-[360px] bg-paper-dark">
+      <section className="mx-auto max-w-[1280px] px-6 pb-24 pt-[116px] md:px-10">
+        <div className="grid items-start gap-14 md:grid-cols-[494px_1fr] md:gap-[57px]">
+          <div className="overflow-hidden rounded-[8px] bg-paper-dark">
             {artist?.photo_url ? (
               <Image
                 src={artist.photo_url}
-                alt={artist.name || "Художница"}
-                fill
+                alt={artist.name || "Artist"}
+                width={988}
+                height={1318}
                 priority
-                className="object-cover grayscale"
+                className="h-auto w-full object-contain grayscale"
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-ink-light">
-                Фото художницы
+              <div className="flex aspect-[494/659] items-center justify-center rounded-[8px] text-[20px] text-ink-light">
+                <LocalizedText ru="Фото художницы" en="Artist photo" />
               </div>
             )}
           </div>
 
-          <div>
-            <h1 className="font-display text-4xl font-semibold leading-tight md:text-6xl">
-              {artist?.name || "Елизавета Полещенко"}
+          <div className="pt-[108px]">
+            <h1 className="max-w-[713px] text-[48px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[64px] md:leading-[77px]">
+              {artist?.name || (
+                <LocalizedText
+                  ru="Елизавета Полещенко"
+                  en="Elizaveta Poleshchenko"
+                />
+              )}
             </h1>
           </div>
-        </section>
+        </div>
 
-        <section className="mt-16 max-w-5xl">
-          <h2 className="mb-6 font-display text-4xl font-semibold md:text-5xl">
+        <section className="mt-[101px] max-w-[1264px]">
+          <h2 className="text-[48px] font-bold leading-[1.12] tracking-[-0.02em] text-ink md:text-[64px] md:leading-[77px]">
             Artist statement
           </h2>
 
-          <p className="max-w-5xl text-sm leading-7 text-ink-light md:text-base">
-            {artist?.bio ||
-              "В своей художественной практике я обращаюсь к познанию личного и эмоционального, через анализ мимолетных образов, формируемых внутренним опытом и памятью. Через анималистичные образы раскрываются темы внутреннего напряжения, принятия и уязвимости."}
-          </p>
+          {artist?.bio ? (
+            <p className="mt-6 max-w-[1261px] text-[20px] font-normal leading-[150%] text-black/75 dark:text-ink-light md:text-[24px]">
+              {artist.bio}
+            </p>
+          ) : (
+            <LocalizedText
+              as="p"
+              className="mt-6 max-w-[1261px] text-[20px] font-normal leading-[150%] text-black/75 dark:text-ink-light md:text-[24px]"
+              ru="В своей художественной практике я обращаюсь к познанию личного и эмоционального, через анализ мимолетных образов, формируя из интуитивного целостные образы и сюжеты. Через анималистичные образы рассуждаю о внутреннем, о привязанностях, о поиске объяснения своих действий и чувств. Человек в моих работах чаще находится в роли наблюдателя и больше выражает процесс обдумывания нежели процесс прямых и активных действий. В начале своей работы над картиной мне важны первые интуитивные зарисовки и мазки, из которых потом формируется целостный образ."
+              en="In her artistic practice, the artist turns to personal and emotional experience through fleeting images, memory and internal states. Animalistic imagery reveals themes of tension, vulnerability and acceptance. The human figure often appears as an observer, expressing a process of reflection rather than direct action."
+            />
+          )}
 
           <Link
-            href="/gallery"
-            className="mt-8 inline-block bg-ink px-5 py-3 text-sm text-paper transition-opacity hover:opacity-80"
+            href="#catalog"
+            className="mt-[52px] inline-flex h-[76px] items-center rounded-[8px] bg-ink px-8 text-[24px] font-medium leading-[150%] text-paper shadow-sm transition-opacity hover:opacity-80"
           >
-            Смотреть каталог
+            <LocalizedText ru="Смотреть каталог" en="View catalog" />
           </Link>
         </section>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-28 md:px-10">
-        <h2 className="mb-8 font-display text-3xl font-semibold md:text-4xl">
-          Каталог
+      <section
+        id="catalog"
+        className="mx-auto max-w-[1280px] scroll-mt-[120px] px-6 pb-32 md:px-10"
+      >
+        <h2 className="text-[42px] font-semibold leading-[1.2] tracking-[-0.02em] text-ink md:text-[48px]">
+          <LocalizedText ru="Каталог" en="Catalog" />
         </h2>
 
-        <div className="mb-10 flex flex-wrap gap-3">
-          <Link
-            href="/gallery"
-            className="bg-ink px-4 py-2 text-xs text-paper"
+        <div className="mt-12 flex flex-wrap gap-4">
+          <a
+            href="#catalog"
+            className="inline-flex h-[60px] items-center rounded-[8px] bg-ink px-6 text-[24px] font-medium leading-[150%] text-paper shadow-sm"
           >
-            картины
-          </Link>
+            <LocalizedText ru="картины" en="paintings" />
+          </a>
 
-          <Link
-            href="/gallery"
-            className="bg-paper-dark px-4 py-2 text-xs text-ink"
+          <a
+            href="#catalog"
+            className="inline-flex h-[60px] items-center rounded-[8px] bg-paper-dark px-6 text-[24px] font-medium leading-[150%] text-ink shadow-sm transition-opacity hover:opacity-70"
           >
-            постеры
-          </Link>
+            <LocalizedText ru="постеры" en="posters" />
+          </a>
 
-          <Link
-            href="/gallery"
-            className="bg-paper-dark px-4 py-2 text-xs text-ink"
+          <a
+            href="#catalog"
+            className="inline-flex h-[60px] items-center rounded-[8px] bg-paper-dark px-6 text-[24px] font-medium leading-[150%] text-ink shadow-sm transition-opacity hover:opacity-70"
           >
-            керамика
-          </Link>
+            <LocalizedText ru="керамика" en="ceramics" />
+          </a>
         </div>
 
         {visibleArtworks.length > 0 ? (
-          <div className="grid gap-8">
-            <div className="grid gap-8 lg:grid-cols-[1.65fr_1fr]">
-              {mainArtwork && <CatalogCard artwork={mainArtwork} large />}
-
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-1">
-                {sideArtworks.map((artwork) => (
-                  <CatalogCard key={artwork.id} artwork={artwork} />
-                ))}
-              </div>
+          <div className="mt-[102px] grid gap-[80px] lg:grid-cols-[minmax(0,681px)_minmax(0,502px)] lg:items-start">
+            <div className="space-y-[70px]">
+              {leftArtworks.map((artwork, index) => (
+                <ArtworkCard key={artwork.id} artwork={artwork} large={index === 0} />
+              ))}
             </div>
 
-            {wideArtwork && <CatalogCard artwork={wideArtwork} wide />}
+            <div className="space-y-[70px]">
+              {rightArtworks.map((artwork) => (
+                <ArtworkCard key={artwork.id} artwork={artwork} />
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="flex min-h-[320px] items-center justify-center bg-paper-dark text-ink-light">
-            Работы пока не добавлены
+          <div className="mt-16 flex min-h-[320px] items-center justify-center rounded-[8px] bg-paper-dark text-[20px] text-ink-light">
+            <LocalizedText ru="Работы пока не добавлены" en="No artworks yet" />
           </div>
         )}
       </section>
     </main>
-  );
-}
-
-function CatalogCard({
-  artwork,
-  large = false,
-  wide = false,
-}: {
-  artwork: any;
-  large?: boolean;
-  wide?: boolean;
-}) {
-  const cover = artwork.images?.[0];
-
-  const imageUrl =
-    cover?.thumb_avif_url ||
-    cover?.thumb_webp_url ||
-    cover?.thumb_url ||
-    cover?.original_url;
-
-  return (
-    <Link href={`/artwork/${artwork.id}`} className="group block">
-      <div
-        className={[
-          "relative mb-4 overflow-hidden bg-paper-dark",
-          large ? "aspect-[4/5]" : "",
-          wide ? "aspect-[16/9]" : "",
-          !large && !wide ? "aspect-[3/4]" : "",
-        ].join(" ")}
-      >
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={cover?.alt_text || artwork.title}
-            fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-light">
-            Нет изображения
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h3 className="font-display text-lg font-semibold">
-            {artwork.title}
-          </h3>
-
-          {artwork.size && (
-            <p className="mt-1 text-xs text-ink-light">{artwork.size}</p>
-          )}
-        </div>
-
-        <p className="shrink-0 text-sm">
-          {artwork.price !== null
-            ? `${artwork.price.toLocaleString("ru-RU")} ₽`
-            : "Цена по запросу"}
-        </p>
-      </div>
-    </Link>
   );
 }

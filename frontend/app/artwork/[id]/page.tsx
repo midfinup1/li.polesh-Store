@@ -1,95 +1,70 @@
-import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
-
-import { OrderForm } from "@/components/order-form";
+import { ArtworkReservePanel } from "@/components/artwork-reserve-panel";
+import { LocalizedText } from "@/components/localized-text";
 import { api } from "@/lib/api";
-import type { ArtworkImage } from "@/types";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
-const siteURL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+type ArtworkPageProps = {
+  params: {
+    id: string;
+  };
+};
 
-function assetURL(url: string | null | undefined) {
-  if (!url) {
-    return "";
-  }
-
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-
-  return url;
-}
-
-function ArtworkImageView({
-  image,
-  alt,
-  priority = false,
-}: {
-  image: ArtworkImage;
-  alt: string;
-  priority?: boolean;
-}) {
-  const src = assetURL(image.original_url || image.thumb_url);
-
+function getImageUrl(image: any) {
   return (
-    <img
-      src={src}
-      alt={image.alt_text || alt}
-      className="h-full w-full object-contain"
-      loading={priority ? "eager" : "lazy"}
-    />
+    image?.original_url ||
+    image?.thumb_avif_url ||
+    image?.thumb_webp_url ||
+    image?.thumb_url ||
+    ""
   );
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { id: string };
-}): Promise<Metadata> {
+function formatPrice(price: number | null | undefined) {
+  if (price === null || price === undefined) {
+    return null;
+  }
+
+  return `${price.toLocaleString("ru-RU")} ₽`;
+}
+
+export async function generateMetadata({ params }: ArtworkPageProps) {
   const id = Number(params.id);
 
-  if (!Number.isInteger(id) || id <= 0) {
-    return {};
+  if (!Number.isFinite(id)) {
+    return {
+      title: "Работа не найдена | lipolesh.art",
+    };
   }
 
   const artwork = await api.artworks.getById(id).catch(() => null);
 
   if (!artwork) {
-    return {};
+    return {
+      title: "Работа не найдена | lipolesh.art",
+    };
   }
 
-  const description =
-    artwork.description?.slice(0, 200) ||
-    `${artwork.title} — оригинальная работа.`;
-
-  const image = artwork.images?.[0]?.original_url;
-  const canonical = `${siteURL}/artwork/${artwork.id}`;
+  const cover = artwork.images?.[0];
+  const imageUrl = getImageUrl(cover);
 
   return {
-    title: artwork.title,
-    description,
-    alternates: {
-      canonical,
-    },
+    title: `${artwork.title} | lipolesh.art`,
+    description: artwork.description || "Работа художницы",
     openGraph: {
       title: artwork.title,
-      description,
-      url: canonical,
-      type: "article",
-      images: image ? [{ url: assetURL(image) }] : undefined,
+      description: artwork.description || "Работа художницы",
+      images: imageUrl ? [imageUrl] : [],
     },
   };
 }
 
-export default async function ArtworkPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ArtworkPage({ params }: ArtworkPageProps) {
   const id = Number(params.id);
 
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!Number.isFinite(id)) {
     notFound();
   }
 
@@ -99,101 +74,107 @@ export default async function ArtworkPage({
     notFound();
   }
 
-  const images = Array.isArray(artwork.images) ? artwork.images : [];
+  const images = artwork.images || [];
   const cover = images[0];
+  const coverUrl = getImageUrl(cover);
+  const price = formatPrice(artwork.price);
+  const isUnavailable = artwork.status === "sold" || artwork.status === "hidden";
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "VisualArtwork",
-    name: artwork.title,
-    image: images.map((img) => assetURL(img.original_url)),
-    description: artwork.description || undefined,
-    artform: artwork.materials || undefined,
-    dateCreated: artwork.year ? String(artwork.year) : undefined,
-    url: `${siteURL}/artwork/${artwork.id}`,
-    offers: {
-      "@type": "Offer",
-      price: artwork.price ?? undefined,
-      priceCurrency: "RUB",
-      availability:
-        artwork.status === "available"
-          ? "https://schema.org/InStock"
-          : "https://schema.org/SoldOut",
-    },
-  };
+  const details = [
+    artwork.materials,
+    artwork.year ? `${artwork.year} г.` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
-    <main className="mx-auto grid max-w-7xl gap-12 px-8 py-16 lg:grid-cols-[1.05fr_.95fr]">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
-      <div className="relative aspect-[3/4] overflow-hidden bg-paper-dark">
-        {cover ? (
-          <ArtworkImageView image={cover} alt={artwork.title} priority />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-ink-light">
-            Нет изображения
-          </div>
-        )}
-      </div>
-
-      <section>
-        <h1 className="text-5xl">{artwork.title}</h1>
-
-        <p className="mt-5 text-xl">
-          {artwork.price === null
-            ? "Цена по запросу"
-            : `${artwork.price.toLocaleString("ru-RU")} ₽`}
-        </p>
-
-        <dl className="mt-8 space-y-3 text-ink-light">
-          {artwork.year && (
-            <div>
-              <dt className="inline text-ink">Год: </dt>
-              <dd className="inline">{artwork.year}</dd>
-            </div>
-          )}
-
-          {artwork.materials && (
-            <div>
-              <dt className="inline text-ink">Материалы: </dt>
-              <dd className="inline">{artwork.materials}</dd>
-            </div>
-          )}
-
-          {artwork.size && (
-            <div>
-              <dt className="inline text-ink">Размер: </dt>
-              <dd className="inline">{artwork.size}</dd>
-            </div>
-          )}
-        </dl>
-
-        {artwork.description && (
-          <p className="mt-8 whitespace-pre-line leading-relaxed">
-            {artwork.description}
-          </p>
-        )}
-
-        {images.length > 1 && (
-          <div className="mt-8 grid grid-cols-3 gap-3">
-            {images.slice(1).map((image) => (
-              <div
-                key={image.id}
-                className="relative aspect-square overflow-hidden bg-paper-dark"
-              >
-                <ArtworkImageView image={image} alt={artwork.title} />
+    <main className="bg-paper text-ink">
+      <section className="mx-auto grid max-w-[1280px] gap-14 px-6 pb-28 pt-[123px] md:grid-cols-[minmax(0,505px)_minmax(0,515px)] md:px-10 lg:gap-[143px]">
+        <div>
+          <div className="relative overflow-hidden rounded-[8px] bg-paper-dark">
+            {coverUrl ? (
+              <Image
+                src={coverUrl}
+                alt={cover?.alt_text || artwork.title}
+                width={1010}
+                height={1356}
+                priority
+                className="h-auto w-full object-contain"
+              />
+            ) : (
+              <div className="flex aspect-[505/678] items-center justify-center rounded-[8px] text-[16px] text-ink-light">
+                <LocalizedText ru="Нет изображения" en="No image" />
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        <OrderForm
-          artworkId={artwork.id}
-          disabled={artwork.status !== "available"}
-        />
+            {artwork.status === "sold" && (
+              <div className="absolute right-4 top-4 rounded-[8px] bg-ink px-3 py-2 text-[16px] text-paper">
+                <LocalizedText ru="Продано" en="Sold" />
+              </div>
+            )}
+          </div>
+
+          {images.length > 1 && (
+            <div className="mt-5 grid grid-cols-3 gap-4">
+              {images.slice(1).map((image: any) => {
+                const imageUrl = getImageUrl(image);
+
+                return (
+                  <div
+                    key={image.id}
+                    className="overflow-hidden rounded-[8px] bg-paper-dark"
+                  >
+                    {imageUrl ? (
+                      <Image
+                        src={imageUrl}
+                        alt={image.alt_text || artwork.title}
+                        width={600}
+                        height={800}
+                        className="h-auto w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex aspect-[4/5] items-center justify-center rounded-[8px] text-[16px] text-ink-light">
+                        <LocalizedText ru="Нет изображения" en="No image" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <aside className="pt-0">
+          <div className="flex max-w-[515px] flex-col gap-6">
+            <h1 className="text-[40px] font-semibold leading-[120%] text-ink">
+              {artwork.title}
+            </h1>
+
+            {artwork.size && (
+              <p className="text-[24px] font-normal leading-[150%] text-ink-light">
+                {artwork.size}
+              </p>
+            )}
+
+            {details && (
+              <p className="text-[20px] font-normal leading-[150%] text-ink-light">
+                {details}
+              </p>
+            )}
+
+            <p className="text-[24px] font-medium leading-[150%] text-ink">
+              {price || (
+                <LocalizedText ru="Цена по запросу" en="Price on request" />
+              )}
+            </p>
+
+            <ArtworkReservePanel
+              artworkId={artwork.id}
+              disabled={isUnavailable}
+              comment={artwork.description}
+            />
+          </div>
+        </aside>
       </section>
     </main>
   );

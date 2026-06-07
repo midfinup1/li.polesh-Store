@@ -10,14 +10,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${siteURL}/`, changeFrequency: "weekly", priority: 1 },
-    { url: `${siteURL}/gallery`, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${siteURL}/order`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${siteURL}/about`, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${siteURL}/contacts`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${siteURL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${siteURL}/personal-data`, changeFrequency: "yearly", priority: 0.2 },
   ];
 
-  const artworkRoutes: MetadataRoute.Sitemap = (Array.isArray(artworks) ? artworks : []).map((a) => ({
-    url: `${siteURL}/artwork/${a.id}`,
-    lastModified: a.updated_at,
+  const artworkRoutes: MetadataRoute.Sitemap = (
+    Array.isArray(artworks) ? artworks : []
+  ).map((artwork) => ({
+    url: `${siteURL}/artwork/${artwork.id}`,
+    lastModified: artwork.updated_at,
     changeFrequency: "monthly",
     priority: 0.7,
   }));

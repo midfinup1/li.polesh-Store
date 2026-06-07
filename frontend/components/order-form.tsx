@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { api } from "@/lib/api";
+import { useSiteSettings } from "@/lib/site-settings";
 
 type OrderFormProps = {
   artworkId: number;
@@ -10,18 +11,15 @@ type OrderFormProps = {
 };
 
 export function OrderForm({ artworkId, disabled = false }: OrderFormProps) {
-  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">(
-    "idle",
-  );
+  const { t } = useSiteSettings();
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     if (disabled || status === "sending") return;
 
     const form = new FormData(event.currentTarget);
-
     const name = String(form.get("name") || "").trim();
     const email = String(form.get("email") || "").trim();
     const phone = String(form.get("phone") || "").trim();
@@ -30,7 +28,7 @@ export function OrderForm({ artworkId, disabled = false }: OrderFormProps) {
 
     if (!consent) {
       setStatus("error");
-      setError("Необходимо согласие на обработку персональных данных.");
+      setError(t.order.consentError);
       return;
     }
 
@@ -38,80 +36,69 @@ export function OrderForm({ artworkId, disabled = false }: OrderFormProps) {
       setStatus("sending");
       setError("");
 
-      await api.orders.create({
-        artwork_id: artworkId,
-        name,
-        email,
-        phone,
-        message,
-      });
+      await api.orders.create({ artwork_id: artworkId, name, email, phone, message });
 
       event.currentTarget.reset();
       setStatus("success");
     } catch (err) {
       setStatus("error");
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Не удалось отправить заявку. Попробуйте позже.",
-      );
+      setError(err instanceof Error ? err.message : t.order.submitError);
     }
   }
 
-  return (
-    <form onSubmit={submit} className="mt-8 space-y-4 border-t border-ink/10 pt-8">
-      <h2 className="text-3xl">Оставить заявку</h2>
+  const fieldClass =
+    "w-full rounded-[8px] border border-border bg-transparent px-4 py-3 text-[16px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink";
 
-      <p className="text-sm leading-6 text-ink-light">
-        Оставьте контакты, и художница свяжется с вами лично, чтобы обсудить
-        работу и возможное приобретение.
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <h2 className="text-[24px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
+        {t.order.title}
+      </h2>
+      <p className="text-[16px] font-medium leading-[150%] text-ink-light">
+        {t.order.description}
       </p>
 
       <input
         required
         name="name"
-        placeholder="Ваше имя"
-        className="w-full border border-ink/20 bg-transparent px-4 py-3"
+        placeholder={t.order.name}
+        className={fieldClass}
         disabled={disabled || status === "sending"}
       />
-
       <input
         required
         name="email"
         type="email"
-        placeholder="Email"
-        className="w-full border border-ink/20 bg-transparent px-4 py-3"
+        placeholder={t.order.email}
+        className={fieldClass}
         disabled={disabled || status === "sending"}
       />
-
       <input
         name="phone"
-        placeholder="Телефон или Telegram"
-        className="w-full border border-ink/20 bg-transparent px-4 py-3"
+        placeholder={t.order.phone}
+        className={fieldClass}
         disabled={disabled || status === "sending"}
       />
-
       <textarea
         name="message"
         rows={4}
-        placeholder="Комментарий"
-        className="w-full border border-ink/20 bg-transparent px-4 py-3"
+        placeholder={t.order.message}
+        className={fieldClass}
         disabled={disabled || status === "sending"}
       />
 
-      <label className="flex items-start gap-3 text-sm leading-6 text-ink-light">
+      <label className="flex items-start gap-3 text-[14px] font-medium leading-[150%] text-ink-light">
         <input
           required
           name="consent"
           type="checkbox"
-          className="mt-1"
+          className="mt-1 h-4 w-4 rounded-[8px]"
           disabled={disabled || status === "sending"}
         />
-
         <span>
-          Я согласен на обработку персональных данных и ознакомлен с{" "}
+          {t.order.consentBefore}{" "}
           <Link href="/privacy" className="text-ink underline underline-offset-4">
-            политикой конфиденциальности
+            {t.order.privacy}
           </Link>
           .
         </span>
@@ -119,28 +106,14 @@ export function OrderForm({ artworkId, disabled = false }: OrderFormProps) {
 
       <button
         disabled={disabled || status === "sending"}
-        className="border border-ink bg-ink px-8 py-3 text-paper transition-opacity disabled:opacity-50"
+        className="flex h-[52px] w-full items-center justify-center rounded-[8px] bg-ink px-6 text-[16px] font-medium leading-[150%] text-paper shadow-sm transition-opacity disabled:opacity-50"
       >
-        {status === "sending" ? "Отправка..." : "Оставить заявку"}
+        {status === "sending" ? t.order.sending : t.order.submit}
       </button>
 
-      {disabled && (
-        <p className="text-sm text-ink-light">
-          Работа сейчас недоступна для заявки.
-        </p>
-      )}
-
-      {status === "success" && (
-        <p className="text-sm text-ink-light">
-          Заявка отправлена. Художница свяжется с вами лично.
-        </p>
-      )}
-
-      {status === "error" && error && (
-        <p className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
+      {disabled && <p className="text-[16px] font-medium leading-[150%] text-ink-light">{t.order.disabled}</p>}
+      {status === "success" && <p className="text-[16px] font-medium leading-[150%] text-ink-light">{t.order.success}</p>}
+      {status === "error" && error && <p className="text-[16px] font-medium leading-[150%] text-red-600">{error}</p>}
     </form>
   );
 }

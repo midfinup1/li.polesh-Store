@@ -1,31 +1,34 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: ["class"],
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       fontFamily: {
-        // Will be set up with next/font — placeholders for now
-        sans: ["var(--font-sans)"],
-        display: ["var(--font-display)"],
+        sans: ["var(--font-inter)", "Inter", "Arial", "sans-serif"],
+        display: ["var(--font-inter)", "Inter", "Arial", "sans-serif"],
       },
       colors: {
-        // Design tokens — customize for the artist's brand
-        ink: {
-          DEFAULT: "#1a1a1a",
-          light: "#4a4a4a",
-        },
-        paper: {
-          DEFAULT: "#ffffff",
-          dark: "#c8c8c8",
-        },
-        accent: {
-          DEFAULT: "#b85c38",
-          light: "#d4855f",
-        },
+        paper: "var(--paper)",
+        ink: "var(--ink)",
+        "paper-dark": "var(--paper-dark)",
+        "ink-light": "var(--ink-light)",
+        border: "var(--border)",
+      },
+      borderRadius: {
+        none: "0px",
+        sm: "8px",
+        DEFAULT: "8px",
+        md: "8px",
+        lg: "8px",
+        xl: "8px",
+        "2xl": "8px",
+        "3xl": "8px",
       },
     },
   },

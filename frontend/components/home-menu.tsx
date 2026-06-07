@@ -3,37 +3,35 @@
 import Link from "next/link";
 import { useState } from "react";
 
-export function SiteHeader() {
+export function HomeMenu() {
   const [open, setOpen] = useState(false);
   const [language, setLanguage] = useState<"RU" | "EN">("RU");
 
   return (
     <>
-      <header className="bg-paper">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-8 md:px-10">
-          <Link href="/" className="text-sm font-medium tracking-tight">
-            lipolesh.art
-          </Link>
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-8 md:px-10">
+        <Link href="/" className="text-sm font-medium tracking-tight">
+          lipolesh.art
+        </Link>
 
-          <div className="flex items-center gap-5">
-            <button
-              type="button"
-              onClick={() => setLanguage(language === "RU" ? "EN" : "RU")}
-              className="text-sm text-ink-light transition-colors hover:text-ink"
-              aria-label="Переключить язык сайта"
-            >
-              {language}
-            </button>
+        <div className="flex items-center gap-5">
+          <button
+            type="button"
+            onClick={() => setLanguage(language === "RU" ? "EN" : "RU")}
+            className="text-sm text-ink-light transition-colors hover:text-ink"
+            aria-label="Переключить язык сайта"
+          >
+            {language}
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="bg-ink px-5 py-3 text-sm text-paper transition-opacity hover:opacity-80"
-              aria-label="Открыть меню"
-            >
-              Меню
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="bg-ink px-5 py-3 text-sm text-paper transition-opacity hover:opacity-80"
+            aria-label="Открыть меню"
+          >
+            Меню
+          </button>
         </div>
       </header>
 
@@ -41,13 +39,7 @@ export function SiteHeader() {
         <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-sm">
           <div className="ml-auto flex h-full w-full max-w-md flex-col bg-paper px-8 py-8 shadow-xl">
             <div className="mb-16 flex items-center justify-between">
-              <Link
-                href="/"
-                onClick={() => setOpen(false)}
-                className="text-sm font-medium"
-              >
-                lipolesh.art
-              </Link>
+              <span className="text-sm font-medium">lipolesh.art</span>
 
               <button
                 type="button"
@@ -86,6 +78,14 @@ export function SiteHeader() {
             </nav>
 
             <div className="mt-auto space-y-4 border-t border-ink/10 pt-8 text-sm text-ink-light">
+              <Link
+                href="/offer"
+                onClick={() => setOpen(false)}
+                className="block transition-colors hover:text-ink"
+              >
+                Публичная оферта
+              </Link>
+
               <Link
                 href="/privacy"
                 onClick={() => setOpen(false)}

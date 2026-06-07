@@ -19,8 +19,8 @@ const config: Config = {
           light: "#4a4a4a",
         },
         paper: {
-          DEFAULT: "#f8f5f0",
-          dark: "#ede8e0",
+          DEFAULT: "#ffffff",
+          dark: "#c8c8c8",
         },
         accent: {
           DEFAULT: "#b85c38",

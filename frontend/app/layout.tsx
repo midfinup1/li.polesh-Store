@@ -4,6 +4,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteSettingsProvider } from "@/lib/site-settings";
+import { siteUrl } from "@/lib/metadata";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -12,8 +13,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "lipolesh.art",
-  description: "Портфолио художницы",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "lipolesh.art",
+    template: "%s | lipolesh.art",
+  },
+  description: "Портфолио художницы Елизаветы Полещенко",
   icons: {
     icon: [
       {
@@ -23,6 +28,27 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon.png",
     apple: "/favicon.png",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "lipolesh.art",
+    title: "lipolesh.art",
+    description: "Портфолио художницы Елизаветы Полещенко",
+    url: siteUrl,
+    images: [
+      {
+        url: "/favicon.png",
+        width: 512,
+        height: 512,
+        alt: "lipolesh.art",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "lipolesh.art",
+    description: "Портфолио художницы Елизаветы Полещенко",
+    images: ["/favicon.png"],
   },
 };
 

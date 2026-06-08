@@ -1,9 +1,30 @@
 import type { Metadata } from "next";
-import { LocalizedText } from "@/components/localized-text";
+import { absoluteUrl } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "На заказ | lipolesh.art",
-  description: "Информация о заказе картины у художницы",
+  title: "На заказ",
+  description: "Информация о заказе картины у художницы Елизаветы Полещенко",
+  openGraph: {
+    type: "website",
+    siteName: "lipolesh.art",
+    title: "На заказ",
+    description: "Информация о заказе картины у художницы Елизаветы Полещенко",
+    url: absoluteUrl("/order"),
+    images: [
+      {
+        url: absoluteUrl("/favicon.png"),
+        width: 512,
+        height: 512,
+        alt: "lipolesh.art",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "На заказ",
+    description: "Информация о заказе картины у художницы Елизаветы Полещенко",
+    images: [absoluteUrl("/favicon.png")],
+  },
 };
 
 export const revalidate = 60;

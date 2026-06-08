@@ -26,7 +26,6 @@ function baseURL() {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const isFormData = init.body instanceof FormData;
-
   const headers = new Headers(init.headers);
 
   if (!isFormData && init.body && !headers.has("Content-Type")) {
@@ -42,7 +41,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const errorText = await res.text();
-
     let errorMessage = res.statusText;
 
     if (errorText) {
@@ -70,10 +68,22 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     return undefined as T;
   }
 
-  return JSON.parse(text) as T;
+  const contentType = res.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined as T;
+  }
 }
 
-function buildQuery(params?: Record<string, string | number | boolean | null | undefined>) {
+function buildQuery(
+  params?: Record<string, string | number | boolean | null | undefined>,
+) {
   if (!params) {
     return "";
   }
@@ -109,7 +119,7 @@ export const api = {
 
   orders: {
     create: (data: CreateOrderRequest) =>
-      request<Order>("/orders", {
+      request<void>("/orders", {
         method: "POST",
         body: JSON.stringify(data),
       }),

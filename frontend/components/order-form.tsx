@@ -58,11 +58,13 @@ export function OrderForm({ artworkId, disabled = false }: OrderFormProps) {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const form = event.currentTarget;
+
     if (disabled || status === "loading") {
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
 
     const name = String(formData.get("name") || "").trim();
     const contact = String(formData.get("contact") || "").trim();
@@ -84,16 +86,11 @@ export function OrderForm({ artworkId, disabled = false }: OrderFormProps) {
         name,
         email: "no-email@lipolesh.art",
         phone: contact,
-        message: [
-          `Контакт: ${contact}`,
-          message ? `Комментарий: ${message}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
+        message,
       });
 
+      form.reset();
       setStatus("success");
-      event.currentTarget.reset();
     } catch {
       setStatus("error");
       setError(t.error);

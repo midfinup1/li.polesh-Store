@@ -1,12 +1,35 @@
 import Image from "next/image";
 import { LocalizedText } from "@/components/localized-text";
 import { api } from "@/lib/api";
+import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/metadata";
 
 export const revalidate = 60;
 
-export const metadata = {
-  title: "Об авторе | lipolesh.art",
-  description: "Информация о художнице",
+export const metadata: Metadata = {
+  title: "Об авторе",
+  description: "Информация о художнице Елизавете Полещенко",
+  openGraph: {
+    type: "profile",
+    siteName: "lipolesh.art",
+    title: "Об авторе",
+    description: "Информация о художнице Елизавете Полещенко",
+    url: absoluteUrl("/about"),
+    images: [
+      {
+        url: absoluteUrl("/favicon.png"),
+        width: 512,
+        height: 512,
+        alt: "Елизавета Полещенко",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Об авторе",
+    description: "Информация о художнице Елизавете Полещенко",
+    images: [absoluteUrl("/favicon.png")],
+  },
 };
 
 export default async function AboutPage() {

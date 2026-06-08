@@ -13,15 +13,22 @@ import (
 type ArtworkService struct {
 	artworks   domain.ArtworkRepository
 	categories domain.CategoryRepository
+	orders     domain.OrderRepository
 	storage    *StorageService
 }
 
 func NewArtworkService(
 	artworks domain.ArtworkRepository,
 	categories domain.CategoryRepository,
+	orders domain.OrderRepository,
 	storage *StorageService,
 ) *ArtworkService {
-	return &ArtworkService{artworks: artworks, categories: categories, storage: storage}
+	return &ArtworkService{
+		artworks:   artworks,
+		categories: categories,
+		orders:     orders,
+		storage:    storage,
+	}
 }
 
 func (s *ArtworkService) List(ctx context.Context, f domain.ArtworkFilter) ([]domain.Artwork, error) {
@@ -37,14 +44,18 @@ func (s *ArtworkService) GetPublicByID(ctx context.Context, id int64) (*domain.A
 	if err != nil {
 		return nil, err
 	}
+
 	if a.Status == domain.ArtworkStatusHidden {
 		return nil, fmt.Errorf("%w: artwork", domain.ErrNotFound)
 	}
+
 	return a, nil
 }
 
 func validArtworkStatus(status domain.ArtworkStatus) bool {
-	return status == domain.ArtworkStatusAvailable || status == domain.ArtworkStatusSold || status == domain.ArtworkStatusHidden
+	return status == domain.ArtworkStatusAvailable ||
+		status == domain.ArtworkStatusSold ||
+		status == domain.ArtworkStatusHidden
 }
 
 func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain.Artwork, error) {
@@ -56,18 +67,23 @@ func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain
 	a.SizeEN = strings.TrimSpace(a.SizeEN)
 	a.Materials = strings.TrimSpace(a.Materials)
 	a.MaterialsEN = strings.TrimSpace(a.MaterialsEN)
+
 	if a.Title == "" {
 		return nil, fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
+
 	if a.Status == "" {
 		a.Status = domain.ArtworkStatusAvailable
 	}
+
 	if !validArtworkStatus(a.Status) {
 		return nil, fmt.Errorf("%w: invalid artwork status", domain.ErrValidation)
 	}
+
 	if a.Price != nil && *a.Price < 0 {
 		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
+
 	return s.artworks.Create(ctx, a)
 }
 
@@ -80,25 +96,46 @@ func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain
 	a.SizeEN = strings.TrimSpace(a.SizeEN)
 	a.Materials = strings.TrimSpace(a.Materials)
 	a.MaterialsEN = strings.TrimSpace(a.MaterialsEN)
+
 	if a.Title == "" {
 		return nil, fmt.Errorf("%w: title is required", domain.ErrValidation)
 	}
+
 	if !validArtworkStatus(a.Status) {
 		return nil, fmt.Errorf("%w: invalid artwork status", domain.ErrValidation)
 	}
+
 	if a.Price != nil && *a.Price < 0 {
 		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
+
 	return s.artworks.Update(ctx, a)
 }
 
-// Delete removes an artwork. The DB row is deleted FIRST; storage objects are
-// purged only AFTER a successful delete. This guarantees that if the delete is
-// rejected (e.g. orders reference the artwork via ON DELETE RESTRICT — surfaced
-// as domain.ErrConflict), no image files are orphaned in storage.
+// Delete removes an artwork only when there are no active requests for it.
+// Active requests (new/contacted) block deletion so the admin does not lose
+// unprocessed leads. Inactive requests are removed together with the artwork,
+// because they no longer require action and would otherwise be blocked by the
+// orders.artwork_id ON DELETE RESTRICT constraint.
 func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 	images, err := s.artworks.GetImagesByArtworkID(ctx, id)
 	if err != nil {
+		return err
+	}
+
+	activeOrdersCount, err := s.orders.CountActiveByArtworkID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if activeOrdersCount > 0 {
+		return fmt.Errorf(
+			"%w: нельзя удалить работу, потому что по ней есть активные заявки. Завершите или отмените заявки, затем повторите удаление",
+			domain.ErrConflict,
+		)
+	}
+
+	if err := s.orders.DeleteInactiveByArtworkID(ctx, id); err != nil {
 		return err
 	}
 
@@ -110,21 +147,45 @@ func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 	// consistent; a failed object delete is logged but must not fail the request.
 	for _, image := range images {
 		if err := s.storage.Delete(ctx, image.OriginalURL); err != nil {
-			slog.Error("failed to delete artwork image object", "url", image.OriginalURL, "error", err)
+			slog.Error(
+				"failed to delete artwork image object",
+				"url",
+				image.OriginalURL,
+				"error",
+				err,
+			)
 		}
-		for _, url := range []string{image.ThumbURL, image.ThumbWebPURL, image.ThumbAVIFURL} {
+
+		for _, url := range []string{
+			image.ThumbURL,
+			image.ThumbWebPURL,
+			image.ThumbAVIFURL,
+		} {
 			if url == "" || url == image.OriginalURL {
 				continue
 			}
+
 			if err := s.storage.Delete(ctx, url); err != nil {
-				slog.Error("failed to delete artwork thumbnail object", "url", url, "error", err)
+				slog.Error(
+					"failed to delete artwork thumbnail object",
+					"url",
+					url,
+					"error",
+					err,
+				)
 			}
 		}
 	}
+
 	return nil
 }
 
-func (s *ArtworkService) UploadImage(ctx context.Context, artworkID int64, file multipart.File, header *multipart.FileHeader) (*domain.ArtworkImage, error) {
+func (s *ArtworkService) UploadImage(
+	ctx context.Context,
+	artworkID int64,
+	file multipart.File,
+	header *multipart.FileHeader,
+) (*domain.ArtworkImage, error) {
 	artwork, err := s.artworks.GetByID(ctx, artworkID)
 	if err != nil {
 		return nil, err
@@ -148,6 +209,7 @@ func (s *ArtworkService) UploadImage(ctx context.Context, artworkID int64, file 
 		ThumbAVIFURL: uploaded.ThumbAVIFURL,
 		AltText:      altText,
 	}
+
 	return s.artworks.AddImage(ctx, img)
 }
 
@@ -156,25 +218,52 @@ func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
 	if err != nil {
 		return err
 	}
+
 	if err := s.artworks.DeleteImage(ctx, imageID); err != nil {
 		return err
 	}
+
 	if err := s.storage.Delete(ctx, image.OriginalURL); err != nil {
-		slog.Error("failed to delete artwork image object", "url", image.OriginalURL, "error", err)
+		slog.Error(
+			"failed to delete artwork image object",
+			"url",
+			image.OriginalURL,
+			"error",
+			err,
+		)
 	}
-	for _, url := range []string{image.ThumbURL, image.ThumbWebPURL, image.ThumbAVIFURL} {
+
+	for _, url := range []string{
+		image.ThumbURL,
+		image.ThumbWebPURL,
+		image.ThumbAVIFURL,
+	} {
 		if url == "" || url == image.OriginalURL {
 			continue
 		}
+
 		if err := s.storage.Delete(ctx, url); err != nil {
-			slog.Error("failed to delete artwork thumbnail object", "url", url, "error", err)
+			slog.Error(
+				"failed to delete artwork thumbnail object",
+				"url",
+				url,
+				"error",
+				err,
+			)
 		}
 	}
+
 	return nil
 }
 
-func (s *ArtworkService) UpdateImageAltText(ctx context.Context, artworkID int64, imageID int64, altText string) (*domain.ArtworkImage, error) {
+func (s *ArtworkService) UpdateImageAltText(
+	ctx context.Context,
+	artworkID int64,
+	imageID int64,
+	altText string,
+) (*domain.ArtworkImage, error) {
 	altText = strings.TrimSpace(altText)
+
 	if altText == "" {
 		artwork, err := s.artworks.GetByID(ctx, artworkID)
 		if err != nil {
@@ -190,10 +279,15 @@ func (s *ArtworkService) UpdateImageAltText(ctx context.Context, artworkID int64
 	return s.artworks.UpdateImageAltText(ctx, artworkID, imageID, altText)
 }
 
-func (s *ArtworkService) ReorderImages(ctx context.Context, artworkID int64, imageIDs []int64) error {
+func (s *ArtworkService) ReorderImages(
+	ctx context.Context,
+	artworkID int64,
+	imageIDs []int64,
+) error {
 	if len(imageIDs) == 0 {
 		return fmt.Errorf("%w: image_ids must not be empty", domain.ErrValidation)
 	}
+
 	return s.artworks.ReorderImages(ctx, artworkID, imageIDs)
 }
 
@@ -215,9 +309,11 @@ func (s *CategoryService) Create(ctx context.Context, c *domain.Category) (*doma
 	c.Name = strings.TrimSpace(c.Name)
 	c.NameEN = strings.TrimSpace(c.NameEN)
 	c.Slug = strings.TrimSpace(c.Slug)
+
 	if c.Name == "" || c.Slug == "" {
 		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
 	}
+
 	return s.repo.Create(ctx, c)
 }
 
@@ -225,9 +321,11 @@ func (s *CategoryService) Update(ctx context.Context, c *domain.Category) (*doma
 	c.Name = strings.TrimSpace(c.Name)
 	c.NameEN = strings.TrimSpace(c.NameEN)
 	c.Slug = strings.TrimSpace(c.Slug)
+
 	if c.Name == "" || c.Slug == "" {
 		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
 	}
+
 	return s.repo.Update(ctx, c)
 }
 
@@ -260,13 +358,20 @@ func (s *ArtistService) Update(ctx context.Context, a *domain.Artist) (*domain.A
 	a.AboutPhotoURL = strings.TrimSpace(a.AboutPhotoURL)
 	a.Email = strings.TrimSpace(a.Email)
 	a.Instagram = strings.TrimSpace(a.Instagram)
+
 	if a.Name == "" {
 		return nil, fmt.Errorf("%w: artist name is required", domain.ErrValidation)
 	}
+
 	return s.repo.Update(ctx, a)
 }
 
-func (s *ArtistService) UploadPhoto(ctx context.Context, slot string, file multipart.File, header *multipart.FileHeader) (*domain.Artist, error) {
+func (s *ArtistService) UploadPhoto(
+	ctx context.Context,
+	slot string,
+	file multipart.File,
+	header *multipart.FileHeader,
+) (*domain.Artist, error) {
 	artist, err := s.repo.Get(ctx)
 	if err != nil {
 		return nil, err

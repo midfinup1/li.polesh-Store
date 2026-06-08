@@ -13,7 +13,8 @@ import type {
 export type DeleteTarget =
   | { type: "category"; category: Category }
   | { type: "artwork"; artwork: Artwork }
-  | { type: "image"; artworkId: number; image: ArtworkImage };
+  | { type: "image"; artworkId: number; image: ArtworkImage }
+  | { type: "order"; order: Order };
 
 export const statusLabel: Record<ArtworkStatus, string> = {
   available: "В наличии",
@@ -659,14 +660,18 @@ export function ConfirmDeleteModal({
       ? `Удалить категорию «${target.category.name}»?`
       : target.type === "artwork"
         ? `Удалить работу «${target.artwork.title}»?`
-        : "Удалить изображение?";
+        : target.type === "order"
+          ? `Удалить заявку #${target.order.id}?`
+          : "Удалить изображение?";
 
   const description =
     target.type === "category"
       ? "Работы из этой категории останутся в системе, но потеряют привязку к категории."
       : target.type === "artwork"
-        ? "Действие нельзя отменить. Если у работы уже есть заявки, лучше установить статус «Скрыто»."
-        : "Изображение будет удалено из работы.";
+        ? "Если по работе есть активные заявки в статусе «Новая» или «Связались», удалить работу нельзя. Сначала завершите или отмените эти заявки. Если по работе есть только завершённые или отменённые заявки, они будут удалены вместе с работой."
+        : target.type === "order"
+          ? "Заявка будет удалена из админки и базы данных. Это действие нельзя отменить."
+          : "Изображение будет удалено из работы. Это действие нельзя отменить.";
 
   return (
     <div
@@ -680,9 +685,19 @@ export function ConfirmDeleteModal({
         <h2 className="text-[22px] font-semibold leading-[120%] text-ink">
           {title}
         </h2>
-        <p className="mt-3 text-[15px] font-medium leading-[150%] text-ink-light">
+
+        <p className="mt-3 whitespace-pre-line text-[15px] font-medium leading-[150%] text-ink-light">
           {description}
         </p>
+
+        {target.type === "artwork" && (
+          <div className="mt-4 rounded-[8px] border border-border bg-paper-dark/40 p-3 text-[14px] font-medium leading-[150%] text-ink-light">
+            <p>Удаление разрешено только если у работы нет активных заявок.</p>
+            <p className="mt-2">Активные заявки: «Новая» и «Связались».</p>
+            <p className="mt-2">Неактивные заявки: «Завершена» и «Отменена».</p>
+          </div>
+        )}
+
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
@@ -691,6 +706,7 @@ export function ConfirmDeleteModal({
           >
             Отмена
           </button>
+
           <button
             type="button"
             onClick={onConfirm}

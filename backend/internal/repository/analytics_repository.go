@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
@@ -118,7 +119,7 @@ func (r *analyticsRepository) Summary(ctx context.Context) (*domain.AnalyticsSum
 			  AND e.artwork_id IS NOT NULL
 			  AND e.created_at >= NOW() - INTERVAL '30 days'
 			GROUP BY a.id, a.title, a.title_en
-			ORDER BY views DESC, a.title ASC
+			ORDER BY COUNT(e.id) DESC, a.title ASC
 			LIMIT 5
 		`,
 	); err != nil {
@@ -136,7 +137,7 @@ func (r *analyticsRepository) Summary(ctx context.Context) (*domain.AnalyticsSum
 			WHERE event_type = 'page_view'
 			  AND created_at >= NOW() - INTERVAL '30 days'
 			GROUP BY path
-			ORDER BY value DESC, path ASC
+			ORDER BY COUNT(id) DESC, path ASC
 			LIMIT 8
 		`,
 	); err != nil {
@@ -155,7 +156,7 @@ func (r *analyticsRepository) Summary(ctx context.Context) (*domain.AnalyticsSum
 			WHERE e.event_type = 'category_click'
 			  AND e.created_at >= NOW() - INTERVAL '30 days'
 			GROUP BY COALESCE(c.name, e.path)
-			ORDER BY value DESC, label ASC
+			ORDER BY COUNT(e.id) DESC, COALESCE(c.name, e.path) ASC
 			LIMIT 8
 		`,
 	); err != nil {
@@ -163,4 +164,22 @@ func (r *analyticsRepository) Summary(ctx context.Context) (*domain.AnalyticsSum
 	}
 
 	return summary, nil
+}
+
+func (r *analyticsRepository) CleanupOldEvents(ctx context.Context, before time.Time) (int64, error) {
+	result, err := r.db.ExecContext(
+		ctx,
+		`DELETE FROM analytics_events WHERE created_at < $1`,
+		before,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return rowsAffected, nil
 }

@@ -173,6 +173,21 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *OrderHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	if err := h.svc.Delete(r.Context(), id); err != nil {
+		respondServiceError(w, err, "failed to delete order")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ─── Artist ───────────────────────────────────────────────────────────────────
 
 type ArtistHandler struct{ svc *service.ArtistService }

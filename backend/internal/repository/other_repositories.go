@@ -54,7 +54,7 @@ func (r *categoryRepository) Create(ctx context.Context, category *domain.Catego
 		`
 			INSERT INTO categories (name, name_en, slug, sort_order)
 			VALUES ($1, $2, $3, $4)
-			RETURNING id, created_at
+			RETURNING id, created_at, updated_at
 		`,
 		category.Name,
 		category.NameEN,
@@ -63,6 +63,7 @@ func (r *categoryRepository) Create(ctx context.Context, category *domain.Catego
 	).Scan(
 		&category.ID,
 		&category.CreatedAt,
+		&category.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -72,15 +73,18 @@ func (r *categoryRepository) Create(ctx context.Context, category *domain.Catego
 }
 
 func (r *categoryRepository) Update(ctx context.Context, category *domain.Category) (*domain.Category, error) {
-	_, err := r.db.ExecContext(
+	err := r.db.GetContext(
 		ctx,
+		category,
 		`
 			UPDATE categories
 			SET name = $1,
 				name_en = $2,
 				slug = $3,
-				sort_order = $4
+				sort_order = $4,
+				updated_at = NOW()
 			WHERE id = $5
+			RETURNING *
 		`,
 		category.Name,
 		category.NameEN,
@@ -222,6 +226,48 @@ func (r *orderRepository) UpdateStatus(ctx context.Context, id int64, status dom
 		`,
 		status,
 		id,
+	)
+
+	return err
+}
+
+func (r *orderRepository) Delete(ctx context.Context, id int64) error {
+	_, err := r.db.ExecContext(
+		ctx,
+		`DELETE FROM orders WHERE id = $1`,
+		id,
+	)
+
+	return err
+}
+
+func (r *orderRepository) CountActiveByArtworkID(ctx context.Context, artworkID int64) (int64, error) {
+	var count int64
+
+	err := r.db.GetContext(
+		ctx,
+		&count,
+		`
+			SELECT COUNT(*)
+			FROM orders
+			WHERE artwork_id = $1
+			  AND status IN ('new', 'contacted')
+		`,
+		artworkID,
+	)
+
+	return count, err
+}
+
+func (r *orderRepository) DeleteInactiveByArtworkID(ctx context.Context, artworkID int64) error {
+	_, err := r.db.ExecContext(
+		ctx,
+		`
+			DELETE FROM orders
+			WHERE artwork_id = $1
+			  AND status NOT IN ('new', 'contacted')
+		`,
+		artworkID,
 	)
 
 	return err

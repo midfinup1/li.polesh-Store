@@ -98,6 +98,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/admin/orders", orders.List)
 			r.Get("/admin/orders/{id}", orders.GetByID)
 			r.Patch("/admin/orders/{id}/status", orders.UpdateStatus)
+			r.Delete("/admin/orders/{id}", orders.Delete)
 			r.Put("/admin/artist", artist.Update)
 			r.Post("/admin/artist/photo/{slot}", artist.UploadPhoto)
 			r.Get("/admin/analytics", analytics.Summary)

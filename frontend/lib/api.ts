@@ -43,7 +43,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const errorText = await res.text();
     let errorMessage = res.statusText;
-
     if (errorText) {
       try {
         const parsed = JSON.parse(errorText);
@@ -52,7 +51,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
         errorMessage = errorText;
       }
     }
-
     throw new ApiError(
       res.status,
       errorMessage || `Request failed: ${res.status}`,
@@ -227,6 +225,11 @@ export const api = {
         request<void>(`/admin/orders/${id}/status`, {
           method: "PATCH",
           body: JSON.stringify({ status }),
+        }),
+
+      delete: (id: number) =>
+        request<void>(`/admin/orders/${id}`, {
+          method: "DELETE",
         }),
     },
 

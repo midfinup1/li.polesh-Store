@@ -84,3 +84,11 @@ func (s *OrderService) sendTelegramOrderNotification(ctx context.Context, o *dom
 		CreatedAt:   o.CreatedAt,
 	})
 }
+
+func (s *OrderService) Delete(ctx context.Context, id int64) error {
+	if id <= 0 {
+		return fmt.Errorf("%w: invalid order id", domain.ErrValidation)
+	}
+
+	return s.orders.Delete(ctx, id)
+}

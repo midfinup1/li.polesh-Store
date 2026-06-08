@@ -23,6 +23,7 @@ type Deps struct {
 
 func NewServices(d Deps) *Services {
 	storage := NewStorageService(d.Config.S3)
+
 	telegramNotifier := notify.NewTelegramNotifier(notify.TelegramNotifierConfig{
 		Enabled: d.Config.Telegram.NotificationsEnabled,
 		Token:   d.Config.Telegram.BotToken,
@@ -31,7 +32,7 @@ func NewServices(d Deps) *Services {
 	})
 
 	return &Services{
-		Artworks:   NewArtworkService(d.Repos.Artworks, d.Repos.Categories, storage),
+		Artworks:   NewArtworkService(d.Repos.Artworks, d.Repos.Categories, d.Repos.Orders, storage),
 		Categories: NewCategoryService(d.Repos.Categories),
 		Orders:     NewOrderService(d.Repos.Orders, d.Repos.Artworks, telegramNotifier),
 		Auth:       NewAuthService(d.Repos.Admins, d.Config.JWT),

@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	App      AppConfig
-	DB       DBConfig
-	JWT      JWTConfig
-	S3       S3Config
-	Telegram TelegramConfig
+	App       AppConfig
+	DB        DBConfig
+	JWT       JWTConfig
+	S3        S3Config
+	Telegram  TelegramConfig
+	Analytics AnalyticsConfig
 }
 
 type AppConfig struct {
@@ -48,6 +49,10 @@ type TelegramConfig struct {
 	NotificationsEnabled bool
 }
 
+type AnalyticsConfig struct {
+	RetentionDays int
+}
+
 func Load() *Config {
 	jwtExpires, err := time.ParseDuration(getEnv("JWT_EXPIRES_IN", "12h"))
 	if err != nil {
@@ -75,6 +80,7 @@ func Load() *Config {
 			ChatID:               getEnv("TELEGRAM_CHAT_ID", ""),
 			NotificationsEnabled: getEnvBool("TELEGRAM_NOTIFICATIONS_ENABLED", false),
 		},
+		Analytics: AnalyticsConfig{RetentionDays: getEnvInt("ANALYTICS_RETENTION_DAYS", 365)},
 	}
 }
 
@@ -122,6 +128,20 @@ func getEnvBool(key string, fallback bool) bool {
 	}
 
 	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func getEnvInt(key string, fallback int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(value)
 	if err != nil {
 		return fallback
 	}

@@ -65,6 +65,10 @@ func main() {
 		Config: cfg,
 	})
 
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	go services.Analytics.RunRetentionCleanup(cleanupCtx, cfg.Analytics.RetentionDays, 24*time.Hour)
+
 	router := handler.NewRouter(handler.Deps{
 		Services: services,
 		Config:   cfg,
@@ -93,6 +97,8 @@ func main() {
 	}()
 
 	<-quit
+
+	cleanupCancel()
 
 	logger.Info("shutting down server")
 

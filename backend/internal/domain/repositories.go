@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // ArtworkRepository defines all DB operations for artworks.
 // The actual implementation lives in repository/artwork_repository.go
@@ -42,6 +45,9 @@ type OrderRepository interface {
 	GetByID(ctx context.Context, id int64) (*Order, error)
 	Create(ctx context.Context, o *Order) (*Order, error)
 	UpdateStatus(ctx context.Context, id int64, status OrderStatus) error
+	Delete(ctx context.Context, id int64) error
+	CountActiveByArtworkID(ctx context.Context, artworkID int64) (int64, error)
+	DeleteInactiveByArtworkID(ctx context.Context, artworkID int64) error
 }
 
 // AdminRepository defines DB operations for admin accounts.
@@ -59,4 +65,5 @@ type ArtistRepository interface {
 type AnalyticsRepository interface {
 	CreateEvent(ctx context.Context, event *AnalyticsEvent) error
 	Summary(ctx context.Context) (*AnalyticsSummary, error)
+	CleanupOldEvents(ctx context.Context, before time.Time) (int64, error)
 }

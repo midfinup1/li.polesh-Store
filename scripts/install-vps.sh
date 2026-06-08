@@ -4,6 +4,7 @@ set -Eeuo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${PROJECT_DIR}/infra/.env.prod"
+DEPLOY_USER="${DEPLOY_USER:-deploy}"
 
 log() {
   printf "\n\033[1;32m[INFO]\033[0m %s\n" "$*"
@@ -247,6 +248,33 @@ install_docker() {
   log "Docker Compose: $(docker compose version)"
 }
 
+setup_deploy_user() {
+  log "Настройка пользователя ${DEPLOY_USER}"
+
+  if ! id "${DEPLOY_USER}" >/dev/null 2>&1; then
+    fail "Пользователь ${DEPLOY_USER} не найден. Сначала создай его и добавь SSH-ключ."
+  fi
+
+  usermod -aG docker "${DEPLOY_USER}"
+
+  if [[ -d "${PROJECT_DIR}" ]]; then
+    chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${PROJECT_DIR}"
+    chmod 750 "${PROJECT_DIR}"
+  fi
+
+  if [[ -f "${ENV_FILE}" ]]; then
+    chmod 600 "${ENV_FILE}"
+    chown "${DEPLOY_USER}:${DEPLOY_USER}" "${ENV_FILE}"
+  fi
+
+  if [[ -d "${PROJECT_DIR}/backups" ]]; then
+    chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${PROJECT_DIR}/backups"
+  fi
+
+  log "Пользователь ${DEPLOY_USER} добавлен в группу docker"
+  log "Папка проекта передана пользователю ${DEPLOY_USER}: ${PROJECT_DIR}"
+}
+
 setup_swap() {
   if [[ "${ENABLE_SWAP:-true}" != "true" ]]; then
     log "Swap отключён"
@@ -281,7 +309,6 @@ setup_firewall() {
   ufw allow OpenSSH
   ufw allow 80/tcp
   ufw allow 443/tcp
-  ufw allow 443/udp
   ufw --force enable
   ufw status verbose
 }
@@ -403,11 +430,11 @@ ENV_FILE="$ROOT_DIR/infra/.env.prod"
 BACKUP_FILE="${1:-}"
 
 if [[ -z "$BACKUP_FILE" ]]; then
-  BACKUP_FILE="$(ls -t "$ROOT_DIR"/backups/*.dump | head -n 1)"
+  BACKUP_FILE="$(ls -t "$ROOT_DIR"/backups/*.dump 2>/dev/null | head -n 1 || true)"
 fi
 
-if [[ ! -f "$BACKUP_FILE" ]]; then
-  echo "Backup file not found: $BACKUP_FILE" >&2
+if [[ -z "$BACKUP_FILE" || ! -f "$BACKUP_FILE" ]]; then
+  echo "Backup file not found. Pass path explicitly or put .dump files into $ROOT_DIR/backups" >&2
   exit 1
 fi
 
@@ -425,7 +452,7 @@ docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/infra/docker-compose.prod.ym
   psql -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE ${TEST_DB};"
 
 cat "$BACKUP_FILE" | docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/infra/docker-compose.prod.yml" exec -T postgres \
-  pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists
+  pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner --no-privileges
 
 docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/infra/docker-compose.prod.yml" exec -T postgres \
   psql -U "$POSTGRES_USER" -d "$TEST_DB" -c "\dt"
@@ -443,14 +470,14 @@ setup_backup_cron() {
     return
   fi
 
-  log "Настройка backup cron"
+  log "Настройка backup cron для пользователя ${DEPLOY_USER}"
 
   local cron_line
   cron_line="30 3 * * * cd ${PROJECT_DIR} && /bin/bash scripts/backup-postgres.sh >> ${PROJECT_DIR}/backups/backup.log 2>&1"
 
-  crontab -l 2>/dev/null | grep -v "scripts/backup-postgres.sh" > /tmp/current-cron || true
+  crontab -u "${DEPLOY_USER}" -l 2>/dev/null | grep -v "scripts/backup-postgres.sh" > /tmp/current-cron || true
   echo "${cron_line}" >> /tmp/current-cron
-  crontab /tmp/current-cron
+  crontab -u "${DEPLOY_USER}" /tmp/current-cron
   rm -f /tmp/current-cron
 
   systemctl enable cron
@@ -531,6 +558,14 @@ API:
 Проект:
   ${PROJECT_DIR}
 
+Пользователь для дальнейшей работы:
+  ${DEPLOY_USER}
+
+После установки заходи на сервер так:
+  ssh ${DEPLOY_USER}@IP_СЕРВЕРА
+
+Если ${DEPLOY_USER} только что добавлен в группу docker, нужно перелогиниться.
+
 Проверка:
   cd ${PROJECT_DIR}
   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml ps
@@ -554,6 +589,7 @@ Backup:
   DNS A-записи для ${DOMAIN} и www.${DOMAIN} должны указывать на IP сервера.
   S3_ENDPOINT должен быть без https:// и без bucket, например: s3.twcstorage.ru.
   Если BACKUP_S3_ENABLED=true, dump базы дополнительно выгружается в S3.
+  После проверки входа под ${DEPLOY_USER} можно отключать root-login в SSH.
 
 EOF
 }
@@ -565,6 +601,7 @@ main() {
   normalize_env
   install_base_packages
   install_docker
+  setup_deploy_user
   setup_swap
   setup_firewall
   write_backup_scripts
@@ -572,6 +609,7 @@ main() {
   deploy_app
   create_admin
   run_initial_backup
+  setup_deploy_user
   print_summary
 }
 

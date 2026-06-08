@@ -41,11 +41,22 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: res.statusText }));
+    const errorText = await res.text();
+
+    let errorMessage = res.statusText;
+
+    if (errorText) {
+      try {
+        const parsed = JSON.parse(errorText);
+        errorMessage = parsed.error || parsed.message || errorMessage;
+      } catch {
+        errorMessage = errorText;
+      }
+    }
 
     throw new ApiError(
       res.status,
-      error.error || `Request failed: ${res.status}`,
+      errorMessage || `Request failed: ${res.status}`,
     );
   }
 
@@ -53,7 +64,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     return undefined as T;
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+
+  if (!text) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 function buildQuery(params?: Record<string, string | number | boolean | null | undefined>) {

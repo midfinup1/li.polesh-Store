@@ -26,7 +26,13 @@ func NewRouter(d Deps) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID, chimiddleware.RealIP, chimiddleware.Recoverer)
 	r.Use(chimiddleware.RequestLogger(&chimiddleware.DefaultLogFormatter{Logger: slog.NewLogLogger(d.Logger.Handler(), slog.LevelInfo), NoColor: true}))
-	r.Use(cors.Handler(cors.Options{AllowedOrigins: d.Config.App.CORSAllowedOrigins, AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}, AllowedHeaders: []string{"Accept", "Authorization", "Content-Type"}, AllowCredentials: true, MaxAge: 300}))
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   d.Config.App.CORSAllowedOrigins,
+		AllowedMethods:   []string{"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	if d.Config.App.Env != "production" {
 		uploads := http.StripPrefix("/uploads/", http.FileServer(http.Dir(d.Config.App.UploadDir)))
@@ -40,23 +46,31 @@ func NewRouter(d Deps) http.Handler {
 	artist := NewArtistHandler(d.Services.Artist)
 	required := middleware.NewAuth(d.Services.Auth)
 
-	// Per-IP limiters for abuse-prone public endpoints.
 	loginLimiter := middleware.RateLimit(10, time.Minute)
 	orderLimiter := middleware.RateLimit(10, time.Hour)
 
 	r.Route("/api/v1", func(r chi.Router) {
-		// Liveness: process is up. Used by container healthchecks.
-		r.Get("/health", func(w http.ResponseWriter, _ *http.Request) { respondOK(w, map[string]string{"status": "ok"}) })
-		// Readiness: dependencies (DB) reachable.
-		r.Get("/ready", func(w http.ResponseWriter, req *http.Request) {
+		healthHandler := func(w http.ResponseWriter, _ *http.Request) {
+			respondOK(w, map[string]string{"status": "ok"})
+		}
+
+		readyHandler := func(w http.ResponseWriter, req *http.Request) {
 			ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 			defer cancel()
+
 			if d.DB == nil || d.DB.PingContext(ctx) != nil {
 				respondError(w, http.StatusServiceUnavailable, "database unavailable")
 				return
 			}
+
 			respondOK(w, map[string]string{"status": "ready"})
-		})
+		}
+
+		r.Get("/health", healthHandler)
+		r.Head("/health", healthHandler)
+
+		r.Get("/ready", readyHandler)
+		r.Head("/ready", readyHandler)
 
 		r.Get("/artworks", artworks.List)
 		r.Get("/artworks/{id}", artworks.GetByID)
@@ -84,5 +98,6 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/admin/artist", artist.Update)
 		})
 	})
+
 	return r
 }

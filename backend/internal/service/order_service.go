@@ -13,17 +13,19 @@ import (
 
 	"github.com/midfinup1/li.polesh-Store/backend/config"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
+	"github.com/midfinup1/li.polesh-Store/backend/internal/notify"
 )
 
 type OrderService struct {
 	orders     domain.OrderRepository
 	artworks   domain.ArtworkRepository
 	mailCfg    config.MailConfig
+	notifier   *notify.TelegramNotifier
 	httpClient *http.Client
 }
 
-func NewOrderService(orders domain.OrderRepository, artworks domain.ArtworkRepository, mailCfg config.MailConfig) *OrderService {
-	return &OrderService{orders: orders, artworks: artworks, mailCfg: mailCfg, httpClient: &http.Client{Timeout: 10 * time.Second}}
+func NewOrderService(orders domain.OrderRepository, artworks domain.ArtworkRepository, mailCfg config.MailConfig, notifier *notify.TelegramNotifier) *OrderService {
+	return &OrderService{orders: orders, artworks: artworks, mailCfg: mailCfg, notifier: notifier, httpClient: &http.Client{Timeout: 10 * time.Second}}
 }
 func (s *OrderService) List(ctx context.Context, status *domain.OrderStatus) ([]domain.Order, error) {
 	return s.orders.GetAll(ctx, status)
@@ -52,10 +54,15 @@ func (s *OrderService) Create(ctx context.Context, o *domain.Order) (*domain.Ord
 	}
 	order.Artwork = artwork
 	go func(order domain.Order) {
-		mailCtx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+		notificationCtx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 		defer cancel()
-		if err := s.sendOrderNotification(mailCtx, &order); err != nil {
-			slog.Error("failed to send order notification", "order_id", order.ID, "error", err)
+
+		if err := s.sendOrderNotification(notificationCtx, &order); err != nil {
+			slog.Error("failed to send order email notification", "order_id", order.ID, "error", err)
+		}
+
+		if err := s.sendTelegramOrderNotification(notificationCtx, &order); err != nil {
+			slog.Error("failed to send order telegram notification", "order_id", order.ID, "error", err)
 		}
 	}(*order)
 	return order, nil
@@ -98,4 +105,26 @@ func (s *OrderService) sendOrderNotification(ctx context.Context, o *domain.Orde
 		return fmt.Errorf("resend API error: %s", resp.Status)
 	}
 	return nil
+}
+
+func (s *OrderService) sendTelegramOrderNotification(ctx context.Context, o *domain.Order) error {
+	if s.notifier == nil {
+		return nil
+	}
+
+	artworkName := ""
+	if o.Artwork != nil {
+		artworkName = o.Artwork.Title
+	}
+
+	return s.notifier.SendNewOrder(ctx, notify.OrderNotification{
+		ID:          o.ID,
+		ArtworkID:   o.ArtworkID,
+		ArtworkName: artworkName,
+		Name:        o.Name,
+		Email:       o.Email,
+		Phone:       o.Phone,
+		Message:     o.Message,
+		CreatedAt:   o.CreatedAt,
+	})
 }

@@ -94,13 +94,15 @@ type Admin struct {
 // ─── Artist ───────────────────────────────────────────────────────────────────
 
 type Artist struct {
-	ID        int64     `db:"id"         json:"id"`
-	Name      string    `db:"name"       json:"name"`
-	NameEN    string    `db:"name_en"    json:"name_en"`
-	Bio       string    `db:"bio"        json:"bio"`
-	BioEN     string    `db:"bio_en"     json:"bio_en"`
-	PhotoURL  string    `db:"photo_url"  json:"photo_url"`
-	Email     string    `db:"email"      json:"email"`
-	Instagram string    `db:"instagram"  json:"instagram"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+	ID            int64     `db:"id"         json:"id"`
+	Name          string    `db:"name"       json:"name"`
+	NameEN        string    `db:"name_en"    json:"name_en"`
+	Bio           string    `db:"bio"        json:"bio"`
+	BioEN         string    `db:"bio_en"     json:"bio_en"`
+	PhotoURL      string    `db:"photo_url"       json:"photo_url"`
+	HomePhotoURL  string    `db:"home_photo_url"  json:"home_photo_url"`
+	AboutPhotoURL string    `db:"about_photo_url" json:"about_photo_url"`
+	Email         string    `db:"email"           json:"email"`
+	Instagram     string    `db:"instagram"  json:"instagram"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
 }

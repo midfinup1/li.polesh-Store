@@ -62,6 +62,8 @@ export interface Artist {
   bio: string;
   bio_en: string;
   photo_url: string;
+  home_photo_url: string;
+  about_photo_url: string;
   email: string;
   instagram: string;
 }

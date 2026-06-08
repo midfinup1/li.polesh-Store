@@ -20,7 +20,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const maxArtworkImageSize int64 = 20 << 20 // 20 MB
+const maxArtworkImageSize int64 = 10 << 20 // 10 MB
 
 var allowedImageTypes = map[string]string{
 	"image/jpeg": ".jpg",
@@ -58,7 +58,7 @@ func NewStorageService(cfg config.S3Config) *StorageService {
 
 func (s *StorageService) UploadArtworkImage(ctx context.Context, artworkID int64, file multipart.File, header *multipart.FileHeader) (*UploadedArtworkImage, error) {
 	if header.Size <= 0 || header.Size > maxArtworkImageSize {
-		return nil, fmt.Errorf("%w: image must be non-empty and no larger than 20 MB", domain.ErrValidation)
+		return nil, fmt.Errorf("%w: image must be non-empty and no larger than 10 MB", domain.ErrValidation)
 	}
 
 	data, err := io.ReadAll(io.LimitReader(file, maxArtworkImageSize+1))
@@ -66,7 +66,7 @@ func (s *StorageService) UploadArtworkImage(ctx context.Context, artworkID int64
 		return nil, fmt.Errorf("%w: failed to read image", domain.ErrValidation)
 	}
 	if int64(len(data)) > maxArtworkImageSize {
-		return nil, fmt.Errorf("%w: image is larger than 20 MB", domain.ErrValidation)
+		return nil, fmt.Errorf("%w: image is larger than 10 MB", domain.ErrValidation)
 	}
 
 	contentType, ext, ok := detectImageType(data)
@@ -108,6 +108,33 @@ func (s *StorageService) UploadArtworkImage(ctx context.Context, artworkID int64
 	}
 
 	return result, nil
+}
+
+func (s *StorageService) UploadArtistImage(ctx context.Context, slot string, file multipart.File, header *multipart.FileHeader) (string, error) {
+	if header.Size <= 0 || header.Size > maxArtworkImageSize {
+		return "", fmt.Errorf("%w: image must be non-empty and no larger than 10 MB", domain.ErrValidation)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(file, maxArtworkImageSize+1))
+	if err != nil {
+		return "", fmt.Errorf("%w: failed to read image", domain.ErrValidation)
+	}
+	if int64(len(data)) > maxArtworkImageSize {
+		return "", fmt.Errorf("%w: image is larger than 10 MB", domain.ErrValidation)
+	}
+
+	contentType, ext, ok := detectImageType(data)
+	if !ok {
+		return "", fmt.Errorf("%w: only JPEG, PNG and WebP images are allowed", domain.ErrValidation)
+	}
+
+	safeSlot := "default"
+	if slot == "home" || slot == "about" {
+		safeSlot = slot
+	}
+
+	key := fmt.Sprintf("artist/%s_%d%s", safeSlot, time.Now().UnixNano(), ext)
+	return s.put(ctx, key, data, contentType)
 }
 
 func (s *StorageService) put(ctx context.Context, key string, data []byte, contentType string) (string, error) {

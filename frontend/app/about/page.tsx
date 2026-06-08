@@ -34,6 +34,7 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   const artist = await api.artist.get().catch(() => null);
+  const aboutPhotoUrl = artist?.about_photo_url || artist?.photo_url || "";
 
   return (
     <main className="bg-paper text-ink">
@@ -107,10 +108,10 @@ export default async function AboutPage() {
           </div>
 
           <div className="overflow-hidden rounded-[8px] bg-paper-dark">
-            {artist?.photo_url ? (
+            {aboutPhotoUrl ? (
               <Image
-                src={artist.photo_url}
-                alt={artist.name || "Елизавета Полещенко"}
+                src={aboutPhotoUrl}
+                alt={artist?.name || "Елизавета Полещенко"}
                 width={984}
                 height={1314}
                 priority

@@ -188,6 +188,34 @@ func (h *ArtistHandler) Get(w http.ResponseWriter, r *http.Request) {
 	respondOK(w, artist)
 }
 
+func (h *ArtistHandler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
+	slot := chi.URLParam(r, "slot")
+	if slot != "home" && slot != "about" {
+		respondError(w, http.StatusBadRequest, "invalid photo slot")
+		return
+	}
+
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		respondError(w, http.StatusBadRequest, "image is too large")
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "image file required")
+		return
+	}
+	defer file.Close()
+
+	updated, err := h.svc.UploadPhoto(r.Context(), slot, file, header)
+	if err != nil {
+		respondServiceError(w, err, "failed to upload artist photo")
+		return
+	}
+
+	respondOK(w, updated)
+}
+
 func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var a domain.Artist
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {

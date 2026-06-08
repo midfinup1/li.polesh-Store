@@ -239,10 +239,35 @@ func (s *ArtistService) Update(ctx context.Context, a *domain.Artist) (*domain.A
 	a.Bio = strings.TrimSpace(a.Bio)
 	a.BioEN = strings.TrimSpace(a.BioEN)
 	a.PhotoURL = strings.TrimSpace(a.PhotoURL)
+	a.HomePhotoURL = strings.TrimSpace(a.HomePhotoURL)
+	a.AboutPhotoURL = strings.TrimSpace(a.AboutPhotoURL)
 	a.Email = strings.TrimSpace(a.Email)
 	a.Instagram = strings.TrimSpace(a.Instagram)
 	if a.Name == "" {
 		return nil, fmt.Errorf("%w: artist name is required", domain.ErrValidation)
 	}
 	return s.repo.Update(ctx, a)
+}
+
+func (s *ArtistService) UploadPhoto(ctx context.Context, slot string, file multipart.File, header *multipart.FileHeader) (*domain.Artist, error) {
+	artist, err := s.repo.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	url, err := s.storage.UploadArtistImage(ctx, slot, file, header)
+	if err != nil {
+		return nil, err
+	}
+
+	switch slot {
+	case "home":
+		artist.HomePhotoURL = url
+	case "about":
+		artist.AboutPhotoURL = url
+	default:
+		return nil, fmt.Errorf("%w: invalid artist photo slot", domain.ErrValidation)
+	}
+
+	return s.Update(ctx, artist)
 }

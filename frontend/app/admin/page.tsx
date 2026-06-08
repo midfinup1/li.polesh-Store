@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import type {
@@ -14,6 +14,12 @@ import type {
   Order,
 } from "@/types";
 
+type AdminTab = "artist" | "categories" | "artworks" | "orders";
+type DeleteTarget =
+  | { type: "category"; category: Category }
+  | { type: "artwork"; artwork: Artwork }
+  | { type: "image"; artworkId: number; image: ArtworkImage };
+
 const blankArtist: Artist = {
   id: 0,
   name: "",
@@ -21,6 +27,8 @@ const blankArtist: Artist = {
   bio: "",
   bio_en: "",
   photo_url: "",
+  home_photo_url: "",
+  about_photo_url: "",
   email: "",
   instagram: "",
 };
@@ -38,26 +46,27 @@ const orderStatusLabel: Record<Order["status"], string> = {
   cancelled: "Отменена",
 };
 
+const orderStatusClassName: Record<Order["status"], string> = {
+  new: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+  contacted: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
+  completed: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  cancelled: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
+};
+
 const inputClassName =
   "w-full rounded-[8px] border border-border bg-transparent px-4 py-3 text-[16px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50";
 
 const smallInputClassName =
   "w-full rounded-[8px] border border-border bg-transparent px-3 py-2 text-[15px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50";
 
-const selectClassName =
-  "h-[40px] rounded-[8px] border border-border bg-paper px-3 text-[15px] font-medium leading-[150%] text-ink outline-none transition-colors focus:border-ink/40";
+const buttonClassName =
+  "inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-4 text-[15px] font-medium leading-[150%] text-paper transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50";
 
-function moveInArray<T>(items: T[], from: number, to: number): T[] {
-  if (to < 0 || to >= items.length) {
-    return items;
-  }
+const secondaryButtonClassName =
+  "inline-flex h-[42px] items-center justify-center rounded-[8px] border border-border px-4 text-[15px] font-medium leading-[150%] transition-colors hover:border-ink/40";
 
-  const copy = [...items];
-  const [item] = copy.splice(from, 1);
-  copy.splice(to, 0, item);
-
-  return copy;
-}
+const dangerButtonClassName =
+  "inline-flex h-[42px] items-center justify-center rounded-[8px] border border-red-600 px-4 text-[15px] font-medium leading-[150%] text-red-600 transition-opacity hover:opacity-70";
 
 function formatPrice(price: number | null | undefined) {
   if (price === null || price === undefined) {
@@ -79,9 +88,21 @@ function sortedArtworks(artworks: Artwork[]) {
   );
 }
 
+function moveInArray<T>(items: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) {
+    return items;
+  }
+
+  const copy = [...items];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+}
+
 export default function AdminPage() {
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<AdminTab>("artworks");
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -90,32 +111,18 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingArtistPhoto, setUploadingArtistPhoto] = useState<"home" | "about" | null>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Artwork | null>(null);
-
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
-    null,
-  );
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<Category | null>(null);
 
-  const [collapsedSections, setCollapsedSections] = useState<
-    Record<string, boolean>
-  >({
-    artist: true,
-    categories: false,
-    createArtwork: true,
-    artworks: false,
-    orders: true,
-  });
-
-  const [collapsedCategories, setCollapsedCategories] = useState<
-    Record<number | string, boolean>
-  >({});
-
-  const [expandedArtworks, setExpandedArtworks] = useState<
-    Record<number, boolean>
-  >({});
+  const [artworkSearch, setArtworkSearch] = useState("");
+  const [draggedArtworkId, setDraggedArtworkId] = useState<number | null>(null);
+  const [draggedImageId, setDraggedImageId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   const handleAuthError = useCallback(
     (err: unknown): boolean => {
@@ -167,6 +174,7 @@ export default function AdminPage() {
   async function run(action: () => Promise<unknown>, successMessage: string) {
     setError("");
     setNotice("");
+    setSaving(true);
 
     try {
       await action();
@@ -180,28 +188,9 @@ export default function AdminPage() {
       setError(
         err instanceof Error ? err.message : "Не удалось выполнить операцию",
       );
+    } finally {
+      setSaving(false);
     }
-  }
-
-  function toggleSection(key: string) {
-    setCollapsedSections((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
-  }
-
-  function toggleCategory(key: number | string) {
-    setCollapsedCategories((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
-  }
-
-  function toggleArtworkDetails(id: number) {
-    setExpandedArtworks((current) => ({
-      ...current,
-      [id]: !current[id],
-    }));
   }
 
   async function logout() {
@@ -214,11 +203,23 @@ export default function AdminPage() {
 
   async function saveArtist(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    await run(() => api.admin.artist.update(artist), "Профиль художницы сохранён");
+  }
 
+  async function uploadArtistPhoto(slot: "home" | "about", file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    setUploadingArtistPhoto(slot);
     await run(
-      () => api.admin.artist.update(artist),
-      "Профиль художницы сохранён",
+      async () => {
+        const updated = await api.admin.artist.uploadPhoto(slot, file);
+        setArtist(updated);
+      },
+      slot === "home" ? "Фото для главной загружено" : "Фото для страницы Об авторе загружено",
     );
+    setUploadingArtistPhoto(null);
   }
 
   async function createCategory(event: FormEvent<HTMLFormElement>) {
@@ -226,7 +227,6 @@ export default function AdminPage() {
 
     const form = event.currentTarget;
     const data = new FormData(form);
-
     const name = String(data.get("name") ?? "").trim();
     const nameEn = String(data.get("name_en") ?? "").trim();
     const slug = String(data.get("slug") ?? "").trim();
@@ -273,9 +273,9 @@ export default function AdminPage() {
     cancelEditCategory();
   }
 
-  async function reorderCategory(index: number, direction: -1 | 1) {
+  async function reorderCategories(fromIndex: number, toIndex: number) {
     const current = sortedCategories(categories);
-    const reordered = moveInArray(current, index, index + direction);
+    const reordered = moveInArray(current, fromIndex, toIndex);
 
     if (reordered === current) {
       return;
@@ -296,22 +296,7 @@ export default function AdminPage() {
     );
   }
 
-  async function deleteCategory(category: Category) {
-    if (
-      !confirm(
-        `Удалить категорию «${category.name}»? Работы останутся без категории.`,
-      )
-    ) {
-      return;
-    }
-
-    await run(
-      () => api.admin.categories.delete(category.id),
-      "Категория удалена",
-    );
-  }
-
-  function getNextArtworkSortOrder(categoryId: number | null) {
+  function getNextArtworkSortOrder(categoryId: number) {
     const categoryArtworks = artworks.filter(
       (artwork) => artwork.category_id === categoryId,
     );
@@ -328,17 +313,22 @@ export default function AdminPage() {
 
     const form = event.currentTarget;
     const data = new FormData(form);
-
     const rawPrice = String(data.get("price") ?? "").trim();
     const rawYear = String(data.get("year") ?? "").trim();
     const rawCategoryId = String(data.get("category_id") ?? "").trim();
-    const categoryId = rawCategoryId === "" ? null : Number(rawCategoryId);
     const title = String(data.get("title") ?? "").trim();
 
     if (!title) {
       setError("Укажите название работы");
       return;
     }
+
+    if (!rawCategoryId) {
+      setError("Выберите категорию работы");
+      return;
+    }
+
+    const categoryId = Number(rawCategoryId);
 
     await run(
       () =>
@@ -380,25 +370,17 @@ export default function AdminPage() {
       return;
     }
 
+    if (!draft.category_id) {
+      setError("Выберите категорию работы");
+      return;
+    }
+
     await run(
       () => api.admin.artworks.update(draft.id, draft),
       "Работа обновлена",
     );
 
     cancelEdit();
-  }
-
-  async function deleteArtwork(artwork: Artwork) {
-    if (
-      !confirm(`Удалить работу «${artwork.title}»? Действие необратимо.`)
-    ) {
-      return;
-    }
-
-    await run(
-      () => api.admin.artworks.delete(artwork.id),
-      "Работа удалена",
-    );
   }
 
   async function updateArtworkStatus(artwork: Artwork, status: ArtworkStatus) {
@@ -408,39 +390,30 @@ export default function AdminPage() {
     );
   }
 
-  async function reorderArtworkInCategory(
-    categoryId: number | null,
-    artwork: Artwork,
-    direction: -1 | 1,
-  ) {
-    const group = sortedArtworks(
-      artworks.filter((item) => item.category_id === categoryId),
+  async function reorderArtworksInCategory(categoryId: number, fromId: number, toId: number) {
+    const current = sortedArtworks(
+      artworks.filter((artwork) => artwork.category_id === categoryId),
     );
+    const fromIndex = current.findIndex((artwork) => artwork.id === fromId);
+    const toIndex = current.findIndex((artwork) => artwork.id === toId);
+    const reordered = moveInArray(current, fromIndex, toIndex);
 
-    const index = group.findIndex((item) => item.id === artwork.id);
-
-    if (index === -1) {
-      return;
-    }
-
-    const reordered = moveInArray(group, index, index + direction);
-
-    if (reordered === group) {
+    if (reordered === current) {
       return;
     }
 
     await run(
       async () => {
         await Promise.all(
-          reordered.map((item, sortOrder) =>
-            api.admin.artworks.update(item.id, {
-              ...item,
+          reordered.map((artwork, sortOrder) =>
+            api.admin.artworks.update(artwork.id, {
+              ...artwork,
               sort_order: sortOrder,
             }),
           ),
         );
       },
-      "Порядок работ в категории обновлён",
+      "Порядок работ обновлён",
     );
   }
 
@@ -455,30 +428,18 @@ export default function AdminPage() {
     );
   }
 
-  async function deleteImage(artworkId: number, image: ArtworkImage) {
-    if (!confirm("Удалить это изображение?")) {
+  async function reorderImage(artwork: Artwork, fromId: number, toId: number) {
+    const current = artwork.images || [];
+    const fromIndex = current.findIndex((image) => image.id === fromId);
+    const toIndex = current.findIndex((image) => image.id === toId);
+    const reordered = moveInArray(current, fromIndex, toIndex);
+
+    if (reordered === current) {
       return;
     }
 
     await run(
-      () => api.admin.artworks.deleteImage(artworkId, image.id),
-      "Изображение удалено",
-    );
-  }
-
-  async function reorderImage(artwork: Artwork, from: number, to: number) {
-    const reordered = moveInArray(artwork.images, from, to);
-
-    if (reordered === artwork.images) {
-      return;
-    }
-
-    await run(
-      () =>
-        api.admin.artworks.reorderImages(
-          artwork.id,
-          reordered.map((image) => image.id),
-        ),
+      () => api.admin.artworks.reorderImages(artwork.id, reordered.map((image) => image.id)),
       "Порядок изображений обновлён",
     );
   }
@@ -490,19 +451,86 @@ export default function AdminPage() {
     );
   }
 
-  const categoryName = (id: number | null) =>
-    id == null
-      ? ""
-      : categories.find((category) => category.id === id)?.name ?? "";
+  async function confirmDelete() {
+    if (!deleteTarget) {
+      return;
+    }
 
-  const orderedCategories = sortedCategories(categories);
-  const uncategorizedArtworks = sortedArtworks(
-    artworks.filter((artwork) => artwork.category_id === null),
-  );
+    const target = deleteTarget;
+    setDeleteTarget(null);
+
+    if (target.type === "category") {
+      await run(
+        () => api.admin.categories.delete(target.category.id),
+        "Категория удалена",
+      );
+      return;
+    }
+
+    if (target.type === "artwork") {
+      await run(
+        () => api.admin.artworks.delete(target.artwork.id),
+        "Работа удалена",
+      );
+      return;
+    }
+
+    await run(
+      () => api.admin.artworks.deleteImage(target.artworkId, target.image.id),
+      "Изображение удалено",
+    );
+  }
+
+  const categoriesSorted = useMemo(() => sortedCategories(categories), [categories]);
+
+  const filteredArtworks = useMemo(() => {
+    const query = artworkSearch.trim().toLowerCase();
+
+    return sortedArtworks(artworks).filter((artwork) => {
+      if (!query) {
+        return true;
+      }
+
+      const categoryName = categories.find((category) => category.id === artwork.category_id)?.name || "";
+      const text = [
+        artwork.title,
+        artwork.title_en,
+        artwork.materials,
+        artwork.materials_en,
+        categoryName,
+        statusLabel[artwork.status],
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes(query);
+    });
+  }, [artworks, artworkSearch, categories]);
+
+  const artworksByCategory = useMemo(() => {
+    const result = new Map<number, Artwork[]>();
+
+    for (const category of categoriesSorted) {
+      result.set(
+        category.id,
+        sortedArtworks(filteredArtworks.filter((artwork) => artwork.category_id === category.id)),
+      );
+    }
+
+    return result;
+  }, [categoriesSorted, filteredArtworks]);
+
+  function categoryName(id: number | null) {
+    if (id === null) {
+      return "Без категории";
+    }
+
+    return categories.find((category) => category.id === id)?.name || "Без категории";
+  }
 
   if (loading) {
     return (
-      <main className="mx-auto min-h-[70vh] max-w-[1280px] px-6 py-8 md:px-10">
+      <main className="mx-auto min-h-[70vh] max-w-[1280px] px-6 py-12 md:px-10">
         <p className="text-[16px] font-medium leading-[150%] text-ink-light">
           Загрузка данных...
         </p>
@@ -520,7 +548,7 @@ export default function AdminPage() {
         <button
           type="button"
           onClick={() => void logout()}
-          className="rounded-[8px] border border-border px-4 py-2 text-[15px] font-medium leading-[150%] text-ink-light transition-colors hover:border-ink/40 hover:text-ink"
+          className={secondaryButtonClassName}
         >
           Выйти
         </button>
@@ -538,1081 +566,430 @@ export default function AdminPage() {
         </p>
       )}
 
-      <section className="mt-6 rounded-[8px] border border-border p-4">
-        <AdminSectionHeader
-          title="Профиль художницы"
-          collapsed={collapsedSections.artist}
-          onToggle={() => toggleSection("artist")}
-        />
+      <nav className="mt-6 flex flex-wrap gap-2 border-b border-border pb-3">
+        <TabButton active={activeTab === "artist"} onClick={() => setActiveTab("artist")}>Профиль</TabButton>
+        <TabButton active={activeTab === "categories"} onClick={() => setActiveTab("categories")}>Категории</TabButton>
+        <TabButton active={activeTab === "artworks"} onClick={() => setActiveTab("artworks")}>Работы</TabButton>
+        <TabButton active={activeTab === "orders"} onClick={() => setActiveTab("orders")}>Заявки</TabButton>
+      </nav>
 
-        {!collapsedSections.artist && (
-          <form
-            onSubmit={saveArtist}
-            className="mt-5 grid gap-3 md:grid-cols-2"
-          >
-            <input
-              required
-              value={artist.name}
-              onChange={(event) =>
-                setArtist({ ...artist, name: event.target.value })
-              }
-              placeholder="Имя RU"
-              className={inputClassName}
+      {activeTab === "artist" && (
+        <section className="mt-6 rounded-[8px] border border-border p-4">
+          <h2 className="text-[24px] font-semibold leading-[120%] text-ink">Профиль художницы</h2>
+
+          <form onSubmit={saveArtist} className="mt-5 grid gap-3 md:grid-cols-2">
+            <input required value={artist.name} onChange={(event) => setArtist({ ...artist, name: event.target.value })} placeholder="Имя RU" className={inputClassName} />
+            <input required value={artist.name_en} onChange={(event) => setArtist({ ...artist, name_en: event.target.value })} placeholder="Имя EN" className={inputClassName} />
+            <input type="email" value={artist.email} onChange={(event) => setArtist({ ...artist, email: event.target.value })} placeholder="Email" className={inputClassName} />
+            <input value={artist.instagram} onChange={(event) => setArtist({ ...artist, instagram: event.target.value })} placeholder="Instagram" className={inputClassName} />
+            <input value={artist.photo_url} onChange={(event) => setArtist({ ...artist, photo_url: event.target.value })} placeholder="URL фотографии по умолчанию" className={`${inputClassName} md:col-span-2`} />
+            <input value={artist.home_photo_url} onChange={(event) => setArtist({ ...artist, home_photo_url: event.target.value })} placeholder="URL фото для главной" className={inputClassName} />
+            <input value={artist.about_photo_url} onChange={(event) => setArtist({ ...artist, about_photo_url: event.target.value })} placeholder="URL фото для страницы Об авторе" className={inputClassName} />
+
+            <PhotoUploadCard
+              title="Фото для главной"
+              imageUrl={artist.home_photo_url || artist.photo_url}
+              loading={uploadingArtistPhoto === "home"}
+              onChange={(file) => void uploadArtistPhoto("home", file)}
             />
 
-            <input
-              required
-              value={artist.name_en}
-              onChange={(event) =>
-                setArtist({ ...artist, name_en: event.target.value })
-              }
-              placeholder="Имя EN"
-              className={inputClassName}
+            <PhotoUploadCard
+              title="Фото для страницы Об авторе"
+              imageUrl={artist.about_photo_url || artist.photo_url}
+              loading={uploadingArtistPhoto === "about"}
+              onChange={(file) => void uploadArtistPhoto("about", file)}
             />
 
-            <input
-              type="email"
-              value={artist.email}
-              onChange={(event) =>
-                setArtist({ ...artist, email: event.target.value })
-              }
-              placeholder="Email"
-              className={inputClassName}
-            />
-
-            <input
-              value={artist.instagram}
-              onChange={(event) =>
-                setArtist({ ...artist, instagram: event.target.value })
-              }
-              placeholder="Instagram"
-              className={inputClassName}
-            />
-
-            <input
-              value={artist.photo_url}
-              onChange={(event) =>
-                setArtist({ ...artist, photo_url: event.target.value })
-              }
-              placeholder="URL фотографии"
-              className={`${inputClassName} md:col-span-2`}
-            />
-
-            <textarea
-              value={artist.bio}
-              onChange={(event) =>
-                setArtist({ ...artist, bio: event.target.value })
-              }
-              placeholder="Artist statement RU"
-              rows={4}
-              className={`${inputClassName} md:col-span-2`}
-            />
-
-            <textarea
-              value={artist.bio_en}
-              onChange={(event) =>
-                setArtist({ ...artist, bio_en: event.target.value })
-              }
-              placeholder="Artist statement EN"
-              rows={4}
-              className={`${inputClassName} md:col-span-2`}
-            />
-
-            <button
-              type="submit"
-              className="flex h-[48px] items-center justify-center rounded-[8px] bg-ink px-6 text-[15px] font-medium leading-[150%] text-paper shadow-sm transition-opacity hover:opacity-80 md:col-span-2"
-            >
-              Сохранить профиль
-            </button>
+            <textarea value={artist.bio} onChange={(event) => setArtist({ ...artist, bio: event.target.value })} placeholder="Artist statement RU" rows={4} className={`${inputClassName} md:col-span-2`} />
+            <textarea value={artist.bio_en} onChange={(event) => setArtist({ ...artist, bio_en: event.target.value })} placeholder="Artist statement EN" rows={4} className={`${inputClassName} md:col-span-2`} />
+            <button type="submit" disabled={saving} className={`${buttonClassName} md:col-span-2`}>Сохранить профиль</button>
           </form>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section className="mt-4 rounded-[8px] border border-border p-4">
-        <AdminSectionHeader
-          title="Категории"
-          collapsed={collapsedSections.categories}
-          onToggle={() => toggleSection("categories")}
-          right={
-            <span className="text-[14px] font-medium leading-[150%] text-ink-light">
-              {categories.length} шт.
-            </span>
-          }
-        />
+      {activeTab === "categories" && (
+        <section className="mt-6 rounded-[8px] border border-border p-4">
+          <h2 className="text-[24px] font-semibold leading-[120%] text-ink">Категории</h2>
 
-        {!collapsedSections.categories && (
-          <>
-            <form
-              onSubmit={createCategory}
-              className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"
-            >
-              <input
-                required
-                name="name"
-                placeholder="Название RU"
-                className={inputClassName}
-              />
+          <form onSubmit={createCategory} className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+            <input required name="name" placeholder="Название RU" className={inputClassName} />
+            <input name="name_en" placeholder="Название EN" className={inputClassName} />
+            <input required name="slug" placeholder="slug" pattern="[a-z0-9-]+" title="Только латинские буквы нижнего регистра, цифры и дефис" className={inputClassName} />
+            <button type="submit" disabled={saving} className={buttonClassName}>Добавить</button>
+          </form>
 
-              <input
-                name="name_en"
-                placeholder="Название EN"
-                className={inputClassName}
-              />
-
-              <input
-                required
-                name="slug"
-                placeholder="slug"
-                pattern="[a-z0-9-]+"
-                title="Только латинские буквы нижнего регистра, цифры и дефис"
-                className={inputClassName}
-              />
-
-              <button
-                type="submit"
-                className="h-[48px] rounded-[8px] bg-ink px-7 text-[15px] font-medium leading-[150%] text-paper transition-opacity hover:opacity-80"
+          <div className="mt-5 space-y-2">
+            {categoriesSorted.map((category, index) => (
+              <div
+                key={category.id}
+                draggable={editingCategoryId !== category.id}
+                onDragStart={() => setDraggedArtworkId(null)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => void reorderCategories(index, index)}
+                className="rounded-[8px] border border-border p-3"
               >
-                Добавить
-              </button>
-            </form>
-
-            {categories.length === 0 ? (
-              <p className="mt-4 text-[15px] font-medium leading-[150%] text-ink-light">
-                Категорий пока нет.
-              </p>
-            ) : (
-              <div className="mt-4 space-y-2">
-                {orderedCategories.map((category, index) => (
-                  <div
-                    key={category.id}
-                    className="rounded-[8px] border border-border p-3"
-                  >
-                    {editingCategoryId === category.id && categoryDraft ? (
-                      <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
-                        <input
-                          value={categoryDraft.name}
-                          onChange={(event) =>
-                            setCategoryDraft({
-                              ...categoryDraft,
-                              name: event.target.value,
-                            })
-                          }
-                          className={smallInputClassName}
-                          placeholder="Название RU"
-                        />
-
-                        <input
-                          value={categoryDraft.name_en}
-                          onChange={(event) =>
-                            setCategoryDraft({
-                              ...categoryDraft,
-                              name_en: event.target.value,
-                            })
-                          }
-                          className={smallInputClassName}
-                          placeholder="Название EN"
-                        />
-
-                        <input
-                          value={categoryDraft.slug}
-                          onChange={(event) =>
-                            setCategoryDraft({
-                              ...categoryDraft,
-                              slug: event.target.value,
-                            })
-                          }
-                          className={smallInputClassName}
-                          placeholder="slug"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => void saveCategoryEdit()}
-                          className="rounded-[8px] bg-ink px-4 py-2 text-[15px] text-paper"
-                        >
-                          Сохранить
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={cancelEditCategory}
-                          className="rounded-[8px] border border-border px-4 py-2 text-[15px]"
-                        >
-                          Отмена
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <p className="text-[15px] font-semibold leading-[150%] text-ink">
-                            {category.name}
-                          </p>
-
-                          <p className="text-[13px] font-medium leading-[150%] text-ink-light">
-                            EN: {category.name_en || "не заполнено"} · slug:{" "}
-                            {category.slug} · порядок: {category.sort_order}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled={index === 0}
-                            onClick={() => void reorderCategory(index, -1)}
-                            className="rounded-[8px] border border-border px-3 py-1.5 text-[15px] disabled:opacity-30"
-                          >
-                            ↑
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={index === orderedCategories.length - 1}
-                            onClick={() => void reorderCategory(index, 1)}
-                            className="rounded-[8px] border border-border px-3 py-1.5 text-[15px] disabled:opacity-30"
-                          >
-                            ↓
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => startEditCategory(category)}
-                            className="rounded-[8px] border border-border px-3 py-1.5 text-[15px]"
-                          >
-                            Редактировать
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => void deleteCategory(category)}
-                            className="rounded-[8px] border border-red-600 px-3 py-1.5 text-[15px] text-red-600"
-                          >
-                            Удалить
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                {editingCategoryId === category.id && categoryDraft ? (
+                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
+                    <input value={categoryDraft.name} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} placeholder="Название RU" className={smallInputClassName} />
+                    <input value={categoryDraft.name_en} onChange={(event) => setCategoryDraft({ ...categoryDraft, name_en: event.target.value })} placeholder="Название EN" className={smallInputClassName} />
+                    <input value={categoryDraft.slug} onChange={(event) => setCategoryDraft({ ...categoryDraft, slug: event.target.value })} placeholder="slug" className={smallInputClassName} />
+                    <button type="button" onClick={() => void saveCategoryEdit()} className={buttonClassName}>Сохранить</button>
+                    <button type="button" onClick={cancelEditCategory} className={secondaryButtonClassName}>Отмена</button>
                   </div>
-                ))}
+                ) : (
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-[16px] font-semibold leading-[150%] text-ink">{category.name}</p>
+                      <p className="text-[14px] font-medium leading-[150%] text-ink-light">EN: {category.name_en || "не заполнено"} · slug: {category.slug} · порядок: {category.sort_order}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={index === 0} onClick={() => void reorderCategories(index, index - 1)} className={secondaryButtonClassName}>↑</button>
+                      <button type="button" disabled={index === categoriesSorted.length - 1} onClick={() => void reorderCategories(index, index + 1)} className={secondaryButtonClassName}>↓</button>
+                      <button type="button" onClick={() => startEditCategory(category)} className={secondaryButtonClassName}>Редактировать</button>
+                      <button type="button" onClick={() => setDeleteTarget({ type: "category", category })} className={dangerButtonClassName}>Удалить</button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
 
-      <section className="mt-4 rounded-[8px] border border-border p-4">
-        <AdminSectionHeader
-          title="Добавить работу"
-          collapsed={collapsedSections.createArtwork}
-          onToggle={() => toggleSection("createArtwork")}
-        />
+      {activeTab === "artworks" && (
+        <section className="mt-6 space-y-5">
+          <div className="rounded-[8px] border border-border p-4">
+            <h2 className="text-[24px] font-semibold leading-[120%] text-ink">Добавить работу</h2>
 
-        {!collapsedSections.createArtwork && (
-          <form
-            onSubmit={createArtwork}
-            className="mt-5 grid gap-3 md:grid-cols-2"
-          >
-            <input
-              required
-              name="title"
-              placeholder="Название RU"
-              className={inputClassName}
-            />
+            <form onSubmit={createArtwork} className="mt-5 grid gap-3 md:grid-cols-2">
+              <input required name="title" placeholder="Название RU" className={inputClassName} />
+              <input name="title_en" placeholder="Название EN" className={inputClassName} />
+              <input name="price" type="number" min="0" placeholder="Цена, руб." className={inputClassName} />
+              <select required name="category_id" className={inputClassName}>
+                <option value="">Выберите категорию</option>
+                {categoriesSorted.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              <input name="year" type="number" min="1000" max="9999" placeholder="Год" className={inputClassName} />
+              <input name="size" placeholder="Размер RU" className={inputClassName} />
+              <input name="size_en" placeholder="Размер EN" className={inputClassName} />
+              <input name="materials" placeholder="Материалы RU" className={inputClassName} />
+              <input name="materials_en" placeholder="Материалы EN" className={inputClassName} />
+              <textarea name="description" placeholder="Описание RU" rows={3} className={`${inputClassName} md:col-span-2`} />
+              <textarea name="description_en" placeholder="Описание EN" rows={3} className={`${inputClassName} md:col-span-2`} />
+              <button type="submit" disabled={saving} className={`${buttonClassName} md:col-span-2`}>Сохранить работу</button>
+            </form>
+          </div>
 
-            <input
-              name="title_en"
-              placeholder="Название EN"
-              className={inputClassName}
-            />
+          <div className="rounded-[8px] border border-border p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <h2 className="text-[24px] font-semibold leading-[120%] text-ink">Работы</h2>
+              <input value={artworkSearch} onChange={(event) => setArtworkSearch(event.target.value)} placeholder="Поиск по названию, категории, статусу" className="w-full rounded-[8px] border border-border bg-transparent px-4 py-2 text-[15px] font-medium leading-[150%] outline-none focus:border-ink/40 md:max-w-[420px]" />
+            </div>
 
-            <input
-              name="price"
-              type="number"
-              min="0"
-              placeholder="Цена, руб."
-              className={inputClassName}
-            />
+            <div className="mt-5 space-y-6">
+              {categoriesSorted.map((category) => {
+                const categoryArtworks = artworksByCategory.get(category.id) || [];
 
-            <select name="category_id" className={inputClassName}>
-              <option value="">Без категории</option>
-              {orderedCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+                return (
+                  <div key={category.id} className="rounded-[8px] border border-border p-3">
+                    <h3 className="text-[18px] font-semibold leading-[120%] text-ink">{category.name}</h3>
 
-            <input
-              name="year"
-              type="number"
-              min="1000"
-              max="9999"
-              placeholder="Год"
-              className={inputClassName}
-            />
-
-            <input
-              name="size"
-              placeholder="Размер RU"
-              className={inputClassName}
-            />
-
-            <input
-              name="size_en"
-              placeholder="Размер EN"
-              className={inputClassName}
-            />
-
-            <input
-              name="materials"
-              placeholder="Материалы RU"
-              className={inputClassName}
-            />
-
-            <input
-              name="materials_en"
-              placeholder="Материалы EN"
-              className={inputClassName}
-            />
-
-            <textarea
-              name="description"
-              placeholder="Описание RU"
-              rows={3}
-              className={`${inputClassName} md:col-span-2`}
-            />
-
-            <textarea
-              name="description_en"
-              placeholder="Описание EN"
-              rows={3}
-              className={`${inputClassName} md:col-span-2`}
-            />
-
-            <button
-              type="submit"
-              className="flex h-[48px] items-center justify-center rounded-[8px] bg-ink px-6 text-[15px] font-medium leading-[150%] text-paper shadow-sm transition-opacity hover:opacity-80 md:col-span-2"
-            >
-              Сохранить работу
-            </button>
-          </form>
-        )}
-      </section>
-
-      <section className="mt-4 rounded-[8px] border border-border p-4">
-        <AdminSectionHeader
-          title="Работы"
-          collapsed={collapsedSections.artworks}
-          onToggle={() => toggleSection("artworks")}
-          right={
-            <span className="text-[14px] font-medium leading-[150%] text-ink-light">
-              {artworks.length} шт.
-            </span>
-          }
-        />
-
-        {!collapsedSections.artworks && (
-          <>
-            {artworks.length === 0 ? (
-              <p className="mt-4 text-[15px] font-medium leading-[150%] text-ink-light">
-                Работ пока нет.
-              </p>
-            ) : (
-              <div className="mt-4 space-y-4">
-                {orderedCategories.map((category) => {
-                  const categoryArtworks = sortedArtworks(
-                    artworks.filter(
-                      (artwork) => artwork.category_id === category.id,
-                    ),
-                  );
-
-                  return (
-                    <div
-                      key={category.id}
-                      className="rounded-[8px] border border-border p-3"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <button
-                          type="button"
-                          onClick={() => toggleCategory(category.id)}
-                          className="text-left"
-                        >
-                          <h3 className="text-[18px] font-semibold leading-[120%] text-ink">
-                            {category.name}{" "}
-                            <span className="text-ink-light">
-                              {collapsedCategories[category.id] ? "＋" : "−"}
-                            </span>
-                          </h3>
-
-                          {category.name_en && (
-                            <p className="mt-1 text-[13px] font-medium leading-[150%] text-ink-light">
-                              {category.name_en}
-                            </p>
-                          )}
-                        </button>
-
-                        <p className="text-[14px] font-medium leading-[150%] text-ink-light">
-                          {categoryArtworks.length} работ
-                        </p>
-                      </div>
-
-                      {!collapsedCategories[category.id] && (
-                        <div className="mt-4">
-                          {categoryArtworks.length === 0 ? (
-                            <p className="text-[15px] font-medium leading-[150%] text-ink-light">
-                              В этой категории пока нет работ.
-                            </p>
-                          ) : (
-                            <div className="space-y-3">
-                              {categoryArtworks.map((artwork, index) => (
-                                <ArtworkAdminCard
-                                  key={artwork.id}
-                                  artwork={artwork}
-                                  index={index}
-                                  total={categoryArtworks.length}
-                                  expanded={!!expandedArtworks[artwork.id]}
-                                  toggleExpanded={() =>
-                                    toggleArtworkDetails(artwork.id)
-                                  }
-                                  editingId={editingId}
-                                  draft={draft}
-                                  categories={orderedCategories}
-                                  startEdit={startEdit}
-                                  cancelEdit={cancelEdit}
-                                  saveEdit={saveEdit}
-                                  setDraft={setDraft}
-                                  deleteArtwork={deleteArtwork}
-                                  updateArtworkStatus={updateArtworkStatus}
-                                  uploadImage={uploadImage}
-                                  deleteImage={deleteImage}
-                                  reorderImage={reorderImage}
-                                  reorderArtworkInCategory={
-                                    reorderArtworkInCategory
-                                  }
-                                  categoryName={categoryName}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {uncategorizedArtworks.length > 0 && (
-                  <div className="rounded-[8px] border border-border p-3">
-                    <div className="flex items-center justify-between gap-4">
-                      <button
-                        type="button"
-                        onClick={() => toggleCategory("uncategorized")}
-                        className="text-left"
-                      >
-                        <h3 className="text-[18px] font-semibold leading-[120%] text-ink">
-                          Без категории{" "}
-                          <span className="text-ink-light">
-                            {collapsedCategories.uncategorized ? "＋" : "−"}
-                          </span>
-                        </h3>
-                      </button>
-
-                      <p className="text-[14px] font-medium leading-[150%] text-ink-light">
-                        {uncategorizedArtworks.length} работ
-                      </p>
-                    </div>
-
-                    {!collapsedCategories.uncategorized && (
-                      <div className="mt-4 space-y-3">
-                        {uncategorizedArtworks.map((artwork, index) => (
+                    {categoryArtworks.length === 0 ? (
+                      <p className="mt-3 text-[15px] font-medium leading-[150%] text-ink-light">Работ в категории нет.</p>
+                    ) : (
+                      <div className="mt-3 space-y-3">
+                        {categoryArtworks.map((artwork) => (
                           <ArtworkAdminCard
                             key={artwork.id}
                             artwork={artwork}
-                            index={index}
-                            total={uncategorizedArtworks.length}
-                            expanded={!!expandedArtworks[artwork.id]}
-                            toggleExpanded={() =>
-                              toggleArtworkDetails(artwork.id)
-                            }
-                            editingId={editingId}
-                            draft={draft}
-                            categories={orderedCategories}
-                            startEdit={startEdit}
-                            cancelEdit={cancelEdit}
-                            saveEdit={saveEdit}
-                            setDraft={setDraft}
-                            deleteArtwork={deleteArtwork}
-                            updateArtworkStatus={updateArtworkStatus}
-                            uploadImage={uploadImage}
-                            deleteImage={deleteImage}
-                            reorderImage={reorderImage}
-                            reorderArtworkInCategory={reorderArtworkInCategory}
-                            categoryName={categoryName}
+                            draft={editingId === artwork.id ? draft : null}
+                            categories={categoriesSorted}
+                            categoryName={categoryName(artwork.category_id)}
+                            draggedArtworkId={draggedArtworkId}
+                            onDragStart={() => setDraggedArtworkId(artwork.id)}
+                            onDragEnd={() => setDraggedArtworkId(null)}
+                            onDrop={() => {
+                              if (draggedArtworkId !== null) {
+                                void reorderArtworksInCategory(category.id, draggedArtworkId, artwork.id);
+                              }
+                            }}
+                            onStartEdit={() => startEdit(artwork)}
+                            onCancelEdit={cancelEdit}
+                            onSaveEdit={() => void saveEdit()}
+                            onDraftChange={setDraft}
+                            onStatusChange={(status) => void updateArtworkStatus(artwork, status)}
+                            onDelete={() => setDeleteTarget({ type: "artwork", artwork })}
+                            onUploadImage={(file) => void uploadImage(artwork.id, file)}
+                            onImageDelete={(image) => setDeleteTarget({ type: "image", artworkId: artwork.id, image })}
+                            draggedImageId={draggedImageId}
+                            onImageDragStart={(imageId) => setDraggedImageId(imageId)}
+                            onImageDragEnd={() => setDraggedImageId(null)}
+                            onImageDrop={(imageId) => {
+                              if (draggedImageId !== null) {
+                                void reorderImage(artwork, draggedImageId, imageId);
+                              }
+                            }}
                           />
                         ))}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </section>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
-      <section className="mt-4 rounded-[8px] border border-border p-4">
-        <AdminSectionHeader
-          title="Заявки"
-          collapsed={collapsedSections.orders}
-          onToggle={() => toggleSection("orders")}
-          right={
-            <span className="text-[14px] font-medium leading-[150%] text-ink-light">
-              {orders.length} шт.
-            </span>
-          }
-        />
+      {activeTab === "orders" && (
+        <section className="mt-6 rounded-[8px] border border-border p-4">
+          <h2 className="text-[24px] font-semibold leading-[120%] text-ink">Заявки</h2>
 
-        {!collapsedSections.orders && (
-          <>
-            {orders.length === 0 ? (
-              <div className="mt-4 rounded-[8px] border border-border p-4 text-[15px] font-medium leading-[150%] text-ink-light">
-                Заявок пока нет.
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {orders.map((order) => {
-                  const isTechnicalEmail =
-                    !order.email || order.email === "no-email@lipolesh.art";
+          {orders.length === 0 ? (
+            <div className="mt-5 rounded-[8px] border border-border p-6 text-[16px] font-medium leading-[150%] text-ink-light">Заявок пока нет.</div>
+          ) : (
+            <div className="mt-5 space-y-3">
+              {orders.map((order) => {
+                const isTechnicalEmail = !order.email || order.email === "no-email@lipolesh.art";
 
-                  return (
-                    <article
-                      key={order.id}
-                      className="rounded-[8px] border border-border p-4"
-                    >
-                      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <h3 className="text-[17px] font-semibold leading-[120%] text-ink">
-                              Заявка #{order.id}
-                            </h3>
-
-                            <span className="rounded-[8px] bg-paper-dark px-3 py-1 text-[13px] font-medium leading-[150%] text-ink-light">
-                              {orderStatusLabel[order.status]}
-                            </span>
-                          </div>
-
-                          <dl className="mt-4 space-y-2 text-[15px] font-medium leading-[150%]">
-                            <div>
-                              <dt className="text-ink-light">Имя</dt>
-                              <dd className="mt-1 text-ink">{order.name}</dd>
-                            </div>
-
-                            {order.phone && (
-                              <div>
-                                <dt className="text-ink-light">Контакт</dt>
-                                <dd className="mt-1 whitespace-pre-line text-ink">
-                                  {order.phone}
-                                </dd>
-                              </div>
-                            )}
-
-                            {!isTechnicalEmail && (
-                              <div>
-                                <dt className="text-ink-light">Email</dt>
-                                <dd className="mt-1 text-ink">
-                                  <a
-                                    href={`mailto:${order.email}`}
-                                    className="underline underline-offset-4 transition-opacity hover:opacity-70"
-                                  >
-                                    {order.email}
-                                  </a>
-                                </dd>
-                              </div>
-                            )}
-
-                            {order.message && (
-                              <div>
-                                <dt className="text-ink-light">Комментарий</dt>
-                                <dd className="mt-1 whitespace-pre-line text-ink">
-                                  {order.message}
-                                </dd>
-                              </div>
-                            )}
-
-                            <div>
-                              <dt className="text-ink-light">Работа</dt>
-                              <dd className="mt-1 text-ink">
-                                <a
-                                  href={`/artwork/${order.artwork_id}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="underline underline-offset-4 transition-opacity hover:opacity-70"
-                                >
-                                  {order.artwork?.title
-                                    ? `${order.artwork.title} #${order.artwork_id}`
-                                    : `ID ${order.artwork_id}`}
-                                </a>
-                              </dd>
-                            </div>
-
-                            {order.created_at && (
-                              <div>
-                                <dt className="text-ink-light">Создана</dt>
-                                <dd className="mt-1 text-ink">
-                                  {new Date(order.created_at).toLocaleString(
-                                    "ru-RU",
-                                  )}
-                                </dd>
-                              </div>
-                            )}
-                          </dl>
+                return (
+                  <article key={order.id} className="rounded-[8px] border border-border p-4">
+                    <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h3 className="text-[18px] font-semibold leading-[120%] text-ink">Заявка #{order.id}</h3>
+                          <span className={`rounded-full px-3 py-1 text-[13px] font-semibold leading-[150%] ${orderStatusClassName[order.status]}`}>{orderStatusLabel[order.status]}</span>
                         </div>
 
-                        <div className="w-full shrink-0 md:w-[220px]">
-                          <label className="block text-[13px] font-medium leading-[150%] text-ink-light">
-                            Статус
-                          </label>
-
-                          <select
-                            value={order.status}
-                            onChange={(event) =>
-                              void updateOrderStatus(
-                                order.id,
-                                event.target.value as Order["status"],
-                              )
-                            }
-                            className="mt-2 h-[40px] w-full rounded-[8px] border border-border bg-paper px-3 text-[15px] font-medium leading-[150%] text-ink outline-none transition-colors focus:border-ink/40"
-                          >
-                            <option value="new">Новая</option>
-                            <option value="contacted">Связались</option>
-                            <option value="completed">Завершена</option>
-                            <option value="cancelled">Отменена</option>
-                          </select>
-                        </div>
+                        <dl className="mt-4 grid gap-3 text-[15px] font-medium leading-[150%] md:grid-cols-2">
+                          <div><dt className="text-ink-light">Имя</dt><dd className="mt-1 text-ink">{order.name}</dd></div>
+                          {order.phone && <div><dt className="text-ink-light">Контакт</dt><dd className="mt-1 whitespace-pre-line text-ink">{order.phone}</dd></div>}
+                          {!isTechnicalEmail && <div><dt className="text-ink-light">Email</dt><dd className="mt-1 text-ink"><a href={`mailto:${order.email}`} className="underline underline-offset-4 transition-opacity hover:opacity-70">{order.email}</a></dd></div>}
+                          <div><dt className="text-ink-light">Работа</dt><dd className="mt-1 text-ink"><a href={`/artwork/${order.artwork_id}`} target="_blank" rel="noreferrer" className="underline underline-offset-4 transition-opacity hover:opacity-70">{order.artwork?.title ? `${order.artwork.title} #${order.artwork_id}` : `ID ${order.artwork_id}`}</a></dd></div>
+                          {order.message && <div className="md:col-span-2"><dt className="text-ink-light">Комментарий</dt><dd className="mt-1 whitespace-pre-line text-ink">{order.message}</dd></div>}
+                          {order.created_at && <div><dt className="text-ink-light">Создана</dt><dd className="mt-1 text-ink">{new Date(order.created_at).toLocaleString("ru-RU")}</dd></div>}
+                        </dl>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-      </section>
+
+                      <div className="w-full shrink-0 md:w-[220px]">
+                        <label className="block text-[14px] font-medium leading-[150%] text-ink-light">Статус</label>
+                        <select value={order.status} onChange={(event) => void updateOrderStatus(order.id, event.target.value as Order["status"])} className="mt-2 h-[44px] w-full rounded-[8px] border border-border bg-paper px-3 text-[15px] font-medium leading-[150%] text-ink outline-none transition-colors focus:border-ink/40">
+                          <option value="new">Новая</option>
+                          <option value="contacted">Связались</option>
+                          <option value="completed">Завершена</option>
+                          <option value="cancelled">Отменена</option>
+                        </select>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          target={deleteTarget}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => void confirmDelete()}
+        />
+      )}
     </main>
   );
 }
 
-function AdminSectionHeader({
-  title,
-  collapsed,
-  onToggle,
-  right,
-}: {
-  title: string;
-  collapsed: boolean;
-  onToggle: () => void;
-  right?: ReactNode;
-}) {
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex items-center gap-3 text-left"
-      >
-        <span className="text-[22px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
-          {title}
-        </span>
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-[8px] px-4 py-2 text-[15px] font-semibold leading-[150%] transition-colors",
+        active ? "bg-ink text-paper" : "bg-paper-dark text-ink hover:bg-border",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
 
-        <span className="text-[18px] font-medium leading-none text-ink-light">
-          {collapsed ? "＋" : "−"}
-        </span>
-      </button>
-
-      {right}
+function PhotoUploadCard({ title, imageUrl, loading, onChange }: { title: string; imageUrl: string; loading: boolean; onChange: (file: File | undefined) => void }) {
+  return (
+    <div className="rounded-[8px] border border-border p-3">
+      <p className="text-[15px] font-semibold leading-[150%] text-ink">{title}</p>
+      {imageUrl ? (
+        <img src={imageUrl} alt={title} className="mt-3 h-40 w-full rounded-[8px] object-cover" />
+      ) : (
+        <div className="mt-3 flex h-40 items-center justify-center rounded-[8px] bg-paper-dark text-[14px] text-ink-light">Фото не загружено</div>
+      )}
+      <label className="mt-3 inline-flex cursor-pointer rounded-[8px] border border-border px-4 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
+        {loading ? "Загрузка..." : "Загрузить файл"}
+        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={loading} onChange={(event) => onChange(event.target.files?.[0])} className="hidden" />
+      </label>
     </div>
   );
 }
 
 function ArtworkAdminCard({
   artwork,
-  index,
-  total,
-  expanded,
-  toggleExpanded,
-  editingId,
   draft,
   categories,
-  startEdit,
-  cancelEdit,
-  saveEdit,
-  setDraft,
-  deleteArtwork,
-  updateArtworkStatus,
-  uploadImage,
-  deleteImage,
-  reorderImage,
-  reorderArtworkInCategory,
   categoryName,
+  draggedArtworkId,
+  onDragStart,
+  onDragEnd,
+  onDrop,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDraftChange,
+  onStatusChange,
+  onDelete,
+  onUploadImage,
+  onImageDelete,
+  draggedImageId,
+  onImageDragStart,
+  onImageDragEnd,
+  onImageDrop,
 }: {
   artwork: Artwork;
-  index: number;
-  total: number;
-  expanded: boolean;
-  toggleExpanded: () => void;
-  editingId: number | null;
   draft: Artwork | null;
   categories: Category[];
-  startEdit: (artwork: Artwork) => void;
-  cancelEdit: () => void;
-  saveEdit: () => Promise<void>;
-  setDraft: (artwork: Artwork) => void;
-  deleteArtwork: (artwork: Artwork) => Promise<void>;
-  updateArtworkStatus: (
-    artwork: Artwork,
-    status: ArtworkStatus,
-  ) => Promise<void>;
-  uploadImage: (artworkId: number, file: File | undefined) => Promise<void>;
-  deleteImage: (artworkId: number, image: ArtworkImage) => Promise<void>;
-  reorderImage: (artwork: Artwork, from: number, to: number) => Promise<void>;
-  reorderArtworkInCategory: (
-    categoryId: number | null,
-    artwork: Artwork,
-    direction: -1 | 1,
-  ) => Promise<void>;
-  categoryName: (id: number | null) => string;
+  categoryName: string;
+  draggedArtworkId: number | null;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDrop: () => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onDraftChange: (draft: Artwork) => void;
+  onStatusChange: (status: ArtworkStatus) => void;
+  onDelete: () => void;
+  onUploadImage: (file: File | undefined) => void;
+  onImageDelete: (image: ArtworkImage) => void;
+  draggedImageId: number | null;
+  onImageDragStart: (imageId: number) => void;
+  onImageDragEnd: () => void;
+  onImageDrop: (imageId: number) => void;
 }) {
   return (
-    <article className="rounded-[8px] border border-border p-3">
-      {editingId === artwork.id && draft ? (
-        <div className="grid gap-2 md:grid-cols-2">
-          <input
-            value={draft.title}
-            onChange={(event) =>
-              setDraft({ ...draft, title: event.target.value })
-            }
-            placeholder="Название RU"
-            className={smallInputClassName}
-          />
-
-          <input
-            value={draft.title_en}
-            onChange={(event) =>
-              setDraft({ ...draft, title_en: event.target.value })
-            }
-            placeholder="Название EN"
-            className={smallInputClassName}
-          />
-
-          <input
-            type="number"
-            min="0"
-            value={draft.price ?? ""}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                price:
-                  event.target.value === ""
-                    ? null
-                    : Number(event.target.value),
-              })
-            }
-            placeholder="Цена"
-            className={smallInputClassName}
-          />
-
-          <select
-            value={draft.category_id ?? ""}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                category_id:
-                  event.target.value === ""
-                    ? null
-                    : Number(event.target.value),
-              })
-            }
-            className={smallInputClassName}
-          >
-            <option value="">Без категории</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
+    <article
+      draggable={!draft}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={onDrop}
+      className={[
+        "rounded-[8px] border border-border p-4 transition-opacity",
+        draggedArtworkId === artwork.id ? "opacity-40" : "opacity-100",
+      ].join(" ")}
+    >
+      {draft ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          <input value={draft.title} onChange={(event) => onDraftChange({ ...draft, title: event.target.value })} placeholder="Название RU" className={smallInputClassName} />
+          <input value={draft.title_en} onChange={(event) => onDraftChange({ ...draft, title_en: event.target.value })} placeholder="Название EN" className={smallInputClassName} />
+          <input type="number" min="0" value={draft.price ?? ""} onChange={(event) => onDraftChange({ ...draft, price: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Цена" className={smallInputClassName} />
+          <select value={draft.category_id ?? ""} onChange={(event) => onDraftChange({ ...draft, category_id: event.target.value === "" ? null : Number(event.target.value) })} className={smallInputClassName} required>
+            <option value="">Выберите категорию</option>
+            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
-
-          <input
-            type="number"
-            min="1000"
-            max="9999"
-            value={draft.year ?? ""}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                year:
-                  event.target.value === ""
-                    ? null
-                    : Number(event.target.value),
-              })
-            }
-            placeholder="Год"
-            className={smallInputClassName}
-          />
-
-          <input
-            value={draft.size}
-            onChange={(event) =>
-              setDraft({ ...draft, size: event.target.value })
-            }
-            placeholder="Размер RU"
-            className={smallInputClassName}
-          />
-
-          <input
-            value={draft.size_en}
-            onChange={(event) =>
-              setDraft({ ...draft, size_en: event.target.value })
-            }
-            placeholder="Размер EN"
-            className={smallInputClassName}
-          />
-
-          <input
-            value={draft.materials}
-            onChange={(event) =>
-              setDraft({ ...draft, materials: event.target.value })
-            }
-            placeholder="Материалы RU"
-            className={smallInputClassName}
-          />
-
-          <input
-            value={draft.materials_en}
-            onChange={(event) =>
-              setDraft({ ...draft, materials_en: event.target.value })
-            }
-            placeholder="Материалы EN"
-            className={smallInputClassName}
-          />
-
-          <select
-            value={draft.status}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                status: event.target.value as ArtworkStatus,
-              })
-            }
-            className={smallInputClassName}
-          >
-            {(Object.keys(statusLabel) as ArtworkStatus[]).map((status) => (
-              <option key={status} value={status}>
-                {statusLabel[status]}
-              </option>
-            ))}
+          <input type="number" min="1000" max="9999" value={draft.year ?? ""} onChange={(event) => onDraftChange({ ...draft, year: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Год" className={smallInputClassName} />
+          <input value={draft.size} onChange={(event) => onDraftChange({ ...draft, size: event.target.value })} placeholder="Размер RU" className={smallInputClassName} />
+          <input value={draft.size_en} onChange={(event) => onDraftChange({ ...draft, size_en: event.target.value })} placeholder="Размер EN" className={smallInputClassName} />
+          <input value={draft.materials} onChange={(event) => onDraftChange({ ...draft, materials: event.target.value })} placeholder="Материалы RU" className={smallInputClassName} />
+          <input value={draft.materials_en} onChange={(event) => onDraftChange({ ...draft, materials_en: event.target.value })} placeholder="Материалы EN" className={smallInputClassName} />
+          <select value={draft.status} onChange={(event) => onDraftChange({ ...draft, status: event.target.value as ArtworkStatus })} className={smallInputClassName}>
+            {(Object.keys(statusLabel) as ArtworkStatus[]).map((status) => <option key={status} value={status}>{statusLabel[status]}</option>)}
           </select>
-
-          <textarea
-            value={draft.description}
-            onChange={(event) =>
-              setDraft({ ...draft, description: event.target.value })
-            }
-            placeholder="Описание RU"
-            rows={3}
-            className={`${smallInputClassName} md:col-span-2`}
-          />
-
-          <textarea
-            value={draft.description_en}
-            onChange={(event) =>
-              setDraft({ ...draft, description_en: event.target.value })
-            }
-            placeholder="Описание EN"
-            rows={3}
-            className={`${smallInputClassName} md:col-span-2`}
-          />
-
+          <textarea value={draft.description} onChange={(event) => onDraftChange({ ...draft, description: event.target.value })} placeholder="Описание RU" rows={3} className={`${smallInputClassName} md:col-span-2`} />
+          <textarea value={draft.description_en} onChange={(event) => onDraftChange({ ...draft, description_en: event.target.value })} placeholder="Описание EN" rows={3} className={`${smallInputClassName} md:col-span-2`} />
           <div className="flex gap-2 md:col-span-2">
-            <button
-              type="button"
-              onClick={() => void saveEdit()}
-              className="rounded-[8px] bg-ink px-4 py-2 text-[15px] text-paper"
-            >
-              Сохранить
-            </button>
-
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="rounded-[8px] border border-border px-4 py-2 text-[15px]"
-            >
-              Отмена
-            </button>
+            <button type="button" onClick={onSaveEdit} className={buttonClassName}>Сохранить</button>
+            <button type="button" onClick={onCancelEdit} className={secondaryButtonClassName}>Отмена</button>
           </div>
         </div>
       ) : (
         <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
           <div>
-            <p className="text-[17px] font-semibold leading-[120%] text-ink">
-              {artwork.title}
-            </p>
-
-            <p className="mt-1 text-[13px] font-medium leading-[150%] text-ink-light">
-              EN: {artwork.title_en || "не заполнено"}
-            </p>
-
-            <p className="mt-1 text-[13px] font-medium leading-[150%] text-ink-light">
-              #{index + 1}
-              {" · "}
-              {statusLabel[artwork.status]}
-              {artwork.price != null && ` · ${formatPrice(artwork.price)}`}
-              {categoryName(artwork.category_id) &&
-                ` · ${categoryName(artwork.category_id)}`}
-              {" · "}
-              порядок: {artwork.sort_order}
-            </p>
+            <p className="text-[18px] font-semibold leading-[120%] text-ink">{artwork.title}</p>
+            <p className="mt-1 text-[14px] font-medium leading-[150%] text-ink-light">EN: {artwork.title_en || "не заполнено"}</p>
+            <p className="mt-1 text-[14px] font-medium leading-[150%] text-ink-light">{statusLabel[artwork.status]}{artwork.price != null && ` · ${formatPrice(artwork.price)}`} · {categoryName} · порядок: {artwork.sort_order}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={index === 0}
-              onClick={() =>
-                void reorderArtworkInCategory(
-                  artwork.category_id,
-                  artwork,
-                  -1,
-                )
-              }
-              className="rounded-[8px] border border-border px-3 py-1.5 text-[15px] disabled:opacity-30"
-            >
-              ↑
-            </button>
-
-            <button
-              type="button"
-              disabled={index === total - 1}
-              onClick={() =>
-                void reorderArtworkInCategory(
-                  artwork.category_id,
-                  artwork,
-                  1,
-                )
-              }
-              className="rounded-[8px] border border-border px-3 py-1.5 text-[15px] disabled:opacity-30"
-            >
-              ↓
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleExpanded}
-              className="rounded-[8px] border border-border px-3 py-1.5 text-[14px] font-medium leading-[150%]"
-            >
-              {expanded ? "скрыть" : "детали"}
-            </button>
-
-            <select
-              value={artwork.status}
-              onChange={(event) =>
-                void updateArtworkStatus(
-                  artwork,
-                  event.target.value as ArtworkStatus,
-                )
-              }
-              className={selectClassName}
-            >
-              {(Object.keys(statusLabel) as ArtworkStatus[]).map((status) => (
-                <option key={status} value={status}>
-                  {statusLabel[status]}
-                </option>
-              ))}
+            <a href={`/artwork/${artwork.id}`} target="_blank" rel="noreferrer" className={secondaryButtonClassName}>Превью</a>
+            <select value={artwork.status} onChange={(event) => onStatusChange(event.target.value as ArtworkStatus)} className="h-[42px] rounded-[8px] border border-border bg-paper px-3 text-[15px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40">
+              {(Object.keys(statusLabel) as ArtworkStatus[]).map((status) => <option key={status} value={status}>{statusLabel[status]}</option>)}
             </select>
-
-            <button
-              type="button"
-              onClick={() => startEdit(artwork)}
-              className="rounded-[8px] border border-border px-3 py-1.5 text-[15px] font-medium leading-[150%]"
-            >
-              Редактировать
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void deleteArtwork(artwork)}
-              className="rounded-[8px] border border-red-600 px-3 py-1.5 text-[15px] font-medium leading-[150%] text-red-600"
-            >
-              Удалить
-            </button>
+            <button type="button" onClick={onStartEdit} className={secondaryButtonClassName}>Редактировать</button>
+            <button type="button" onClick={onDelete} className={dangerButtonClassName}>Удалить</button>
           </div>
         </div>
       )}
 
-      {expanded && (
-        <div className="mt-4 border-t border-border pt-4">
+      <div className="mt-4 border-t border-border pt-4">
+        {artwork.images.length > 0 && (
           <div className="flex flex-wrap gap-3">
-            {artwork.images.map((image, imageIndex) => (
-              <div key={image.id} className="w-24">
-                <div className="relative aspect-square overflow-hidden rounded-[8px] bg-paper-dark">
-                  <img
-                    src={
-                      image.thumb_webp_url ||
-                      image.thumb_avif_url ||
-                      image.thumb_url ||
-                      image.original_url
-                    }
-                    alt={image.alt_text || artwork.title}
-                    className="h-full w-full object-cover"
-                  />
+            {artwork.images.map((image) => (
+              <div
+                key={image.id}
+                draggable
+                onDragStart={() => onImageDragStart(image.id)}
+                onDragEnd={onImageDragEnd}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => onImageDrop(image.id)}
+                className={[
+                  "w-24 rounded-[8px] border border-border p-1 transition-opacity",
+                  draggedImageId === image.id ? "opacity-40" : "opacity-100",
+                ].join(" ")}
+              >
+                <div className="aspect-square overflow-hidden rounded-[6px] bg-paper-dark">
+                  <img src={image.thumb_webp_url || image.thumb_avif_url || image.thumb_url || image.original_url} alt={image.alt_text || artwork.title} className="h-full w-full object-cover" />
                 </div>
-
-                <div className="mt-1.5 flex items-center justify-between text-[13px] font-medium leading-[150%] text-ink-light">
-                  <button
-                    type="button"
-                    disabled={imageIndex === 0}
-                    onClick={() =>
-                      void reorderImage(artwork, imageIndex, imageIndex - 1)
-                    }
-                    className="disabled:opacity-30"
-                  >
-                    ←
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void deleteImage(artwork.id, image)}
-                    className="hover:text-red-600"
-                  >
-                    ×
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={imageIndex === artwork.images.length - 1}
-                    onClick={() =>
-                      void reorderImage(artwork, imageIndex, imageIndex + 1)
-                    }
-                    className="disabled:opacity-30"
-                  >
-                    →
-                  </button>
-                </div>
+                <button type="button" onClick={() => onImageDelete(image)} className="mt-1 w-full text-[13px] font-medium text-red-600 hover:opacity-70">Удалить</button>
               </div>
             ))}
           </div>
+        )}
 
-          <label className="mt-3 block text-[13px] font-medium leading-[150%] text-ink-light">
-            Добавить изображение
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) =>
-                void uploadImage(artwork.id, event.target.files?.[0])
-              }
-              className="mt-2 block w-full text-[13px]"
-            />
-          </label>
-        </div>
-      )}
+        <label className="mt-3 inline-flex cursor-pointer rounded-[8px] border border-border px-4 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
+          Добавить изображение
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onUploadImage(event.target.files?.[0])} className="hidden" />
+        </label>
+      </div>
     </article>
+  );
+}
+
+function ConfirmDeleteModal({ target, onCancel, onConfirm }: { target: DeleteTarget; onCancel: () => void; onConfirm: () => void }) {
+  const title = target.type === "category"
+    ? `Удалить категорию «${target.category.name}»?`
+    : target.type === "artwork"
+      ? `Удалить работу «${target.artwork.title}»?`
+      : "Удалить изображение?";
+
+  const description = target.type === "category"
+    ? "Работы из этой категории останутся в системе, но потеряют привязку к категории."
+    : target.type === "artwork"
+      ? "Действие нельзя отменить. Если у работы уже есть заявки, лучше установить статус «Скрыто»."
+      : "Изображение будет удалено из работы.";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-4 backdrop-blur-sm" onClick={onCancel}>
+      <div className="w-full max-w-md rounded-[12px] border border-border bg-paper p-6 shadow-sm" onClick={(event) => event.stopPropagation()}>
+        <h2 className="text-[22px] font-semibold leading-[120%] text-ink">{title}</h2>
+        <p className="mt-3 text-[15px] font-medium leading-[150%] text-ink-light">{description}</p>
+        <div className="mt-6 flex justify-end gap-3">
+          <button type="button" onClick={onCancel} className={secondaryButtonClassName}>Отмена</button>
+          <button type="button" onClick={onConfirm} className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-red-600 px-4 text-[15px] font-medium leading-[150%] text-white transition-opacity hover:opacity-80">Удалить</button>
+        </div>
+      </div>
+    </div>
   );
 }

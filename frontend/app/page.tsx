@@ -89,15 +89,17 @@ export default function HomePage() {
   const leftArtworks = visibleArtworks.filter((_, index) => index % 2 === 0);
   const rightArtworks = visibleArtworks.filter((_, index) => index % 2 === 1);
 
+  const homePhotoUrl = artist?.home_photo_url || artist?.photo_url || "";
+
   return (
     <main className="bg-paper text-ink">
       <section className="mx-auto max-w-[1280px] px-6 pb-24 pt-12 md:px-10 md:pt-16">
         <div className="grid items-center gap-10 md:grid-cols-[360px_1fr] lg:grid-cols-[420px_1fr] lg:gap-14">
           <div className="overflow-hidden rounded-[8px] bg-paper-dark">
-            {artist?.photo_url ? (
+            {homePhotoUrl ? (
               <Image
-                src={artist.photo_url}
-                alt={artist.name || "Artist"}
+                src={homePhotoUrl}
+                alt={artist?.name || "Artist"}
                 width={840}
                 height={1050}
                 priority

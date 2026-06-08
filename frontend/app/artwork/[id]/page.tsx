@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArtworkCard } from "@/components/artwork-card";
 import { ArtworkImageCarousel } from "@/components/artwork-image-carousel";
 import { ArtworkReservePanel } from "@/components/artwork-reserve-panel";
 import { LocalizedText } from "@/components/localized-text";
@@ -14,12 +16,20 @@ type ArtworkPageProps = {
   };
 };
 
-function formatPrice(price: number | null | undefined) {
+function formatPriceRu(price: number | null | undefined) {
   if (price === null || price === undefined) {
     return null;
   }
 
   return `${price.toLocaleString("ru-RU")} ₽`;
+}
+
+function formatPriceEn(price: number | null | undefined) {
+  if (price === null || price === undefined) {
+    return null;
+  }
+
+  return `${price.toLocaleString("en-US")} RUB`;
 }
 
 export async function generateMetadata({ params }: ArtworkPageProps) {
@@ -45,7 +55,7 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
   const imageUrl = getImageUrl(cover);
   const absoluteImageUrl = imageUrl
     ? absoluteUrl(imageUrl)
-    : absoluteUrl("/favicon.png");
+    : absoluteUrl("/og-image.png");
 
   const title = artwork.title || "Работа";
   const description =
@@ -72,7 +82,7 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
         {
           url: absoluteImageUrl,
           width: 1200,
-          height: 1600,
+          height: 630,
           alt: cover?.alt_text || artwork.title || "Работа художницы",
         },
       ],
@@ -99,8 +109,20 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
     notFound();
   }
 
+  const relatedArtworks = artwork.category_id
+    ? await api.artworks
+        .list({ category_id: artwork.category_id })
+        .then((items) =>
+          items
+            .filter((item) => item.id !== artwork.id && item.status !== "hidden")
+            .slice(0, 3),
+        )
+        .catch(() => [])
+    : [];
+
   const images = artwork.images || [];
-  const price = formatPrice(artwork.price);
+  const priceRu = formatPriceRu(artwork.price);
+  const priceEn = formatPriceEn(artwork.price);
   const isSold = artwork.status === "sold";
   const isUnavailable = artwork.status === "sold" || artwork.status === "hidden";
 
@@ -120,7 +142,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
 
   return (
     <main className="bg-paper text-ink">
-      <section className="mx-auto grid max-w-[1280px] gap-14 px-6 pb-28 pt-[123px] md:grid-cols-[minmax(0,505px)_minmax(0,515px)] md:px-10 lg:gap-[143px]">
+      <section className="mx-auto grid max-w-[1280px] gap-14 px-6 pb-20 pt-[123px] md:grid-cols-[minmax(0,505px)_minmax(0,515px)] md:px-10 lg:gap-[143px]">
         <ArtworkImageCarousel images={images} title={artwork.title} />
 
         <aside className="pt-0">
@@ -165,15 +187,23 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
                     <LocalizedText ru="Продано" en="Sold" />
                   </p>
 
-                  {price && (
+                  {(priceRu || priceEn) && (
                     <p className="mt-1 text-[16px] font-medium leading-[150%] text-ink-light line-through">
-                      {price}
+                      <LocalizedValue
+                        ru={priceRu || ""}
+                        en={priceEn || priceRu || ""}
+                      />
                     </p>
                   )}
                 </div>
               ) : (
                 <p className="text-[24px] font-medium leading-[150%] text-ink">
-                  {price || (
+                  {priceRu || priceEn ? (
+                    <LocalizedValue
+                      ru={priceRu || ""}
+                      en={priceEn || priceRu || ""}
+                    />
+                  ) : (
                     <LocalizedText ru="Цена по запросу" en="Price on request" />
                   )}
                 </p>
@@ -186,6 +216,15 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
                 disabled={isUnavailable}
               />
             </div>
+
+            {isSold && (
+              <p className="mt-5 text-[16px] font-medium leading-[150%] text-ink-light">
+                <LocalizedText
+                  ru="Эта работа уже продана."
+                  en="This artwork has already been sold."
+                />
+              </p>
+            )}
 
             {(artwork.description || artwork.description_en) && (
               <p className="mt-8 text-[16px] font-medium leading-[150%] text-ink-light">
@@ -200,6 +239,29 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
           </div>
         </aside>
       </section>
+
+      {relatedArtworks.length > 0 && (
+        <section className="mx-auto max-w-[1280px] px-6 pb-32 md:px-10">
+          <div className="flex items-end justify-between gap-4 border-t border-border pt-14">
+            <h2 className="text-[28px] font-semibold leading-[120%] tracking-[-0.02em] text-ink md:text-[36px]">
+              <LocalizedText ru="Похожие работы" en="Related artworks" />
+            </h2>
+
+            <Link
+              href="/#catalog"
+              className="text-[16px] font-medium leading-[150%] text-ink-light underline underline-offset-4 transition-colors hover:text-ink"
+            >
+              <LocalizedText ru="В каталог" en="Catalog" />
+            </Link>
+          </div>
+
+          <div className="mt-10 grid gap-10 md:grid-cols-3">
+            {relatedArtworks.map((relatedArtwork) => (
+              <ArtworkCard key={relatedArtwork.id} artwork={relatedArtwork} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

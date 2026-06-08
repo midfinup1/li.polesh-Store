@@ -325,8 +325,10 @@ func (r *artistRepository) Update(ctx context.Context, artist *domain.Artist) (*
 				bio = $3,
 				bio_en = $4,
 				photo_url = $5,
-				email = $6,
-				instagram = $7,
+				home_photo_url = $6,
+				about_photo_url = $7,
+				email = $8,
+				instagram = $9,
 				updated_at = NOW()
 			WHERE id = (
 				SELECT id
@@ -341,6 +343,8 @@ func (r *artistRepository) Update(ctx context.Context, artist *domain.Artist) (*
 		artist.Bio,
 		artist.BioEN,
 		artist.PhotoURL,
+		artist.HomePhotoURL,
+		artist.AboutPhotoURL,
 		artist.Email,
 		artist.Instagram,
 	)

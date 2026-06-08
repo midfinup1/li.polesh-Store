@@ -120,7 +120,7 @@ func (h *ArtworkHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(20 << 20); err != nil {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		respondError(w, http.StatusBadRequest, "image is too large")
 		return
 	}

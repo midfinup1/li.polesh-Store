@@ -216,6 +216,16 @@ export const api = {
           method: "PUT",
           body: JSON.stringify(data),
         }),
+
+      uploadPhoto: (slot: "home" | "about", file: File) => {
+        const form = new FormData();
+        form.append("image", file);
+
+        return request<Artist>(`/admin/artist/photo/${slot}`, {
+          method: "POST",
+          body: form,
+        });
+      },
     },
   },
 };

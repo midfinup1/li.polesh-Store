@@ -189,7 +189,7 @@ export const dictionaries = {
       priceOnRequest: "Price on request",
       sold: "Sold",
       available: "Available",
-      rub: "₽",
+      rub: "RUB",
       siteName: "lipolesh.art",
     },
     home: {

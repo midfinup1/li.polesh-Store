@@ -16,6 +16,19 @@ services:
       timeout: 5s
       retries: 10
 
+  migrate:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    restart: "no"
+    env_file: .env
+    volumes:
+      - ../backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["go", "run", "./cmd/migrate"]
+
   backend:
     build:
       context: ../backend
@@ -28,8 +41,8 @@ services:
       - ../backend:/app
       - uploads:/app/uploads
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/ready || exit 1"]
       interval: 30s

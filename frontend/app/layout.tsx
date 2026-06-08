@@ -37,9 +37,9 @@ export const metadata: Metadata = {
     url: siteUrl,
     images: [
       {
-        url: "/favicon.png",
-        width: 512,
-        height: 512,
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
         alt: "lipolesh.art",
       },
     ],
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "lipolesh.art",
     description: "Портфолио художницы Елизаветы Полещенко",
-    images: ["/favicon.png"],
+    images: ["/og-image.png"],
   },
 };
 

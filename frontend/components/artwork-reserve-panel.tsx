@@ -27,7 +27,6 @@ export function ArtworkReservePanel({
 
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useState<SubmitState>("idle");
-  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const isSubmitDisabled = useMemo(
@@ -42,7 +41,6 @@ export function ArtworkReservePanel({
 
     setIsOpen(true);
     setState("idle");
-    setCreatedOrderId(null);
     setPrivacyAccepted(false);
   }
 
@@ -76,7 +74,7 @@ export function ArtworkReservePanel({
     setState("submitting");
 
     try {
-      const order = await api.orders.create({
+      await api.orders.create({
         artwork_id: artworkId,
         name,
         email: "no-email@lipolesh.art",
@@ -84,11 +82,6 @@ export function ArtworkReservePanel({
         message,
       });
 
-      setCreatedOrderId(
-        order && typeof order === "object" && "id" in order
-          ? Number(order.id)
-          : null,
-      );
       setState("success");
       form.reset();
       setPrivacyAccepted(false);
@@ -169,16 +162,8 @@ export function ArtworkReservePanel({
 
                 <p className="mt-3 text-[16px] font-medium leading-[150%] text-ink-light">
                   <LocalizedText
-                    ru={
-                      createdOrderId
-                        ? `Номер заявки: ${createdOrderId}. Художница свяжется с вами в ближайшее время.`
-                        : "Художница свяжется с вами в ближайшее время."
-                    }
-                    en={
-                      createdOrderId
-                        ? `Request number: ${createdOrderId}. The artist will contact you soon.`
-                        : "The artist will contact you soon."
-                    }
+                    ru="Художница свяжется с вами в ближайшее время."
+                    en="The artist will contact you soon."
                   />
                 </p>
 

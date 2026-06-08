@@ -1,65 +1,60 @@
-# Uptime monitoring and Telegram notifications
+# Monitoring and Telegram notifications
 
-## Health endpoints
+## Внешний uptime-monitoring
 
-Frontend health endpoint:
+Для внешнего мониторинга используется UptimeRobot.
 
-```text
-GET /api/health
-```
-
-Backend liveness endpoint:
+Настроенные HTTP monitors:
 
 ```text
-GET /api/v1/health
-```
-
-Backend readiness endpoint with database check:
-
-```text
-GET /api/v1/ready
-```
-
-For external uptime monitoring use at least these checks:
-
-```text
+https://lipolesh.art
+https://lipolesh.art/admin/login
 https://lipolesh.art/api/health
 https://lipolesh.art/api/v1/health
 https://lipolesh.art/api/v1/ready
+https://lipolesh.art/order
 ```
 
-Recommended settings:
+Рекомендуемый интервал проверки:
 
 ```text
-Method: GET
-Expected status: 200
-Interval: 1-5 minutes
-Timeout: 10 seconds
-Notification channel: Telegram
+5 минут
 ```
 
-`/api/v1/health` checks that the backend process is alive.
-`/api/v1/ready` checks that the backend process is alive and PostgreSQL is reachable.
+Что проверяют endpoints:
 
-## Telegram notifications for new orders
+```text
+/api/health
+```
 
-Backend sends Telegram notifications after a new order is successfully saved.
-If Telegram is unavailable, order creation is not blocked.
+Проверяет доступность frontend/Caddy route.
 
-Add these variables to `infra/.env` or `infra/.env.prod`:
+```text
+/api/v1/health
+```
+
+Проверяет, что backend-процесс жив.
+
+```text
+/api/v1/ready
+```
+
+Проверяет, что backend жив и может подключиться к PostgreSQL.
+
+## Telegram-уведомления о новых заявках
+
+Уведомления отправляются backend'ом после успешного создания заявки.
+
+Переменные окружения:
 
 ```env
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 TELEGRAM_NOTIFICATIONS_ENABLED=true
-PUBLIC_SITE_URL=https://lipolesh.art
 ```
 
-How to get values:
+Если `TELEGRAM_NOTIFICATIONS_ENABLED=false` или не заполнены token/chat id, уведомления отключены.
 
-1. Create a bot via `@BotFather` and copy the token to `TELEGRAM_BOT_TOKEN`.
-2. Send any message to the bot.
-3. Open `https://api.telegram.org/bot<TOKEN>/getUpdates`.
-4. Copy `message.chat.id` to `TELEGRAM_CHAT_ID`.
+## Email-уведомления
 
-For a group chat, add the bot to the group, send a message in the group and get the negative chat id from `getUpdates`.
+Email/Resend-уведомления не используются. Основной канал уведомлений о заявках — Telegram.

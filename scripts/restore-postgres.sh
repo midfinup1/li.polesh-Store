@@ -2,7 +2,8 @@
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <dump.sql.gz> [database_url]" >&2
+  echo "Usage: $0 <dump_file> [database_url]" >&2
+  echo "Supports PostgreSQL custom-format dumps created by pg_dump -Fc." >&2
   exit 1
 fi
 
@@ -26,4 +27,10 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   exit 1
 fi
 
-gunzip -c "${DUMP_FILE}" | psql "${DATABASE_URL}"
+pg_restore \
+  --clean \
+  --if-exists \
+  --no-owner \
+  --no-privileges \
+  --dbname "${DATABASE_URL}" \
+  "${DUMP_FILE}"

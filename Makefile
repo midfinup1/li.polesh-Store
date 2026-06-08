@@ -1,14 +1,14 @@
 COMPOSE=docker compose --env-file infra/.env -f infra/docker-compose.yml
 COMPOSE_PROD=docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml
 
-.PHONY: init up down logs test admin admin-prod prod-pull prod-up prod-ps prod-logs backup restore
+.PHONY: init up down install destroy logs test admin admin-prod prod-pull prod-up prod-ps prod-logs backup restore
 
 init:
 	cp -n infra/.env.example infra/.env || true
 	cd backend && go mod tidy
 	cd frontend && npm install
 
-check:
+install:
 	cd backend && go mod tidy
 	cd frontend && npm install
 

@@ -1,6 +1,6 @@
 # Каталог работ lipolesh
 
-Публичная галерея работ художницы, заявки на приобретение и защищённая админка.
+Публичный каталог работ художницы lipolesh.art с заявками на обратную связь, защищённой админкой, загрузкой изображений, Telegram-уведомлениями и production-деплоем через Docker Compose.
 
 ## Стек
 
@@ -18,6 +18,9 @@
   - JPEG thumbnail
   - WebP thumbnail через `cwebp`
   - AVIF thumbnail через `avifenc`
+- Telegram-уведомления о новых заявках
+- внутренние health/readiness endpoints
+- внутренняя аналитика просмотров и кликов по категориям
 
 ### Frontend
 
@@ -26,6 +29,8 @@
 - TypeScript
 - Tailwind CSS
 - SEO metadata, OpenGraph, sitemap, robots
+- RU/EN-переключение
+- светлая/тёмная тема
 
 ### Infrastructure
 
@@ -40,15 +45,7 @@
   - off-site dump в S3
   - restore drill
   - cron backup
-
-
-### Админка
-
-Админка доступна по адресу:
-
-```text
-/admin
-```
+- внешний uptime-monitoring через UptimeRobot
 
 ## Структура проекта
 
@@ -61,7 +58,6 @@ backend/
 frontend/
   app/
   components/
-  e2e/
   lib/
   public/
   types/
@@ -77,6 +73,9 @@ scripts/
   install-vps.sh
   backup-postgres.sh
   restore-postgres.sh
+
+docs/
+  monitoring-and-telegram.md
 
 .github/
   workflows/
@@ -145,13 +144,63 @@ ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="password" make admin
 http://localhost:3000/admin/login
 ```
 
-## Что осталось
+## Production
 
-- внешний uptime-monitoring;
+Основной production compose:
+
+```text
+infra/docker-compose.prod.yml
+```
+
+Основной env-файл:
+
+```text
+infra/.env.prod
+```
+
+Пример env-файла:
+
+```text
+infra/.env.prod.example
+```
+
+Production health endpoints:
+
+```text
+https://lipolesh.art/api/health
+https://lipolesh.art/api/v1/health
+https://lipolesh.art/api/v1/ready
+```
+
+Внешний uptime-monitoring настроен через UptimeRobot.
+
+## Что уже сделано
+
+- backend/frontend production compose;
+- Caddy reverse proxy;
+- backend/frontend healthcheck;
+- readiness endpoint с проверкой БД;
+- автоматический migrate service;
+- CI для backend и frontend;
+- deploy workflow в GitHub Actions;
 - Telegram-уведомления о новых заявках;
-- Playwright e2e job в CI;
-- healthcheck для backend/frontend в production compose;
-- SSH hardening;
 - favicon;
-- заполнение `alt_text`;
-- проверка OpenGraph preview.
+- OpenGraph metadata и fallback OG image;
+- загрузка изображений в S3/local storage;
+- ограничение размера загружаемых изображений;
+- JPEG/WebP/AVIF thumbnails;
+- автоматический и ручной `alt_text`;
+- фото художницы отдельно для главной и страницы «Об авторе»;
+- внутренняя аналитика просмотров и кликов;
+- политики обработки персональных данных;
+- PostgreSQL backup и restore-скрипты.
+
+## Что осталось проверить вручную
+
+- мобильную версию: главная, каталог, карточка, форма, меню, админка;
+- OpenGraph preview в Telegram/VK после деплоя;
+- отправку заявки на production;
+- получение Telegram-уведомления на production;
+- загрузку изображения на production;
+- backup/restore drill на тестовой базе;
+- SSH hardening на VPS.

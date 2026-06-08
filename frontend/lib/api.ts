@@ -120,7 +120,7 @@ export const api = {
 
   orders: {
     create: (data: CreateOrderRequest) =>
-      request<void>("/orders", {
+      request<Order>("/orders", {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -130,6 +130,7 @@ export const api = {
     trackView: (data: {
       path: string;
       artwork_id?: number | null;
+      category_id?: number | null;
       event_type?: "page_view" | "category_click";
     }) =>
       request<void>("/analytics/view", {

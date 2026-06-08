@@ -8,7 +8,7 @@ function Section({ title, text }: { title: string; text: string }) {
       <h2 className="mb-4 text-[18px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
         {title}
       </h2>
-      <p className="text-[16px] font-medium leading-[150%] text-ink">{text}</p>
+      <p className="whitespace-pre-line text-[16px] font-medium leading-[150%] text-ink">{text}</p>
     </section>
   );
 }
@@ -35,6 +35,8 @@ export function PrivacyContent() {
         <Section title={p.s5Title} text={p.s5Text} />
         <Section title={p.s6Title} text={p.s6Text} />
         <Section title={p.s7Title} text={p.s7Text} />
+        <Section title={p.s8Title} text={p.s8Text} />
+        <Section title={p.s9Title} text={p.s9Text} />
       </div>
     </main>
   );
@@ -61,6 +63,8 @@ export function PersonalDataContent() {
         <Section title={p.s4Title} text={p.s4Text} />
         <Section title={p.s5Title} text={p.s5Text} />
         <Section title={p.s6Title} text={p.s6Text} />
+        <Section title={p.s7Title} text={p.s7Text} />
+        <Section title={p.s8Title} text={p.s8Text} />
       </div>
     </main>
   );

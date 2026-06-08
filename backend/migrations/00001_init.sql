@@ -37,7 +37,7 @@ INSERT INTO artist (
 SELECT
     'Елизавета Полещенко',
     'Elizaveta Poleshchenko',
-    'В своей художественной практике я обращаюсь к познанию личного и эмоционального, через анализ мимолетных образов, формируя из интуитивного целостные образы и сюжеты. Через анималистичные образы рассуждаю о внутреннем, о привязанностях, о поиске объяснения своих действий и чувств. Человек в моих работах чаще находится в роли наблюдателя и больше выражает процесс обдумывания нежели процесс прямых и активных действий. В начале своей работы над картиной мне важны первые интуитивные зарисовки и мазки, из которых потом формируется целостный образ.',
+    'В своей художественной практике я обращаюсь к познанию личного и эмоционального, через анализ мимолетных образов, формируя из интуитивного целостные образы и сюжеты. Через анималистические образы рассуждаю о внутреннем, о привязанностях, о поиске объяснения своих действий и чувств. Человек в моих работах чаще находится в роли наблюдателя и больше выражает процесс обдумывания нежели процесс прямых и активных действий. В начале своей работы над картиной мне важны первые интуитивные зарисовки и мазки, из которых потом формируется целостный образ.',
     'In my artistic practice, I turn to the exploration of the personal and emotional through the analysis of fleeting images, shaping intuitive impressions into complete images and narratives. Through animalistic imagery, I reflect on the inner world, on attachments, and on the search for explanations for one’s actions and feelings. The human figure in my works is more often placed in the role of an observer and expresses the process of contemplation rather than direct and active action. At the beginning of my work on a painting, the first intuitive sketches and brushstrokes are important to me; from them, a complete image later begins to form.',
     '',
     '',
@@ -131,7 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_artwork_images_sort_order
 
 CREATE TABLE IF NOT EXISTS orders (
     id         BIGSERIAL PRIMARY KEY,
-    artwork_id BIGINT NOT NULL REFERENCES artworks(id) ON DELETE CASCADE,
+    artwork_id BIGINT NOT NULL REFERENCES artworks(id) ON DELETE RESTRICT,
     name       TEXT NOT NULL,
     email      TEXT NOT NULL,
     phone      TEXT NOT NULL DEFAULT '',

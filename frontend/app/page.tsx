@@ -174,6 +174,7 @@ export default function HomePage() {
                     void api.analytics
                       .trackView({
                         path: `/category/${category.slug}`,
+                        category_id: category.id,
                         event_type: "category_click",
                       })
                       .catch(() => {});

@@ -1,8 +1,8 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { LocalizedText } from "@/components/localized-text";
-import { api } from "@/lib/api";
-import type { Metadata } from "next";
 import { absoluteUrl } from "@/lib/metadata";
+import { api } from "@/lib/api";
 
 export const revalidate = 60;
 

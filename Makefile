@@ -14,6 +14,9 @@ up:
 down:
 	$(COMPOSE) down
 
+destroy:
+	$(COMPOSE) down -v
+
 logs:
 	$(COMPOSE) logs -f --tail=100
 

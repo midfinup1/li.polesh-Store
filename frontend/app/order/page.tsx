@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LocalizedText } from "@/components/localized-text";
 import { absoluteUrl } from "@/lib/metadata";
 
 export const metadata: Metadata = {

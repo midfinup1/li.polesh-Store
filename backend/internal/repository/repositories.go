@@ -12,6 +12,7 @@ type Repositories struct {
 	Admins     domain.AdminRepository
 	Artist     domain.ArtistRepository
 	Analytics  domain.AnalyticsRepository
+	AuditLogs  domain.AdminAuditLogRepository
 }
 
 func NewRepositories(db *sqlx.DB) *Repositories {
@@ -22,5 +23,6 @@ func NewRepositories(db *sqlx.DB) *Repositories {
 		Admins:     NewAdminRepository(db),
 		Artist:     NewArtistRepository(db),
 		Analytics:  NewAnalyticsRepository(db),
+		AuditLogs:  NewAdminAuditLogRepository(db),
 	}
 }

@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
@@ -34,9 +36,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := h.svc.Login(r.Context(), body.Email, body.Password)
 	if err != nil {
+		slog.Warn("admin login failed", "email", strings.TrimSpace(body.Email), "remote_addr", r.RemoteAddr)
 		respondError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
+	slog.Info("admin login succeeded", "email", strings.TrimSpace(body.Email), "remote_addr", r.RemoteAddr)
 	http.SetCookie(w, &http.Cookie{Name: "admin_session", Value: token, Path: "/", HttpOnly: true, Secure: h.secureCookie, SameSite: http.SameSiteStrictMode, MaxAge: h.maxAge})
 	respondOK(w, map[string]string{"status": "authenticated"})
 }
@@ -48,10 +52,13 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 // ─── Category ─────────────────────────────────────────────────────────────────
 
-type CategoryHandler struct{ svc *service.CategoryService }
+type CategoryHandler struct {
+	svc   *service.CategoryService
+	audit *service.AuditService
+}
 
-func NewCategoryHandler(svc *service.CategoryService) *CategoryHandler {
-	return &CategoryHandler{svc: svc}
+func NewCategoryHandler(svc *service.CategoryService, audit *service.AuditService) *CategoryHandler {
+	return &CategoryHandler{svc: svc, audit: audit}
 }
 
 func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +81,10 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to create category")
 		return
 	}
+	recordAdminAudit(r, h.audit, "category.create", "category", &created.ID, map[string]any{
+		"name": created.Name,
+		"slug": created.Slug,
+	})
 	respondCreated(w, created)
 }
 
@@ -94,6 +105,11 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to update category")
 		return
 	}
+	recordAdminAudit(r, h.audit, "category.update", "category", &updated.ID, map[string]any{
+		"name":       updated.Name,
+		"slug":       updated.Slug,
+		"sort_order": updated.SortOrder,
+	})
 	respondOK(w, updated)
 }
 
@@ -107,14 +123,20 @@ func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to delete category")
 		return
 	}
+	recordAdminAudit(r, h.audit, "category.delete", "category", &id, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
 
-type OrderHandler struct{ svc *service.OrderService }
+type OrderHandler struct {
+	svc   *service.OrderService
+	audit *service.AuditService
+}
 
-func NewOrderHandler(svc *service.OrderService) *OrderHandler { return &OrderHandler{svc: svc} }
+func NewOrderHandler(svc *service.OrderService, audit *service.AuditService) *OrderHandler {
+	return &OrderHandler{svc: svc, audit: audit}
+}
 
 func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var o domain.Order
@@ -166,10 +188,19 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
+	oldOrder, _ := h.svc.GetByID(r.Context(), id)
 	if err := h.svc.UpdateStatus(r.Context(), id, body.Status); err != nil {
 		respondServiceError(w, err, "failed to update order status")
 		return
 	}
+	metadata := map[string]any{
+		"new_status": body.Status,
+	}
+	if oldOrder != nil {
+		metadata["old_status"] = oldOrder.Status
+		metadata["artwork_id"] = oldOrder.ArtworkID
+	}
+	recordAdminAudit(r, h.audit, "order.status_update", "order", &id, metadata)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -184,15 +215,21 @@ func (h *OrderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to delete order")
 		return
 	}
+	recordAdminAudit(r, h.audit, "order.delete", "order", &id, nil)
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // ─── Artist ───────────────────────────────────────────────────────────────────
 
-type ArtistHandler struct{ svc *service.ArtistService }
+type ArtistHandler struct {
+	svc   *service.ArtistService
+	audit *service.AuditService
+}
 
-func NewArtistHandler(svc *service.ArtistService) *ArtistHandler { return &ArtistHandler{svc: svc} }
+func NewArtistHandler(svc *service.ArtistService, audit *service.AuditService) *ArtistHandler {
+	return &ArtistHandler{svc: svc, audit: audit}
+}
 
 func (h *ArtistHandler) Get(w http.ResponseWriter, r *http.Request) {
 	artist, err := h.svc.Get(r.Context())
@@ -227,6 +264,10 @@ func (h *ArtistHandler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to upload artist photo")
 		return
 	}
+	recordAdminAudit(r, h.audit, "artist.photo_upload", "artist", &updated.ID, map[string]any{
+		"slot":     slot,
+		"filename": header.Filename,
+	})
 
 	respondOK(w, updated)
 }
@@ -242,5 +283,6 @@ func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to update artist")
 		return
 	}
+	recordAdminAudit(r, h.audit, "artist.update", "artist", &updated.ID, nil)
 	respondOK(w, updated)
 }

@@ -67,3 +67,9 @@ type AnalyticsRepository interface {
 	Summary(ctx context.Context) (*AnalyticsSummary, error)
 	CleanupOldEvents(ctx context.Context, before time.Time) (int64, error)
 }
+
+// AdminAuditLogRepository defines DB operations for admin action history.
+type AdminAuditLogRepository interface {
+	Create(ctx context.Context, log *AdminAuditLog) error
+	GetRecent(ctx context.Context, limit int) ([]AdminAuditLog, error)
+}

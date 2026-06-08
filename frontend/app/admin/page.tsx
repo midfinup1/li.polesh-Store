@@ -13,6 +13,7 @@ import type {
   Category,
   Order,
   AnalyticsSummary,
+  AdminAuditLog,
 } from "@/types";
 import {
   ConfirmDeleteModal,
@@ -30,9 +31,10 @@ import {
   AdminArtworksSection,
   AdminCategoriesSection,
   AdminOrdersSection,
+  AdminAuditHistorySection,
 } from "@/components/admin/admin-sections";
 
-type AdminTab = "artist" | "categories" | "artworks" | "orders" | "analytics";
+type AdminTab = "artist" | "categories" | "artworks" | "orders" | "analytics" | "history";
 
 const blankArtist: Artist = {
   id: 0,
@@ -56,6 +58,7 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [artist, setArtist] = useState<Artist>(blankArtist);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
 
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -99,12 +102,14 @@ export default function AdminPage() {
         categoriesResponse,
         artistResponse,
         analyticsResponse,
+        auditLogsResponse,
       ] = await Promise.all([
         api.admin.artworks.list(),
         api.admin.orders.list(),
         api.categories.list(),
         api.artist.get(),
         api.admin.analytics.summary().catch(() => null),
+        api.admin.auditLogs.list().catch(() => []),
       ]);
 
       setArtworks(Array.isArray(worksResponse) ? worksResponse : []);
@@ -114,6 +119,7 @@ export default function AdminPage() {
       );
       setArtist(artistResponse ?? blankArtist);
       setAnalytics(analyticsResponse);
+      setAuditLogs(Array.isArray(auditLogsResponse) ? auditLogsResponse : []);
     } catch (err) {
       if (handleAuthError(err)) {
         return;
@@ -607,6 +613,12 @@ export default function AdminPage() {
         >
           Статистика
         </TabButton>
+        <TabButton
+          active={activeTab === "history"}
+          onClick={() => setActiveTab("history")}
+        >
+          История
+        </TabButton>
       </nav>
 
       {activeTab === "artist" && (
@@ -706,6 +718,10 @@ export default function AdminPage() {
           analytics={analytics}
           ordersCount={orders.length}
         />
+      )}
+
+      {activeTab === "history" && (
+        <AdminAuditHistorySection auditLogs={auditLogs} />
       )}
       {deleteTarget && (
         <ConfirmDeleteModal

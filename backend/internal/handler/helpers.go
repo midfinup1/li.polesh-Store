@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
+	"github.com/midfinup1/li.polesh-Store/backend/internal/middleware"
+	"github.com/midfinup1/li.polesh-Store/backend/internal/service"
 )
 
 func respondJSON(w http.ResponseWriter, status int, data any) {
@@ -40,5 +43,38 @@ func respondServiceError(w http.ResponseWriter, err error, fallback string) {
 		respondError(w, http.StatusConflict, err.Error())
 	default:
 		respondError(w, http.StatusInternalServerError, fallback)
+	}
+}
+
+func adminClaimsFromRequest(r *http.Request) (*service.TokenClaims, bool) {
+	claims, ok := r.Context().Value(middleware.AdminKey).(*service.TokenClaims)
+	return claims, ok && claims != nil
+}
+
+func recordAdminAudit(
+	r *http.Request,
+	audit *service.AuditService,
+	action string,
+	entityType string,
+	entityID *int64,
+	metadata map[string]any,
+) {
+	if audit == nil {
+		return
+	}
+
+	claims, ok := adminClaimsFromRequest(r)
+	if !ok {
+		return
+	}
+
+	if err := audit.Record(r.Context(), claims.AdminID, claims.Email, action, entityType, entityID, metadata); err != nil {
+		slog.Error(
+			"failed to record admin audit log",
+			"admin_id", claims.AdminID,
+			"action", action,
+			"entity_type", entityType,
+			"error", err,
+		)
 	}
 }

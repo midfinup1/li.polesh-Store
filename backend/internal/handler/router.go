@@ -39,12 +39,13 @@ func NewRouter(d Deps) http.Handler {
 		r.Handle("/uploads/*", uploads)
 	}
 
-	artworks := NewArtworkHandler(d.Services.Artworks)
-	categories := NewCategoryHandler(d.Services.Categories)
-	orders := NewOrderHandler(d.Services.Orders)
+	artworks := NewArtworkHandler(d.Services.Artworks, d.Services.Audit)
+	categories := NewCategoryHandler(d.Services.Categories, d.Services.Audit)
+	orders := NewOrderHandler(d.Services.Orders, d.Services.Audit)
 	auth := NewAuthHandler(d.Services.Auth, d.Config.App.Env == "production", int(d.Config.JWT.ExpiresIn.Seconds()))
-	artist := NewArtistHandler(d.Services.Artist)
+	artist := NewArtistHandler(d.Services.Artist, d.Services.Audit)
 	analytics := NewAnalyticsHandler(d.Services.Analytics)
+	audit := NewAuditHandler(d.Services.Audit)
 	required := middleware.NewAuth(d.Services.Auth)
 
 	loginLimiter := middleware.RateLimit(10, time.Minute)
@@ -102,6 +103,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/admin/artist", artist.Update)
 			r.Post("/admin/artist/photo/{slot}", artist.UploadPhoto)
 			r.Get("/admin/analytics", analytics.Summary)
+			r.Get("/admin/audit-logs", audit.List)
 		})
 	})
 

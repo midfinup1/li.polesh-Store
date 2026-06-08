@@ -32,9 +32,18 @@ func main() {
 		logLevel = slog.LevelDebug
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
+	var logHandler slog.Handler
+	if cfg.App.Env == "production" {
+		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: logLevel,
+		})
+	} else {
+		logHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: logLevel,
+		})
+	}
+
+	logger := slog.New(logHandler)
 	slog.SetDefault(logger)
 
 	db, err := repository.NewDB(cfg.DB.URL)

@@ -47,6 +47,7 @@ func (s *OrderService) Create(ctx context.Context, o *domain.Order) (*domain.Ord
 		return nil, err
 	}
 	order.Artwork = artwork
+	slog.Info("order created", "order_id", order.ID, "artwork_id", order.ArtworkID)
 	go func(order domain.Order) {
 		notificationCtx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 		defer cancel()
@@ -61,7 +62,11 @@ func (s *OrderService) UpdateStatus(ctx context.Context, id int64, status domain
 	if status != domain.OrderStatusNew && status != domain.OrderStatusContacted && status != domain.OrderStatusCompleted && status != domain.OrderStatusCancelled {
 		return fmt.Errorf("%w: invalid order status", domain.ErrValidation)
 	}
-	return s.orders.UpdateStatus(ctx, id, status)
+	if err := s.orders.UpdateStatus(ctx, id, status); err != nil {
+		return err
+	}
+	slog.Info("order status updated", "order_id", id, "status", status)
+	return nil
 }
 func (s *OrderService) sendTelegramOrderNotification(ctx context.Context, o *domain.Order) error {
 	if s.notifier == nil {
@@ -90,5 +95,9 @@ func (s *OrderService) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("%w: invalid order id", domain.ErrValidation)
 	}
 
-	return s.orders.Delete(ctx, id)
+	if err := s.orders.Delete(ctx, id); err != nil {
+		return err
+	}
+	slog.Info("order deleted", "order_id", id)
+	return nil
 }

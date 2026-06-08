@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // ─── Artwork ──────────────────────────────────────────────────────────────────
 
@@ -159,4 +162,17 @@ type AnalyticsSummary struct {
 	TopArtworks    []AnalyticsArtworkMetric `json:"top_artworks"`
 	TopPages       []AnalyticsMetric        `json:"top_pages"`
 	CategoryClicks []AnalyticsMetric        `json:"category_clicks"`
+}
+
+// ─── Admin Audit Logs ───────────────────────────────────────────────────────
+
+type AdminAuditLog struct {
+	ID         int64           `db:"id" json:"id"`
+	AdminID    *int64          `db:"admin_id" json:"admin_id"`
+	AdminEmail string          `db:"admin_email" json:"admin_email"`
+	Action     string          `db:"action" json:"action"`
+	EntityType string          `db:"entity_type" json:"entity_type"`
+	EntityID   *int64          `db:"entity_id" json:"entity_id"`
+	Metadata   json.RawMessage `db:"metadata" json:"metadata"`
+	CreatedAt  time.Time       `db:"created_at" json:"created_at"`
 }

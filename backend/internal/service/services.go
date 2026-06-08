@@ -14,6 +14,7 @@ type Services struct {
 	Artist     *ArtistService
 	Storage    *StorageService
 	Analytics  *AnalyticsService
+	Audit      *AuditService
 }
 
 type Deps struct {
@@ -39,5 +40,6 @@ func NewServices(d Deps) *Services {
 		Artist:     NewArtistService(d.Repos.Artist, storage),
 		Storage:    storage,
 		Analytics:  NewAnalyticsService(d.Repos.Analytics),
+		Audit:      NewAuditService(d.Repos.AuditLogs),
 	}
 }

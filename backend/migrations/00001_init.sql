@@ -180,6 +180,29 @@ CREATE INDEX IF NOT EXISTS idx_analytics_events_category_id
 CREATE INDEX IF NOT EXISTS idx_analytics_events_event_type
     ON analytics_events(event_type);
 
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id          BIGSERIAL PRIMARY KEY,
+    admin_id    BIGINT REFERENCES admins(id) ON DELETE SET NULL,
+    admin_email TEXT NOT NULL DEFAULT '',
+    action      TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id   BIGINT NULL,
+    metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_created_at
+    ON admin_audit_logs(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_admin_id
+    ON admin_audit_logs(admin_id);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_entity
+    ON admin_audit_logs(entity_type, entity_id);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_action
+    ON admin_audit_logs(action);
+
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
@@ -237,6 +260,7 @@ DROP TRIGGER IF EXISTS trg_admins_updated_at ON admins;
 
 DROP FUNCTION IF EXISTS set_updated_at();
 
+DROP TABLE IF EXISTS admin_audit_logs;
 DROP TABLE IF EXISTS analytics_events;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS artwork_images;

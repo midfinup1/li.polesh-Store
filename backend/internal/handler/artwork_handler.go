@@ -11,11 +11,12 @@ import (
 )
 
 type ArtworkHandler struct {
-	svc *service.ArtworkService
+	svc   *service.ArtworkService
+	audit *service.AuditService
 }
 
-func NewArtworkHandler(svc *service.ArtworkService) *ArtworkHandler {
-	return &ArtworkHandler{svc: svc}
+func NewArtworkHandler(svc *service.ArtworkService, audit *service.AuditService) *ArtworkHandler {
+	return &ArtworkHandler{svc: svc, audit: audit}
 }
 
 func (h *ArtworkHandler) ListAdmin(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +75,11 @@ func (h *ArtworkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to create artwork")
 		return
 	}
+	recordAdminAudit(r, h.audit, "artwork.create", "artwork", &created.ID, map[string]any{
+		"title":       created.Title,
+		"status":      created.Status,
+		"category_id": created.CategoryID,
+	})
 	respondCreated(w, created)
 }
 
@@ -96,6 +102,11 @@ func (h *ArtworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to update artwork")
 		return
 	}
+	recordAdminAudit(r, h.audit, "artwork.update", "artwork", &updated.ID, map[string]any{
+		"title":       updated.Title,
+		"status":      updated.Status,
+		"category_id": updated.CategoryID,
+	})
 	respondOK(w, updated)
 }
 
@@ -110,6 +121,7 @@ func (h *ArtworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to delete artwork")
 		return
 	}
+	recordAdminAudit(r, h.audit, "artwork.delete", "artwork", &id, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -136,6 +148,10 @@ func (h *ArtworkHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to upload image")
 		return
 	}
+	recordAdminAudit(r, h.audit, "image.upload", "artwork_image", &img.ID, map[string]any{
+		"artwork_id": id,
+		"filename":   header.Filename,
+	})
 	respondCreated(w, img)
 }
 
@@ -150,6 +166,7 @@ func (h *ArtworkHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to delete image")
 		return
 	}
+	recordAdminAudit(r, h.audit, "image.delete", "artwork_image", &imageID, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -179,6 +196,9 @@ func (h *ArtworkHandler) UpdateImageAltText(w http.ResponseWriter, r *http.Reque
 		respondServiceError(w, err, "failed to update image alt text")
 		return
 	}
+	recordAdminAudit(r, h.audit, "image.alt_update", "artwork_image", &imageID, map[string]any{
+		"artwork_id": artworkID,
+	})
 
 	respondOK(w, image)
 }
@@ -202,5 +222,8 @@ func (h *ArtworkHandler) ReorderImages(w http.ResponseWriter, r *http.Request) {
 		respondServiceError(w, err, "failed to reorder images")
 		return
 	}
+	recordAdminAudit(r, h.audit, "image.reorder", "artwork", &id, map[string]any{
+		"image_ids": body.ImageIDs,
+	})
 	w.WriteHeader(http.StatusNoContent)
 }

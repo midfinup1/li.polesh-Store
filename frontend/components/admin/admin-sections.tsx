@@ -3,6 +3,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import type {
   AnalyticsSummary,
+  AdminAuditLog,
   Artist,
   Artwork,
   ArtworkImage,
@@ -565,4 +566,113 @@ export function AdminAnalyticsSection({
   ordersCount: number;
 }) {
   return <AnalyticsAdminSection analytics={analytics} ordersCount={ordersCount} />;
+}
+
+
+const auditActionLabel: Record<string, string> = {
+  "artwork.create": "Создание работы",
+  "artwork.update": "Изменение работы",
+  "artwork.delete": "Удаление работы",
+  "category.create": "Создание категории",
+  "category.update": "Изменение категории",
+  "category.delete": "Удаление категории",
+  "order.status_update": "Изменение статуса заявки",
+  "order.delete": "Удаление заявки",
+  "image.upload": "Загрузка изображения",
+  "image.delete": "Удаление изображения",
+  "image.alt_update": "Изменение alt-текста",
+  "image.reorder": "Сортировка изображений",
+  "artist.update": "Изменение профиля",
+  "artist.photo_upload": "Загрузка фото профиля",
+};
+
+function formatAuditMetadata(metadata: Record<string, unknown> | null | undefined) {
+  if (!metadata || Object.keys(metadata).length === 0) {
+    return "";
+  }
+
+  return Object.entries(metadata)
+    .map(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
+
+      if (Array.isArray(value)) {
+        return `${key}: ${value.join(", ")}`;
+      }
+
+      if (typeof value === "object") {
+        return `${key}: ${JSON.stringify(value)}`;
+      }
+
+      return `${key}: ${String(value)}`;
+    })
+    .filter(Boolean)
+    .join(" · ");
+}
+
+export function AdminAuditHistorySection({
+  auditLogs,
+}: {
+  auditLogs: AdminAuditLog[];
+}) {
+  return (
+    <section className="mt-6 rounded-[8px] border border-border p-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
+            История действий
+          </h2>
+          <p className="mt-2 text-[15px] font-medium leading-[150%] text-ink-light">
+            Здесь сохраняются действия администраторов: работы, заявки, изображения, категории и профиль.
+          </p>
+        </div>
+        <p className="text-[14px] font-medium leading-[150%] text-ink-light">
+          Последние {auditLogs.length} записей
+        </p>
+      </div>
+
+      {auditLogs.length === 0 ? (
+        <p className="mt-5 rounded-[8px] bg-paper-dark p-4 text-[15px] font-medium leading-[150%] text-ink-light">
+          История пока пустая.
+        </p>
+      ) : (
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[860px] border-collapse text-left text-[14px] font-medium leading-[150%]">
+            <thead>
+              <tr className="border-b border-border text-ink-light">
+                <th className="py-3 pr-4">Дата</th>
+                <th className="py-3 pr-4">Администратор</th>
+                <th className="py-3 pr-4">Действие</th>
+                <th className="py-3 pr-4">Объект</th>
+                <th className="py-3 pr-4">Детали</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditLogs.map((log) => (
+                <tr key={log.id} className="border-b border-border/70 align-top">
+                  <td className="py-3 pr-4 text-ink-light">
+                    {new Date(log.created_at).toLocaleString("ru-RU")}
+                  </td>
+                  <td className="py-3 pr-4 text-ink">
+                    {log.admin_email || `ID ${log.admin_id ?? "—"}`}
+                  </td>
+                  <td className="py-3 pr-4 text-ink">
+                    {auditActionLabel[log.action] || log.action}
+                  </td>
+                  <td className="py-3 pr-4 text-ink-light">
+                    {log.entity_type}
+                    {log.entity_id ? ` #${log.entity_id}` : ""}
+                  </td>
+                  <td className="py-3 pr-4 text-ink-light">
+                    {formatAuditMetadata(log.metadata)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
 }

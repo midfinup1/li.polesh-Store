@@ -1,7 +1,14 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       - frontend
       - backend
@@ -21,6 +28,7 @@ services:
   frontend:
     image: ghcr.io/midfinup1/li-polesh-store-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env.prod
     environment:
@@ -42,6 +50,7 @@ services:
   migrate:
     image: ghcr.io/midfinup1/li-polesh-store-backend:${IMAGE_TAG:-latest}
     restart: "no"
+    logging: *default-logging
     command: ["/app/migrate"]
     env_file:
       - .env.prod
@@ -54,6 +63,7 @@ services:
   backend:
     image: ghcr.io/midfinup1/li-polesh-store-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env.prod
     depends_on:
@@ -71,6 +81,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env.prod
     volumes:

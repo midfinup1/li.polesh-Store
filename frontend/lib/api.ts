@@ -5,6 +5,7 @@ import type {
   CreateOrderRequest,
   Order,
   AnalyticsSummary,
+  AdminAuditLog,
 } from "@/types";
 
 export class ApiError extends Error {
@@ -235,6 +236,11 @@ export const api = {
 
     analytics: {
       summary: () => request<AnalyticsSummary>("/admin/analytics"),
+    },
+
+    auditLogs: {
+      list: (limit = 100) =>
+        request<AdminAuditLog[]>(`/admin/audit-logs${buildQuery({ limit })}`),
     },
 
     artist: {

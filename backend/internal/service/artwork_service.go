@@ -84,7 +84,12 @@ func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain
 		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
 
-	return s.artworks.Create(ctx, a)
+	created, err := s.artworks.Create(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("artwork created", "artwork_id", created.ID, "title", created.Title, "status", created.Status)
+	return created, nil
 }
 
 func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain.Artwork, error) {
@@ -109,7 +114,12 @@ func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain
 		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
 
-	return s.artworks.Update(ctx, a)
+	updated, err := s.artworks.Update(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("artwork updated", "artwork_id", updated.ID, "title", updated.Title, "status", updated.Status)
+	return updated, nil
 }
 
 // Delete removes an artwork only when there are no active requests for it.
@@ -142,6 +152,7 @@ func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 	if err := s.artworks.Delete(ctx, id); err != nil {
 		return err
 	}
+	slog.Info("artwork deleted", "artwork_id", id)
 
 	// Best-effort storage cleanup. The authoritative state (the DB) is already
 	// consistent; a failed object delete is logged but must not fail the request.
@@ -210,7 +221,12 @@ func (s *ArtworkService) UploadImage(
 		AltText:      altText,
 	}
 
-	return s.artworks.AddImage(ctx, img)
+	created, err := s.artworks.AddImage(ctx, img)
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("artwork image uploaded", "artwork_id", artworkID, "image_id", created.ID)
+	return created, nil
 }
 
 func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
@@ -253,6 +269,7 @@ func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
 		}
 	}
 
+	slog.Info("artwork image deleted", "image_id", imageID, "artwork_id", image.ArtworkID)
 	return nil
 }
 

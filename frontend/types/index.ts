@@ -98,3 +98,15 @@ export interface AnalyticsSummary {
   top_pages: AnalyticsMetric[];
   category_clicks: AnalyticsMetric[];
 }
+
+
+export interface AdminAuditLog {
+  id: number;
+  admin_id: number | null;
+  admin_email: string;
+  action: string;
+  entity_type: string;
+  entity_id: number | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}

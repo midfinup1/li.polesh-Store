@@ -52,6 +52,7 @@ export default async function AboutPage() {
               <h2 className="text-[18px] font-semibold leading-[120%] tracking-[-0.02em] text-ink">
                 <LocalizedText ru="Медиум" en="Medium" />
               </h2>
+
               <p className="mt-4 text-[16px] font-medium leading-[150%] text-ink">
                 <LocalizedText
                   ru="масляная и акварельная живопись, графика, скульптура, фотография"
@@ -67,7 +68,13 @@ export default async function AboutPage() {
 
               <div className="mt-6 space-y-[22px] text-[16px] font-medium leading-[150%]">
                 <div>
-                  <p className="text-[#888888] dark:text-ink-light">Telegram канал</p>
+                  <LocalizedText
+                    as="p"
+                    className="text-[#888888] dark:text-ink-light"
+                    ru="Telegram канал"
+                    en="Telegram channel"
+                  />
+
                   <a
                     href="https://t.me/li_polesh_sklad"
                     target="_blank"
@@ -79,7 +86,13 @@ export default async function AboutPage() {
                 </div>
 
                 <div>
-                  <p className="text-[#888888] dark:text-ink-light">Instagram</p>
+                  <LocalizedText
+                    as="p"
+                    className="text-[#888888] dark:text-ink-light"
+                    ru="Instagram"
+                    en="Instagram"
+                  />
+
                   <a
                     href="https://instagram.com/li.polesh"
                     target="_blank"

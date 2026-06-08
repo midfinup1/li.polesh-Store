@@ -1,31 +1,25 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"net/mail"
 	"strings"
 	"time"
 
-	"github.com/midfinup1/li.polesh-Store/backend/config"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/notify"
 )
 
 type OrderService struct {
-	orders     domain.OrderRepository
-	artworks   domain.ArtworkRepository
-	mailCfg    config.MailConfig
-	notifier   *notify.TelegramNotifier
-	httpClient *http.Client
+	orders   domain.OrderRepository
+	artworks domain.ArtworkRepository
+	notifier *notify.TelegramNotifier
 }
 
-func NewOrderService(orders domain.OrderRepository, artworks domain.ArtworkRepository, mailCfg config.MailConfig, notifier *notify.TelegramNotifier) *OrderService {
-	return &OrderService{orders: orders, artworks: artworks, mailCfg: mailCfg, notifier: notifier, httpClient: &http.Client{Timeout: 10 * time.Second}}
+func NewOrderService(orders domain.OrderRepository, artworks domain.ArtworkRepository, notifier *notify.TelegramNotifier) *OrderService {
+	return &OrderService{orders: orders, artworks: artworks, notifier: notifier}
 }
 func (s *OrderService) List(ctx context.Context, status *domain.OrderStatus) ([]domain.Order, error) {
 	return s.orders.GetAll(ctx, status)
@@ -57,10 +51,6 @@ func (s *OrderService) Create(ctx context.Context, o *domain.Order) (*domain.Ord
 		notificationCtx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 		defer cancel()
 
-		if err := s.sendOrderNotification(notificationCtx, &order); err != nil {
-			slog.Error("failed to send order email notification", "order_id", order.ID, "error", err)
-		}
-
 		if err := s.sendTelegramOrderNotification(notificationCtx, &order); err != nil {
 			slog.Error("failed to send order telegram notification", "order_id", order.ID, "error", err)
 		}
@@ -73,40 +63,6 @@ func (s *OrderService) UpdateStatus(ctx context.Context, id int64, status domain
 	}
 	return s.orders.UpdateStatus(ctx, id, status)
 }
-func (s *OrderService) sendOrderNotification(ctx context.Context, o *domain.Order) error {
-	if s.mailCfg.ResendKey == "" || s.mailCfg.From == "" || s.mailCfg.To == "" {
-		slog.Warn("mail configuration is incomplete, skipping order notification")
-		return nil
-	}
-	price := "по запросу"
-	if o.Artwork != nil && o.Artwork.Price != nil {
-		price = fmt.Sprintf("%d ₽", *o.Artwork.Price)
-	}
-	title := "работа"
-	if o.Artwork != nil {
-		title = o.Artwork.Title
-	}
-	payload, err := json.Marshal(map[string]any{"from": s.mailCfg.From, "to": []string{s.mailCfg.To}, "subject": "Новый заказ: " + title, "text": fmt.Sprintf("Новый запрос на покупку работы.\n\nРабота: %s\nЦена: %s\n\nПокупатель: %s\nEmail: %s\nТелефон: %s\n\nСообщение:\n%s\n", title, price, o.Name, o.Email, o.Phone, o.Message)})
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(payload))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+s.mailCfg.ResendKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("resend API error: %s", resp.Status)
-	}
-	return nil
-}
-
 func (s *OrderService) sendTelegramOrderNotification(ctx context.Context, o *domain.Order) error {
 	if s.notifier == nil {
 		return nil

@@ -152,23 +152,19 @@ validate_env() {
   [[ -n "${ADMIN_PASSWORD:-}" ]] || fail "ADMIN_PASSWORD пустой в infra/.env.prod"
   [[ "${#ADMIN_PASSWORD}" -ge 12 ]] || fail "ADMIN_PASSWORD должен быть минимум 12 символов"
 
-  [[ -n "${STORAGE_TYPE:-}" ]] || fail "STORAGE_TYPE пустой в infra/.env.prod"
+  [[ -n "${S3_ENDPOINT:-}" ]] || fail "S3_ENDPOINT пустой"
+  [[ -n "${S3_REGION:-}" ]] || fail "S3_REGION пустой"
+  [[ -n "${S3_BUCKET:-}" ]] || fail "S3_BUCKET пустой"
+  [[ -n "${S3_ACCESS_KEY:-}" ]] || fail "S3_ACCESS_KEY пустой"
+  [[ -n "${S3_SECRET_KEY:-}" ]] || fail "S3_SECRET_KEY пустой"
+  [[ -n "${S3_PUBLIC_URL:-}" ]] || fail "S3_PUBLIC_URL пустой"
 
-  if [[ "${STORAGE_TYPE}" == "s3" ]]; then
-    [[ -n "${S3_ENDPOINT:-}" ]] || fail "S3_ENDPOINT пустой"
-    [[ -n "${S3_REGION:-}" ]] || fail "S3_REGION пустой"
-    [[ -n "${S3_BUCKET:-}" ]] || fail "S3_BUCKET пустой"
-    [[ -n "${S3_ACCESS_KEY:-}" ]] || fail "S3_ACCESS_KEY пустой"
-    [[ -n "${S3_SECRET_KEY:-}" ]] || fail "S3_SECRET_KEY пустой"
-    [[ -n "${S3_PUBLIC_URL:-}" ]] || fail "S3_PUBLIC_URL пустой"
+  if [[ "${S3_ENDPOINT}" == http://* || "${S3_ENDPOINT}" == https://* ]]; then
+    fail "S3_ENDPOINT должен быть без схемы. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
+  fi
 
-    if [[ "${S3_ENDPOINT}" == http://* || "${S3_ENDPOINT}" == https://* ]]; then
-      fail "S3_ENDPOINT должен быть без схемы. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
-    fi
-
-    if [[ "${S3_ENDPOINT}" == */* ]]; then
-      fail "S3_ENDPOINT должен быть без пути и без bucket. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
-    fi
+  if [[ "${S3_ENDPOINT}" == */* ]]; then
+    fail "S3_ENDPOINT должен быть без пути и без bucket. Правильно: S3_ENDPOINT=s3.twcstorage.ru"
   fi
 
   if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then

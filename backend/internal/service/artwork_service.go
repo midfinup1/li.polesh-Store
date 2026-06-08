@@ -125,9 +125,19 @@ func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 }
 
 func (s *ArtworkService) UploadImage(ctx context.Context, artworkID int64, file multipart.File, header *multipart.FileHeader) (*domain.ArtworkImage, error) {
+	artwork, err := s.artworks.GetByID(ctx, artworkID)
+	if err != nil {
+		return nil, err
+	}
+
 	uploaded, err := s.storage.UploadArtworkImage(ctx, artworkID, file, header)
 	if err != nil {
 		return nil, err
+	}
+
+	altText := strings.TrimSpace(artwork.Title)
+	if altText == "" {
+		altText = "Работа художницы"
 	}
 
 	img := &domain.ArtworkImage{
@@ -136,7 +146,7 @@ func (s *ArtworkService) UploadImage(ctx context.Context, artworkID int64, file 
 		ThumbURL:     uploaded.ThumbURL,
 		ThumbWebPURL: uploaded.ThumbWebPURL,
 		ThumbAVIFURL: uploaded.ThumbAVIFURL,
-		AltText:      "", // descriptive alt text is set later via the admin, not the filename
+		AltText:      altText,
 	}
 	return s.artworks.AddImage(ctx, img)
 }

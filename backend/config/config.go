@@ -14,7 +14,6 @@ type Config struct {
 	DB       DBConfig
 	JWT      JWTConfig
 	S3       S3Config
-	Mail     MailConfig
 	Telegram TelegramConfig
 }
 
@@ -41,12 +40,6 @@ type S3Config struct {
 	SecretKey string
 	PublicURL string
 	UploadDir string
-}
-
-type MailConfig struct {
-	From      string
-	To        string
-	ResendKey string
 }
 
 type TelegramConfig struct {
@@ -77,7 +70,6 @@ func Load() *Config {
 			SecretKey: getEnv("S3_SECRET_KEY", ""), PublicURL: strings.TrimRight(getEnv("S3_PUBLIC_URL", ""), "/"),
 			UploadDir: uploadDir,
 		},
-		Mail: MailConfig{From: getEnv("MAIL_FROM", ""), To: getEnv("MAIL_TO", ""), ResendKey: getEnv("RESEND_API_KEY", "")},
 		Telegram: TelegramConfig{
 			BotToken:             getEnv("TELEGRAM_BOT_TOKEN", ""),
 			ChatID:               getEnv("TELEGRAM_CHAT_ID", ""),

@@ -119,26 +119,34 @@ func (r *artworkRepository) Create(ctx context.Context, artwork *domain.Artwork)
 		`
 			INSERT INTO artworks (
 				title,
+				title_en,
 				description,
+				description_en,
 				price,
 				status,
 				category_id,
 				year,
 				size,
+				size_en,
 				materials,
+				materials_en,
 				sort_order
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 			RETURNING id
 		`,
 		artwork.Title,
+		artwork.TitleEN,
 		artwork.Description,
+		artwork.DescriptionEN,
 		artwork.Price,
 		artwork.Status,
 		artwork.CategoryID,
 		artwork.Year,
 		artwork.Size,
+		artwork.SizeEN,
 		artwork.Materials,
+		artwork.MaterialsEN,
 		artwork.SortOrder,
 	).Scan(&id)
 	if err != nil {

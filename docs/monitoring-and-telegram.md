@@ -35,7 +35,7 @@ Method: GET
 Expected status: 200
 Interval: 1-5 minutes
 Timeout: 10 seconds
-Notification channel: Telegram or email
+Notification channel: Telegram
 ```
 
 `/api/v1/health` checks that the backend process is alive.

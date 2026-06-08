@@ -148,7 +148,7 @@ http://localhost:3000/admin/login
 ## Что осталось
 
 - внешний uptime-monitoring;
-- Telegram/email-уведомления о новых заявках;
+- Telegram-уведомления о новых заявках;
 - Playwright e2e job в CI;
 - healthcheck для backend/frontend в production compose;
 - SSH hardening;

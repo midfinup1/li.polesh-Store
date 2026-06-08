@@ -32,7 +32,7 @@ func NewServices(d Deps) *Services {
 	return &Services{
 		Artworks:   NewArtworkService(d.Repos.Artworks, d.Repos.Categories, storage),
 		Categories: NewCategoryService(d.Repos.Categories),
-		Orders:     NewOrderService(d.Repos.Orders, d.Repos.Artworks, d.Config.Mail, telegramNotifier),
+		Orders:     NewOrderService(d.Repos.Orders, d.Repos.Artworks, telegramNotifier),
 		Auth:       NewAuthService(d.Repos.Admins, d.Config.JWT),
 		Artist:     NewArtistService(d.Repos.Artist, storage),
 		Storage:    storage,

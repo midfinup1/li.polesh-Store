@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { ArtworkImageCarousel } from "@/components/artwork-image-carousel";
 import { ArtworkReservePanel } from "@/components/artwork-reserve-panel";
 import { LocalizedText } from "@/components/localized-text";
+import { LocalizedValue } from "@/components/localized-value";
 import { api } from "@/lib/api";
+import { absoluteUrl, getImageUrl } from "@/lib/metadata";
 
 export const revalidate = 60;
 
@@ -11,16 +13,6 @@ type ArtworkPageProps = {
     id: string;
   };
 };
-
-function getImageUrl(image: any) {
-  return (
-    image?.original_url ||
-    image?.thumb_avif_url ||
-    image?.thumb_webp_url ||
-    image?.thumb_url ||
-    ""
-  );
-}
 
 function formatPrice(price: number | null | undefined) {
   if (price === null || price === undefined) {
@@ -35,7 +27,8 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
 
   if (!Number.isFinite(id)) {
     return {
-      title: "Работа не найдена | lipolesh.art",
+      title: "Работа не найдена",
+      description: "Работа не найдена",
     };
   }
 
@@ -43,20 +36,52 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
 
   if (!artwork) {
     return {
-      title: "Работа не найдена | lipolesh.art",
+      title: "Работа не найдена",
+      description: "Работа не найдена",
     };
   }
 
   const cover = artwork.images?.[0];
   const imageUrl = getImageUrl(cover);
+  const absoluteImageUrl = imageUrl
+    ? absoluteUrl(imageUrl)
+    : absoluteUrl("/favicon.png");
+
+  const title = artwork.title || "Работа";
+  const description =
+    artwork.description ||
+    [
+      artwork.size,
+      artwork.materials,
+      artwork.year ? `${artwork.year} г.` : null,
+    ]
+      .filter(Boolean)
+      .join(", ") ||
+    "Работа художницы Елизаветы Полещенко";
 
   return {
-    title: `${artwork.title} | lipolesh.art`,
-    description: artwork.description || "Работа художницы",
+    title,
+    description,
     openGraph: {
-      title: artwork.title,
-      description: artwork.description || "Работа художницы",
-      images: imageUrl ? [imageUrl] : [],
+      type: "article",
+      siteName: "lipolesh.art",
+      title,
+      description,
+      url: absoluteUrl(`/artwork/${artwork.id}`),
+      images: [
+        {
+          url: absoluteImageUrl,
+          width: 1200,
+          height: 1600,
+          alt: cover?.alt_text || artwork.title || "Работа художницы",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [absoluteImageUrl],
     },
   };
 }
@@ -79,9 +104,16 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
   const isSold = artwork.status === "sold";
   const isUnavailable = artwork.status === "sold" || artwork.status === "hidden";
 
-  const details = [
+  const detailsRu = [
     artwork.materials,
     artwork.year ? `${artwork.year} г.` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const detailsEn = [
+    artwork.materials_en || artwork.materials,
+    artwork.year ? `${artwork.year}` : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -94,19 +126,34 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
         <aside className="pt-0">
           <div className="flex max-w-[515px] flex-col">
             <h1 className="text-[32px] font-semibold leading-[120%] text-ink">
-              {artwork.title}
+              <LocalizedValue
+                ru={artwork.title}
+                en={artwork.title_en}
+                fallbackRu="Работа"
+                fallbackEn="Artwork"
+              />
             </h1>
 
             <div className="mt-6 space-y-2">
-              {artwork.size && (
+              {(artwork.size || artwork.size_en) && (
                 <p className="text-[16px] font-normal leading-[150%] text-ink-light">
-                  {artwork.size}
+                  <LocalizedValue
+                    ru={artwork.size}
+                    en={artwork.size_en}
+                    fallbackRu={artwork.size}
+                    fallbackEn={artwork.size}
+                  />
                 </p>
               )}
 
-              {details && (
+              {(detailsRu || detailsEn) && (
                 <p className="text-[16px] font-normal leading-[150%] text-ink-light">
-                  {details}
+                  <LocalizedValue
+                    ru={detailsRu}
+                    en={detailsEn}
+                    fallbackRu={detailsRu}
+                    fallbackEn={detailsRu}
+                  />
                 </p>
               )}
             </div>
@@ -137,9 +184,19 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
               <ArtworkReservePanel
                 artworkId={artwork.id}
                 disabled={isUnavailable}
-                comment={artwork.description}
               />
             </div>
+
+            {(artwork.description || artwork.description_en) && (
+              <p className="mt-8 text-[16px] font-medium leading-[150%] text-ink-light">
+                <LocalizedValue
+                  ru={artwork.description}
+                  en={artwork.description_en}
+                  fallbackRu={artwork.description}
+                  fallbackEn={artwork.description}
+                />
+              </p>
+            )}
           </div>
         </aside>
       </section>

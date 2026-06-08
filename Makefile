@@ -8,6 +8,10 @@ init:
 	cd backend && go mod tidy
 	cd frontend && npm install
 
+check:
+	cd backend && go mod tidy
+	cd frontend && npm install
+
 up:
 	$(COMPOSE) up --build -d
 

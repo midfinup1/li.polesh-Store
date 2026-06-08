@@ -5,7 +5,6 @@ import { FormEvent, useMemo, useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 import { api } from "@/lib/api";
 import { useSiteSettings } from "@/lib/site-settings";
-import type { Order } from "@/types";
 
 type ArtworkReservePanelProps = {
   artworkId: number;
@@ -28,7 +27,7 @@ export function ArtworkReservePanel({
 
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useState<SubmitState>("idle");
-  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const isSubmitDisabled = useMemo(
@@ -43,7 +42,7 @@ export function ArtworkReservePanel({
 
     setIsOpen(true);
     setState("idle");
-    setCreatedOrder(null);
+    setCreatedOrderId(null);
     setPrivacyAccepted(false);
   }
 
@@ -85,7 +84,11 @@ export function ArtworkReservePanel({
         message,
       });
 
-      setCreatedOrder(order);
+      setCreatedOrderId(
+        order && typeof order === "object" && "id" in order
+          ? Number(order.id)
+          : null,
+      );
       setState("success");
       form.reset();
       setPrivacyAccepted(false);
@@ -166,12 +169,16 @@ export function ArtworkReservePanel({
 
                 <p className="mt-3 text-[16px] font-medium leading-[150%] text-ink-light">
                   <LocalizedText
-                    ru={`Номер заявки: ${
-                      createdOrder?.id ?? ""
-                    }. Художница свяжется с вами в ближайшее время.`}
-                    en={`Request number: ${
-                      createdOrder?.id ?? ""
-                    }. The artist will contact you soon.`}
+                    ru={
+                      createdOrderId
+                        ? `Номер заявки: ${createdOrderId}. Художница свяжется с вами в ближайшее время.`
+                        : "Художница свяжется с вами в ближайшее время."
+                    }
+                    en={
+                      createdOrderId
+                        ? `Request number: ${createdOrderId}. The artist will contact you soon.`
+                        : "The artist will contact you soon."
+                    }
                   />
                 </p>
 

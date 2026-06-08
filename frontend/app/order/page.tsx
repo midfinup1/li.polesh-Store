@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LocalizedText } from "@/components/localized-text";
+import { LocalizedValue } from "@/components/localized-value";
 import { absoluteUrl } from "@/lib/metadata";
 
 export const metadata: Metadata = {
@@ -31,11 +32,36 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 const priceRows = [
-  ["18×24 см", "15 000 – 25 000 ₽"],
-  ["30×40 см", "30 000 – 40 000 ₽"],
-  ["40×50 см", "43 000 – 53 000 ₽"],
-  ["50×70 см", "55 000 – 65 000 ₽"],
-  ["60×80 см", "70 000 – 80 000 ₽"],
+  {
+    formatRu: "18×24 см",
+    formatEn: "18×24 cm",
+    priceRu: "15 000 – 25 000 ₽",
+    priceEn: "15,000 – 25,000 RUB",
+  },
+  {
+    formatRu: "30×40 см",
+    formatEn: "30×40 cm",
+    priceRu: "30 000 – 40 000 ₽",
+    priceEn: "30,000 – 40,000 RUB",
+  },
+  {
+    formatRu: "40×50 см",
+    formatEn: "40×50 cm",
+    priceRu: "43 000 – 53 000 ₽",
+    priceEn: "43,000 – 53,000 RUB",
+  },
+  {
+    formatRu: "50×70 см",
+    formatEn: "50×70 cm",
+    priceRu: "55 000 – 65 000 ₽",
+    priceEn: "55,000 – 65,000 RUB",
+  },
+  {
+    formatRu: "60×80 см",
+    formatEn: "60×80 cm",
+    priceRu: "70 000 – 80 000 ₽",
+    priceEn: "70,000 – 80,000 RUB",
+  },
 ];
 
 export default async function OrderPage() {
@@ -76,24 +102,31 @@ export default async function OrderPage() {
           </a>
         </div>
 
-        <div className="mx-auto mt-28 w-full max-w-[520px]">
-          <div className="grid grid-cols-2 gap-x-10 pb-6 text-center text-[16px] font-semibold leading-[150%] text-ink-light">
-            <p>
-              <LocalizedText ru="Формат" en="Format" />
-            </p>
+        <div className="mt-10 flex w-full justify-center">
+          <div className="w-full max-w-[520px]">
+            <div className="grid grid-cols-2 gap-x-10 pb-6 text-center text-[16px] font-semibold leading-[150%] text-ink-light">
+              <p>
+                <LocalizedText ru="Формат" en="Format" />
+              </p>
 
-            <p>
-              <LocalizedText ru="Цены" en="Prices" />
-            </p>
-          </div>
+              <p>
+                <LocalizedText ru="Цены" en="Prices" />
+              </p>
+            </div>
 
-          <div className="space-y-2 text-center text-[16px] font-medium leading-[150%] text-ink">
-            {priceRows.map(([format, price]) => (
-              <div key={format} className="grid grid-cols-2 gap-x-10">
-                <p>{format}</p>
-                <p>{price}</p>
-              </div>
-            ))}
+            <div className="space-y-2 text-center text-[16px] font-medium leading-[150%] text-ink">
+              {priceRows.map((row) => (
+                <div key={row.formatRu} className="grid grid-cols-2 gap-x-10">
+                  <p>
+                    <LocalizedValue ru={row.formatRu} en={row.formatEn} />
+                  </p>
+
+                  <p>
+                    <LocalizedValue ru={row.priceRu} en={row.priceEn} />
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

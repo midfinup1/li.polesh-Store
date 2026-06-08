@@ -104,19 +104,23 @@ export function ArtworkImageCarousel({
           <button
             type="button"
             onClick={showPrevious}
-            className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-x-[100%] -translate-y-1/2 items-center justify-center rounded-full bg-white text-[30px] font-medium leading-none text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform hover:scale-105"
+            className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-x-[100%] -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform hover:scale-105"
             aria-label="Предыдущее изображение"
           >
-            ‹
+            <span className="flex h-full w-full items-center justify-center pb-[3px] pr-[2px] text-[34px] font-medium leading-none">
+              ‹
+            </span>
           </button>
 
           <button
             type="button"
             onClick={showNext}
-            className="absolute right-0 top-1/2 z-10 flex h-11 w-11 translate-x-[100%] -translate-y-1/2 items-center justify-center rounded-full bg-white text-[30px] font-medium leading-none text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform hover:scale-105"
+            className="absolute right-0 top-1/2 z-10 flex h-11 w-11 translate-x-[100%] -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform hover:scale-105"
             aria-label="Следующее изображение"
           >
-            ›
+            <span className="flex h-full w-full items-center justify-center pb-[3px] pl-[2px] text-[34px] font-medium leading-none">
+              ›
+            </span>
           </button>
         </>
       )}

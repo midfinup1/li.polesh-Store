@@ -214,17 +214,9 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
               <ArtworkReservePanel
                 artworkId={artwork.id}
                 disabled={isUnavailable}
+                sold={isSold}
               />
             </div>
-
-            {isSold && (
-              <p className="mt-5 text-[16px] font-medium leading-[150%] text-ink-light">
-                <LocalizedText
-                  ru="Эта работа уже продана."
-                  en="This artwork has already been sold."
-                />
-              </p>
-            )}
 
             {(artwork.description || artwork.description_en) && (
               <p className="mt-8 text-[16px] font-medium leading-[150%] text-ink-light">

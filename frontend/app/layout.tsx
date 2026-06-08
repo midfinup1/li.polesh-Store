@@ -4,6 +4,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteSettingsProvider } from "@/lib/site-settings";
+import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { siteUrl } from "@/lib/metadata";
 
 const inter = Inter({
@@ -61,6 +62,7 @@ export default function RootLayout({
     <html lang="ru" suppressHydrationWarning>
       <body className={`${inter.variable} bg-paper text-ink antialiased`}>
         <SiteSettingsProvider>
+          <AnalyticsTracker />
           <SiteHeader />
           {children}
           <SiteFooter />

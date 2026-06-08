@@ -173,6 +173,23 @@ func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
 	return nil
 }
 
+func (s *ArtworkService) UpdateImageAltText(ctx context.Context, artworkID int64, imageID int64, altText string) (*domain.ArtworkImage, error) {
+	altText = strings.TrimSpace(altText)
+	if altText == "" {
+		artwork, err := s.artworks.GetByID(ctx, artworkID)
+		if err != nil {
+			return nil, err
+		}
+
+		altText = strings.TrimSpace(artwork.Title)
+		if altText == "" {
+			altText = "Работа художницы"
+		}
+	}
+
+	return s.artworks.UpdateImageAltText(ctx, artworkID, imageID, altText)
+}
+
 func (s *ArtworkService) ReorderImages(ctx context.Context, artworkID int64, imageIDs []int64) error {
 	if len(imageIDs) == 0 {
 		return fmt.Errorf("%w: image_ids must not be empty", domain.ErrValidation)

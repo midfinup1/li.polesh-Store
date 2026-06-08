@@ -153,6 +153,36 @@ func (h *ArtworkHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *ArtworkHandler) UpdateImageAltText(w http.ResponseWriter, r *http.Request) {
+	artworkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	imageID, err := strconv.ParseInt(chi.URLParam(r, "imageId"), 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid imageId")
+		return
+	}
+
+	var body struct {
+		AltText string `json:"alt_text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+
+	image, err := h.svc.UpdateImageAltText(r.Context(), artworkID, imageID, body.AltText)
+	if err != nil {
+		respondServiceError(w, err, "failed to update image alt text")
+		return
+	}
+
+	respondOK(w, image)
+}
+
 func (h *ArtworkHandler) ReorderImages(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

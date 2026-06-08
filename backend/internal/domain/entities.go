@@ -44,6 +44,7 @@ type ArtworkImage struct {
 	AltText      string    `db:"alt_text"       json:"alt_text"`
 	SortOrder    int       `db:"sort_order"     json:"sort_order"`
 	CreatedAt    time.Time `db:"created_at"     json:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"     json:"updated_at"`
 }
 
 // ─── Category ─────────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ type Category struct {
 	Slug      string    `db:"slug"       json:"slug"`
 	SortOrder int       `db:"sort_order" json:"sort_order"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
@@ -89,20 +91,72 @@ type Admin struct {
 	Email        string    `db:"email"         json:"email"`
 	PasswordHash string    `db:"password_hash" json:"-"`
 	CreatedAt    time.Time `db:"created_at"    json:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"    json:"updated_at"`
 }
 
 // ─── Artist ───────────────────────────────────────────────────────────────────
 
 type Artist struct {
-	ID            int64     `db:"id"         json:"id"`
-	Name          string    `db:"name"       json:"name"`
-	NameEN        string    `db:"name_en"    json:"name_en"`
-	Bio           string    `db:"bio"        json:"bio"`
-	BioEN         string    `db:"bio_en"     json:"bio_en"`
+	ID            int64     `db:"id"              json:"id"`
+	Name          string    `db:"name"            json:"name"`
+	NameEN        string    `db:"name_en"         json:"name_en"`
+	Bio           string    `db:"bio"             json:"bio"`
+	BioEN         string    `db:"bio_en"          json:"bio_en"`
 	PhotoURL      string    `db:"photo_url"       json:"photo_url"`
 	HomePhotoURL  string    `db:"home_photo_url"  json:"home_photo_url"`
 	AboutPhotoURL string    `db:"about_photo_url" json:"about_photo_url"`
 	Email         string    `db:"email"           json:"email"`
-	Instagram     string    `db:"instagram"  json:"instagram"`
-	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
+	Instagram     string    `db:"instagram"       json:"instagram"`
+	CreatedAt     time.Time `db:"created_at"      json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"      json:"updated_at"`
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+type AnalyticsEventType string
+
+const (
+	AnalyticsEventPageView      AnalyticsEventType = "page_view"
+	AnalyticsEventCategoryClick AnalyticsEventType = "category_click"
+)
+
+type AnalyticsEvent struct {
+	ID         int64              `db:"id"          json:"id"`
+	Path       string             `db:"path"        json:"path"`
+	ArtworkID  *int64             `db:"artwork_id"  json:"artwork_id"`
+	CategoryID *int64             `db:"category_id" json:"category_id"`
+	EventType  AnalyticsEventType `db:"event_type"  json:"event_type"`
+	UserAgent  string             `db:"user_agent"  json:"user_agent"`
+	Referrer   string             `db:"referrer"    json:"referrer"`
+	CreatedAt  time.Time          `db:"created_at"  json:"created_at"`
+}
+
+type AnalyticsTrackInput struct {
+	Path       string             `json:"path"`
+	ArtworkID  *int64             `json:"artwork_id"`
+	CategoryID *int64             `json:"category_id"`
+	EventType  AnalyticsEventType `json:"event_type"`
+}
+
+type AnalyticsMetric struct {
+	Label string `db:"label" json:"label"`
+	Value int64  `db:"value" json:"value"`
+}
+
+type AnalyticsArtworkMetric struct {
+	ArtworkID int64  `db:"artwork_id" json:"artwork_id"`
+	Title     string `db:"title" json:"title"`
+	TitleEN   string `db:"title_en" json:"title_en"`
+	Views     int64  `db:"views" json:"views"`
+}
+
+type AnalyticsSummary struct {
+	Views7Days     int64                    `json:"views_7_days"`
+	Views30Days    int64                    `json:"views_30_days"`
+	ArtworkViews30 int64                    `json:"artwork_views_30_days"`
+	Orders30Days   int64                    `json:"orders_30_days"`
+	Conversion30   float64                  `json:"conversion_30_days"`
+	TopArtworks    []AnalyticsArtworkMetric `json:"top_artworks"`
+	TopPages       []AnalyticsMetric        `json:"top_pages"`
+	CategoryClicks []AnalyticsMetric        `json:"category_clicks"`
 }

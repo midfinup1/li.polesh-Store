@@ -109,6 +109,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+
+  if (url.pathname === "/api/v1/analytics/view" && req.method === "POST") {
+    res.writeHead(204, { "Access-Control-Allow-Origin": "*" });
+    res.end();
+    return;
+  }
+
   sendJSON(res, 404, { error: "not found" });
 });
 

@@ -169,12 +169,18 @@ export default function HomePage() {
                 <button
                   key={category.id}
                   type="button"
-                  onClick={() => setActiveCategoryId(category.id)}
+                  onClick={() => {
+                    setActiveCategoryId(category.id);
+                    void api.analytics
+                      .trackView({
+                        path: `/category/${category.slug}`,
+                        event_type: "category_click",
+                      })
+                      .catch(() => {});
+                  }}
                   className={[
                     "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
-                    isActive
-                      ? "bg-ink text-paper"
-                      : "bg-paper-dark text-ink",
+                    isActive ? "bg-ink text-paper" : "bg-paper-dark text-ink",
                   ].join(" ")}
                 >
                   {label}

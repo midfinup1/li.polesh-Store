@@ -44,6 +44,7 @@ func NewRouter(d Deps) http.Handler {
 	orders := NewOrderHandler(d.Services.Orders)
 	auth := NewAuthHandler(d.Services.Auth, d.Config.App.Env == "production", int(d.Config.JWT.ExpiresIn.Seconds()))
 	artist := NewArtistHandler(d.Services.Artist)
+	analytics := NewAnalyticsHandler(d.Services.Analytics)
 	required := middleware.NewAuth(d.Services.Auth)
 
 	loginLimiter := middleware.RateLimit(10, time.Minute)
@@ -77,6 +78,7 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/categories", categories.List)
 		r.Get("/artist", artist.Get)
 		r.With(orderLimiter).Post("/orders", orders.Create)
+		r.Post("/analytics/view", analytics.Track)
 		r.With(loginLimiter).Post("/auth/login", auth.Login)
 		r.Post("/auth/logout", auth.Logout)
 
@@ -88,6 +90,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Delete("/admin/artworks/{id}", artworks.Delete)
 			r.Post("/admin/artworks/{id}/images", artworks.UploadImage)
 			r.Delete("/admin/artworks/{id}/images/{imageId}", artworks.DeleteImage)
+			r.Patch("/admin/artworks/{id}/images/{imageId}/alt", artworks.UpdateImageAltText)
 			r.Patch("/admin/artworks/{id}/images/reorder", artworks.ReorderImages)
 			r.Post("/admin/categories", categories.Create)
 			r.Put("/admin/categories/{id}", categories.Update)
@@ -97,6 +100,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Patch("/admin/orders/{id}/status", orders.UpdateStatus)
 			r.Put("/admin/artist", artist.Update)
 			r.Post("/admin/artist/photo/{slot}", artist.UploadPhoto)
+			r.Get("/admin/analytics", analytics.Summary)
 		})
 	})
 

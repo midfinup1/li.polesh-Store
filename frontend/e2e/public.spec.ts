@@ -90,6 +90,16 @@ test.beforeEach(async ({ page }) => {
 
     await route.fallback();
   });
+
+
+  await page.route("**/api/v1/analytics/view", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    }
+
+    await route.fallback();
+  });
 });
 
 test("главная открывается", async ({ page }) => {

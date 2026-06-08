@@ -75,3 +75,26 @@ export interface CreateOrderRequest {
   phone: string;
   message: string;
 }
+
+export interface AnalyticsMetric {
+  label: string;
+  value: number;
+}
+
+export interface AnalyticsArtworkMetric {
+  artwork_id: number;
+  title: string;
+  title_en: string;
+  views: number;
+}
+
+export interface AnalyticsSummary {
+  views_7_days: number;
+  views_30_days: number;
+  artwork_views_30_days: number;
+  orders_30_days: number;
+  conversion_30_days: number;
+  top_artworks: AnalyticsArtworkMetric[];
+  top_pages: AnalyticsMetric[];
+  category_clicks: AnalyticsMetric[];
+}

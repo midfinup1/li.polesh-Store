@@ -15,6 +15,7 @@ type ArtworkRepository interface {
 	GetImageByID(ctx context.Context, imageID int64) (*ArtworkImage, error)
 	GetImagesByArtworkID(ctx context.Context, artworkID int64) ([]ArtworkImage, error)
 	DeleteImage(ctx context.Context, imageID int64) error
+	UpdateImageAltText(ctx context.Context, artworkID int64, imageID int64, altText string) (*ArtworkImage, error)
 	ReorderImages(ctx context.Context, artworkID int64, imageIDs []int64) error
 }
 
@@ -52,4 +53,10 @@ type AdminRepository interface {
 type ArtistRepository interface {
 	Get(ctx context.Context) (*Artist, error)
 	Update(ctx context.Context, a *Artist) (*Artist, error)
+}
+
+// AnalyticsRepository defines DB operations for simple internal page analytics.
+type AnalyticsRepository interface {
+	CreateEvent(ctx context.Context, event *AnalyticsEvent) error
+	Summary(ctx context.Context) (*AnalyticsSummary, error)
 }

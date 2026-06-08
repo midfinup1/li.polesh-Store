@@ -294,6 +294,30 @@ func (r *artworkRepository) DeleteImage(ctx context.Context, imageID int64) erro
 	return err
 }
 
+func (r *artworkRepository) UpdateImageAltText(ctx context.Context, artworkID int64, imageID int64, altText string) (*domain.ArtworkImage, error) {
+	var image domain.ArtworkImage
+
+	err := r.db.GetContext(
+		ctx,
+		&image,
+		`
+			UPDATE artwork_images
+			SET alt_text = $1
+			WHERE id = $2
+			  AND artwork_id = $3
+			RETURNING *
+		`,
+		altText,
+		imageID,
+		artworkID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &image, nil
+}
+
 func (r *artworkRepository) ReorderImages(ctx context.Context, artworkID int64, imageIDs []int64) error {
 	transaction, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {

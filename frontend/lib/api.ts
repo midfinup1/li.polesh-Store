@@ -4,6 +4,7 @@ import type {
   Category,
   CreateOrderRequest,
   Order,
+  AnalyticsSummary,
 } from "@/types";
 
 export class ApiError extends Error {
@@ -125,6 +126,18 @@ export const api = {
       }),
   },
 
+  analytics: {
+    trackView: (data: {
+      path: string;
+      artwork_id?: number | null;
+      event_type?: "page_view" | "category_click";
+    }) =>
+      request<void>("/analytics/view", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
+
   auth: {
     login: (email: string, password: string) =>
       request<{ status: string }>("/auth/login", {
@@ -174,6 +187,12 @@ export const api = {
           method: "DELETE",
         }),
 
+      updateImageAltText: (id: number, imageId: number, altText: string) =>
+        request<Artwork["images"][0]>(`/admin/artworks/${id}/images/${imageId}/alt`, {
+          method: "PATCH",
+          body: JSON.stringify({ alt_text: altText }),
+        }),
+
       reorderImages: (id: number, imageIds: number[]) =>
         request<void>(`/admin/artworks/${id}/images/reorder`, {
           method: "PATCH",
@@ -208,6 +227,10 @@ export const api = {
           method: "PATCH",
           body: JSON.stringify({ status }),
         }),
+    },
+
+    analytics: {
+      summary: () => request<AnalyticsSummary>("/admin/analytics"),
     },
 
     artist: {

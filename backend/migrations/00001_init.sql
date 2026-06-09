@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS artworks (
     title_en       TEXT NOT NULL DEFAULT '',
     description    TEXT NOT NULL DEFAULT '',
     description_en TEXT NOT NULL DEFAULT '',
+    purchase_comment    TEXT NOT NULL DEFAULT '',
+    purchase_comment_en TEXT NOT NULL DEFAULT '',
     price          BIGINT NULL,
     status         TEXT NOT NULL DEFAULT 'available',
     category_id    BIGINT NULL REFERENCES categories(id) ON DELETE SET NULL,

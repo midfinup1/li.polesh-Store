@@ -16,22 +16,24 @@ const (
 )
 
 type Artwork struct {
-	ID            int64         `db:"id"             json:"id"`
-	Title         string        `db:"title"          json:"title"`
-	TitleEN       string        `db:"title_en"       json:"title_en"`
-	Description   string        `db:"description"    json:"description"`
-	DescriptionEN string        `db:"description_en" json:"description_en"`
-	Price         *int64        `db:"price"          json:"price"`
-	Status        ArtworkStatus `db:"status"         json:"status"`
-	CategoryID    *int64        `db:"category_id"    json:"category_id"`
-	Year          *int          `db:"year"           json:"year"`
-	Size          string        `db:"size"           json:"size"`
-	SizeEN        string        `db:"size_en"        json:"size_en"`
-	Materials     string        `db:"materials"      json:"materials"`
-	MaterialsEN   string        `db:"materials_en"   json:"materials_en"`
-	SortOrder     int           `db:"sort_order"     json:"sort_order"`
-	CreatedAt     time.Time     `db:"created_at"     json:"created_at"`
-	UpdatedAt     time.Time     `db:"updated_at"     json:"updated_at"`
+	ID                int64         `db:"id"                  json:"id"`
+	Title             string        `db:"title"               json:"title"`
+	TitleEN           string        `db:"title_en"            json:"title_en"`
+	Description       string        `db:"description"         json:"description"`
+	DescriptionEN     string        `db:"description_en"      json:"description_en"`
+	PurchaseComment   string        `db:"purchase_comment"    json:"purchase_comment"`
+	PurchaseCommentEN string        `db:"purchase_comment_en" json:"purchase_comment_en"`
+	Price             *int64        `db:"price"               json:"price"`
+	Status            ArtworkStatus `db:"status"              json:"status"`
+	CategoryID        *int64        `db:"category_id"         json:"category_id"`
+	Year              *int          `db:"year"                json:"year"`
+	Size              string        `db:"size"                json:"size"`
+	SizeEN            string        `db:"size_en"             json:"size_en"`
+	Materials         string        `db:"materials"           json:"materials"`
+	MaterialsEN       string        `db:"materials_en"        json:"materials_en"`
+	SortOrder         int           `db:"sort_order"          json:"sort_order"`
+	CreatedAt         time.Time     `db:"created_at"          json:"created_at"`
+	UpdatedAt         time.Time     `db:"updated_at"          json:"updated_at"`
 
 	Images   []ArtworkImage `db:"-" json:"images"`
 	Category *Category      `db:"-" json:"category,omitempty"`

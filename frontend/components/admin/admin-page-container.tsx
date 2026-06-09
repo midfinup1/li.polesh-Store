@@ -392,6 +392,10 @@ export function AdminPageContainer() {
           title_en: String(data.get("title_en") ?? "").trim(),
           description: String(data.get("description") ?? "").trim(),
           description_en: String(data.get("description_en") ?? "").trim(),
+          purchase_comment: String(data.get("purchase_comment") ?? "").trim(),
+          purchase_comment_en: String(
+            data.get("purchase_comment_en") ?? "",
+          ).trim(),
           price: rawPrice === "" ? null : Number(rawPrice),
           status: "available",
           category_id: categoryId,
@@ -410,7 +414,11 @@ export function AdminPageContainer() {
 
   function startEdit(artwork: Artwork) {
     setEditingId(artwork.id);
-    setDraft({ ...artwork });
+    setDraft({
+      ...artwork,
+      purchase_comment: artwork.purchase_comment || "",
+      purchase_comment_en: artwork.purchase_comment_en || "",
+    });
     setNotice("");
     setError("");
   }

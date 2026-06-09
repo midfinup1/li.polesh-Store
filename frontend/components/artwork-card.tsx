@@ -73,7 +73,12 @@ export function ArtworkCard({
           </p>
         )}
 
-        <p className="text-[16px] font-medium leading-[150%] text-ink">
+        <p
+          className={[
+            "text-[16px] font-medium leading-[150%] text-ink",
+            artwork.status === "sold" ? "line-through text-ink-light" : "",
+          ].join(" ")}
+        >
           {artwork.price === null
             ? t.common.priceOnRequest
             : `${artwork.price.toLocaleString(

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArtworkCard } from "@/components/artwork-card";
 import { LocalizedText } from "@/components/localized-text";
 import { LocalizedValue } from "@/components/localized-value";
+import { SoldBadge } from "@/components/sold-badge";
 import { useSiteSettings } from "@/lib/site-settings";
 import { pickLocalized } from "@/lib/i18n";
 import { api } from "@/lib/api";
@@ -89,8 +90,15 @@ export default function HomePage() {
       .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
   }, [artworks, selectedCategoryId]);
 
-  const leftArtworks = visibleArtworks.filter((_, index) => index % 2 === 0);
-  const rightArtworks = visibleArtworks.filter((_, index) => index % 2 === 1);
+  const firstColumnArtworks = visibleArtworks.filter(
+    (_, index) => index % 3 === 0,
+  );
+  const secondColumnArtworks = visibleArtworks.filter(
+    (_, index) => index % 3 === 1,
+  );
+  const thirdColumnArtworks = visibleArtworks.filter(
+    (_, index) => index % 3 === 2,
+  );
 
   const homePhotoUrl = artist?.home_photo_url || artist?.photo_url || "";
 
@@ -222,20 +230,34 @@ export default function HomePage() {
             />
           </div>
         ) : visibleArtworks.length > 0 ? (
-          <div className="mt-[102px] grid gap-[80px] lg:grid-cols-[minmax(0,681px)_minmax(0,502px)] lg:items-start">
+          <div className="mt-[102px] grid gap-[56px] md:grid-cols-2 lg:grid-cols-[minmax(0,560px)_minmax(0,320px)_minmax(0,320px)] lg:items-start">
             <div className="space-y-[70px]">
-              {leftArtworks.map((artwork, index) => (
-                <ArtworkCard
-                  key={artwork.id}
-                  artwork={artwork}
-                  large={index === 0}
-                />
+              {firstColumnArtworks.map((artwork) => (
+                <div key={artwork.id} className="relative">
+                  {artwork.status === "sold" && <SoldBadge />}
+
+                  <ArtworkCard artwork={artwork} />
+                </div>
               ))}
             </div>
 
             <div className="space-y-[70px]">
-              {rightArtworks.map((artwork) => (
-                <ArtworkCard key={artwork.id} artwork={artwork} />
+              {secondColumnArtworks.map((artwork) => (
+                <div key={artwork.id} className="relative">
+                  {artwork.status === "sold" && <SoldBadge />}
+
+                  <ArtworkCard artwork={artwork} />
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-[70px]">
+              {thirdColumnArtworks.map((artwork) => (
+                <div key={artwork.id} className="relative">
+                  {artwork.status === "sold" && <SoldBadge />}
+
+                  <ArtworkCard artwork={artwork} />
+                </div>
               ))}
             </div>
           </div>

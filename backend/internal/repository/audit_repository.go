@@ -38,7 +38,14 @@ func (r *adminAuditLogRepository) Create(ctx context.Context, log *domain.AdminA
 				entity_id,
 				metadata
 			)
-			VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+			VALUES (
+				(SELECT id FROM admins WHERE id = $1),
+				$2,
+				$3,
+				$4,
+				$5,
+				$6::jsonb
+			)
 		`,
 		log.AdminID,
 		log.AdminEmail,

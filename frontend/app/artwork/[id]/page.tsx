@@ -5,15 +5,17 @@ import { ArtworkImageCarousel } from "@/components/artwork-image-carousel";
 import { ArtworkReservePanel } from "@/components/artwork-reserve-panel";
 import { LocalizedText } from "@/components/localized-text";
 import { LocalizedValue } from "@/components/localized-value";
-import { api } from "@/lib/api";
+import { SoldBadge } from "@/components/sold-badge";
+import { api, ApiError } from "@/lib/api";
 import { absoluteUrl, getImageUrl } from "@/lib/metadata";
+import type { Artwork } from "@/types";
 
 export const revalidate = 60;
 
 type ArtworkPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 function formatPriceRu(price: number | null | undefined) {
@@ -32,8 +34,30 @@ function formatPriceEn(price: number | null | undefined) {
   return `${price.toLocaleString("en-US")} RUB`;
 }
 
+function getRandomItems<T>(items: T[], limit: number) {
+  return [...items].sort(() => Math.random() - 0.5).slice(0, limit);
+}
+
+async function getArtworkById(id: number): Promise<Artwork> {
+  try {
+    return await api.artworks.getById(id);
+  } catch (error) {
+    console.error("Artwork load error:", {
+      id,
+      error,
+    });
+
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+
+    throw error;
+  }
+}
+
 export async function generateMetadata({ params }: ArtworkPageProps) {
-  const id = Number(params.id);
+  const { id: rawId } = await params;
+  const id = Number(rawId);
 
   if (!Number.isFinite(id)) {
     return {
@@ -42,7 +66,14 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
     };
   }
 
-  const artwork = await api.artworks.getById(id).catch(() => null);
+  const artwork = await api.artworks.getById(id).catch((error) => {
+    console.error("Artwork metadata load error:", {
+      id,
+      error,
+    });
+
+    return null;
+  });
 
   if (!artwork) {
     return {
@@ -97,34 +128,43 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
 }
 
 export default async function ArtworkPage({ params }: ArtworkPageProps) {
-  const id = Number(params.id);
+  const { id: rawId } = await params;
+  const id = Number(rawId);
 
   if (!Number.isFinite(id)) {
     notFound();
   }
 
-  const artwork = await api.artworks.getById(id).catch(() => null);
-
-  if (!artwork) {
-    notFound();
-  }
+  const artwork = await getArtworkById(id);
 
   const relatedArtworks = artwork.category_id
     ? await api.artworks
         .list({ category_id: artwork.category_id })
         .then((items) =>
-          items
-            .filter((item) => item.id !== artwork.id && item.status !== "hidden")
-            .slice(0, 3),
+          getRandomItems(
+            items.filter(
+              (item) => item.id !== artwork.id && item.status !== "hidden",
+            ),
+            3,
+          ),
         )
-        .catch(() => [])
+        .catch((error) => {
+          console.error("Related artworks load error:", {
+            artworkId: artwork.id,
+            categoryId: artwork.category_id,
+            error,
+          });
+
+          return [];
+        })
     : [];
 
   const images = artwork.images || [];
   const priceRu = formatPriceRu(artwork.price);
   const priceEn = formatPriceEn(artwork.price);
   const isSold = artwork.status === "sold";
-  const isUnavailable = artwork.status === "sold" || artwork.status === "hidden";
+  const isUnavailable =
+    artwork.status === "sold" || artwork.status === "hidden";
 
   const detailsRu = [
     artwork.materials,
@@ -218,8 +258,20 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
               />
             </div>
 
+            {!isUnavailable &&
+              (artwork.purchase_comment || artwork.purchase_comment_en) && (
+                <p className="mt-5 whitespace-pre-line text-[15px] font-medium leading-[150%] text-ink-light">
+                  <LocalizedValue
+                    ru={artwork.purchase_comment}
+                    en={artwork.purchase_comment_en}
+                    fallbackRu={artwork.purchase_comment}
+                    fallbackEn={artwork.purchase_comment}
+                  />
+                </p>
+              )}
+
             {(artwork.description || artwork.description_en) && (
-              <p className="mt-8 text-[16px] font-medium leading-[150%] text-ink-light">
+              <p className="mt-8 whitespace-pre-line text-[16px] font-medium leading-[150%] text-ink">
                 <LocalizedValue
                   ru={artwork.description}
                   en={artwork.description_en}
@@ -249,7 +301,11 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
 
           <div className="mt-10 grid gap-10 md:grid-cols-3">
             {relatedArtworks.map((relatedArtwork) => (
-              <ArtworkCard key={relatedArtwork.id} artwork={relatedArtwork} />
+              <div key={relatedArtwork.id} className="relative">
+                {relatedArtwork.status === "sold" && <SoldBadge />}
+
+                <ArtworkCard artwork={relatedArtwork} />
+              </div>
             ))}
           </div>
         </section>

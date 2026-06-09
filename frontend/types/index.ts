@@ -26,6 +26,8 @@ export interface Artwork {
   title_en: string;
   description: string;
   description_en: string;
+  purchase_comment: string;
+  purchase_comment_en: string;
   price: number | null;
   status: ArtworkStatus;
   category_id: number | null;

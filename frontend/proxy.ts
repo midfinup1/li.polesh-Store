@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
 // presence check only — the backend remains the authority and validates the
 // JWT on every /admin/* API call. The cookie is HttpOnly, so it is readable
 // here (server-side) but not from client JS.
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === "/admin/login") {

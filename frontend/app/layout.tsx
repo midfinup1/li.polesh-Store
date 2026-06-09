@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteSettingsProvider } from "@/lib/site-settings";
+import {
+  SiteSettingsProvider,
+  type Language,
+  type ThemeMode,
+} from "@/lib/site-settings";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { siteUrl } from "@/lib/metadata";
 
@@ -53,15 +58,42 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+function normalizeLanguage(value: string | undefined): Language {
+  if (value === "ru" || value === "en") {
+    return value;
+  }
+
+  return "ru";
+}
+
+function normalizeTheme(value: string | undefined): ThemeMode {
+  if (value === "light" || value === "dark" || value === "system") {
+    return value;
+  }
+
+  return "system";
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+
+  const initialLanguage = normalizeLanguage(
+    cookieStore.get("site-language")?.value,
+  );
+
+  const initialTheme = normalizeTheme(cookieStore.get("site-theme")?.value);
+
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang={initialLanguage} suppressHydrationWarning>
       <body className={`${inter.variable} bg-paper text-ink antialiased`}>
-        <SiteSettingsProvider>
+        <SiteSettingsProvider
+          initialLanguage={initialLanguage}
+          initialTheme={initialTheme}
+        >
           <AnalyticsTracker />
           <SiteHeader />
           {children}

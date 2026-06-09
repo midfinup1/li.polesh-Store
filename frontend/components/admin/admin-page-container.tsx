@@ -1,33 +1,38 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import type {
+  AdminAuditLog,
+  AdminAuditLogFilter,
+  AnalyticsSummary,
   Artist,
   Artwork,
   ArtworkImage,
   ArtworkStatus,
   Category,
   Order,
-  AnalyticsSummary,
-  AdminAuditLog,
-  AdminAuditLogFilter,
 } from "@/types";
-import { TabButton, AdminState, secondaryButtonClassName } from "@/components/admin/forms";
+import {
+  AdminState,
+  secondaryButtonClassName,
+  TabButton,
+} from "@/components/admin/forms";
 import { ConfirmDeleteModal } from "@/components/admin/modals";
-import type { DeleteTarget } from "@/components/admin/types";
-import { moveInArray, sortedArtworks, sortedCategories, statusLabel } from "@/components/admin/helpers";
+import type { AdminTab, DeleteTarget } from "@/components/admin/types";
+import {
+  moveInArray,
+  sortedArtworks,
+  sortedCategories,
+  statusLabel,
+} from "@/components/admin/helpers";
 import { AdminAnalyticsSection } from "@/components/admin/analytics-section";
 import { AdminArtistSection } from "@/components/admin/artist-section";
 import { AdminArtworksSection } from "@/components/admin/artworks-section";
 import { AdminCategoriesSection } from "@/components/admin/categories-section";
 import { AdminOrdersSection } from "@/components/admin/orders-section";
 import { AdminAuditHistorySection } from "@/components/admin/audit-section";
-
-import type { AdminTab } from "@/components/admin/types";
 
 const blankArtist: Artist = {
   id: 0,
@@ -52,7 +57,10 @@ export function AdminPageContainer() {
   const [artist, setArtist] = useState<Artist>(blankArtist);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
-  const [auditFilters, setAuditFilters] = useState<AdminAuditLogFilter>({ limit: 50, offset: 0 });
+  const [auditFilters, setAuditFilters] = useState<AdminAuditLogFilter>({
+    limit: 50,
+    offset: 0,
+  });
   const [auditTotal, setAuditTotal] = useState(0);
   const [auditLoading, setAuditLoading] = useState(false);
 
@@ -105,7 +113,9 @@ export function AdminPageContainer() {
         api.categories.list(),
         api.artist.get(),
         api.admin.analytics.summary().catch(() => null),
-        api.admin.auditLogs.list({ limit: 50, offset: 0 }).catch(() => ({ items: [], total: 0, limit: 50, offset: 0 })),
+        api.admin.auditLogs
+          .list({ limit: 50, offset: 0 })
+          .catch(() => ({ items: [], total: 0, limit: 50, offset: 0 })),
       ]);
 
       setArtworks(Array.isArray(worksResponse) ? worksResponse : []);
@@ -115,8 +125,16 @@ export function AdminPageContainer() {
       );
       setArtist(artistResponse ?? blankArtist);
       setAnalytics(analyticsResponse);
-      setAuditLogs(Array.isArray(auditLogsResponse) ? auditLogsResponse : auditLogsResponse.items);
-      setAuditTotal(Array.isArray(auditLogsResponse) ? auditLogsResponse.length : auditLogsResponse.total);
+      setAuditLogs(
+        Array.isArray(auditLogsResponse)
+          ? auditLogsResponse
+          : auditLogsResponse.items,
+      );
+      setAuditTotal(
+        Array.isArray(auditLogsResponse)
+          ? auditLogsResponse.length
+          : auditLogsResponse.total,
+      );
     } catch (err) {
       if (handleAuthError(err)) {
         return;
@@ -133,7 +151,17 @@ export function AdminPageContainer() {
   }, [handleAuthError]);
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void load();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   const hasUnsavedChanges = Boolean(draft || categoryDraft);
@@ -154,7 +182,10 @@ export function AdminPageContainer() {
   }, [hasUnsavedChanges]);
 
   function confirmUnsavedLeave() {
-    return !hasUnsavedChanges || window.confirm("Есть несохранённые изменения. Покинуть страницу без сохранения?");
+    return (
+      !hasUnsavedChanges ||
+      window.confirm("Есть несохранённые изменения. Покинуть страницу без сохранения?")
+    );
   }
 
   async function reloadAuditLogs(nextFilters = auditFilters) {
@@ -170,7 +201,11 @@ export function AdminPageContainer() {
         return;
       }
 
-      setError(err instanceof Error ? err.message : "Не удалось загрузить историю действий");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось загрузить историю действий",
+      );
     } finally {
       setAuditLoading(false);
     }
@@ -229,6 +264,7 @@ export function AdminPageContainer() {
     }
 
     setUploadingArtistPhoto(slot);
+
     await run(
       async () => {
         const updated = await api.admin.artist.uploadPhoto(slot, file);
@@ -238,6 +274,7 @@ export function AdminPageContainer() {
         ? "Фото для главной загружено"
         : "Фото для страницы Об авторе загружено",
     );
+
     setUploadingArtistPhoto(null);
   }
 
@@ -636,6 +673,7 @@ export function AdminPageContainer() {
         >
           Профиль
         </TabButton>
+
         <TabButton
           active={activeTab === "categories"}
           onClick={() => {
@@ -646,6 +684,7 @@ export function AdminPageContainer() {
         >
           Категории
         </TabButton>
+
         <TabButton
           active={activeTab === "artworks"}
           onClick={() => {
@@ -656,6 +695,7 @@ export function AdminPageContainer() {
         >
           Работы
         </TabButton>
+
         <TabButton
           active={activeTab === "orders"}
           onClick={() => {
@@ -666,6 +706,7 @@ export function AdminPageContainer() {
         >
           Заявки
         </TabButton>
+
         <TabButton
           active={activeTab === "analytics"}
           onClick={() => {
@@ -676,6 +717,7 @@ export function AdminPageContainer() {
         >
           Статистика
         </TabButton>
+
         <TabButton
           active={activeTab === "history"}
           onClick={() => {
@@ -781,10 +823,7 @@ export function AdminPageContainer() {
       )}
 
       {activeTab === "analytics" && (
-        <AdminAnalyticsSection
-          analytics={analytics}
-          ordersCount={orders.length}
-        />
+        <AdminAnalyticsSection analytics={analytics} ordersCount={orders.length} />
       )}
 
       {activeTab === "history" && (
@@ -794,9 +833,13 @@ export function AdminPageContainer() {
           filters={auditFilters}
           loading={auditLoading}
           onChangeFilters={setAuditFilters}
-          onApplyFilters={(filters) => { setAuditFilters(filters); void reloadAuditLogs(filters); }}
+          onApplyFilters={(filters) => {
+            setAuditFilters(filters);
+            void reloadAuditLogs(filters);
+          }}
         />
       )}
+
       {deleteTarget && (
         <ConfirmDeleteModal
           target={deleteTarget}

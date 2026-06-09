@@ -354,7 +354,9 @@ type SiteSettingsContextValue = {
 const SiteSettingsContext = createContext<SiteSettingsContextValue | null>(null);
 
 function applyTheme(theme: ThemeMode) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    return;
+  }
 
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const isDark = theme === "dark" || (theme === "system" && systemDark);
@@ -362,47 +364,51 @@ function applyTheme(theme: ThemeMode) {
   document.documentElement.classList.toggle("dark", isDark);
 }
 
-export function SiteSettingsProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("ru");
-  const [theme, setThemeState] = useState<ThemeMode>("system");
+function setClientCookie(name: string, value: string) {
+  document.cookie = `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
+}
+
+export function SiteSettingsProvider({
+  children,
+  initialLanguage = "ru",
+  initialTheme = "system",
+}: {
+  children: ReactNode;
+  initialLanguage?: Language;
+  initialTheme?: ThemeMode;
+}) {
+  const [language, setLanguageState] = useState<Language>(initialLanguage);
+  const [theme, setThemeState] = useState<ThemeMode>(initialTheme);
 
   useEffect(() => {
-    const savedLanguage = window.localStorage.getItem("site-language");
-    const savedTheme = window.localStorage.getItem("site-theme");
-
-    if (savedLanguage === "ru" || savedLanguage === "en") {
-      setLanguageState(savedLanguage);
-      document.documentElement.lang = savedLanguage;
-    }
-
-    if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "system") {
-      setThemeState(savedTheme);
-      applyTheme(savedTheme);
-    } else {
-      applyTheme("system");
-    }
-  }, []);
+    document.documentElement.lang = language;
+    window.localStorage.setItem("site-language", language);
+    setClientCookie("site-language", language);
+  }, [language]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    window.localStorage.setItem("site-theme", theme);
+    setClientCookie("site-theme", theme);
+    applyTheme(theme);
+  }, [theme]);
 
+  useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const listener = () => applyTheme(theme);
 
     media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
+
+    return () => {
+      media.removeEventListener("change", listener);
+    };
   }, [theme]);
 
   function setLanguage(nextLanguage: Language) {
     setLanguageState(nextLanguage);
-    window.localStorage.setItem("site-language", nextLanguage);
-    document.documentElement.lang = nextLanguage;
   }
 
   function setTheme(nextTheme: ThemeMode) {
     setThemeState(nextTheme);
-    window.localStorage.setItem("site-theme", nextTheme);
-    applyTheme(nextTheme);
   }
 
   const value = useMemo<SiteSettingsContextValue>(

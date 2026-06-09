@@ -54,6 +54,7 @@ artwork_images
 categories
 goose_db_version
 orders
+admin_audit_logs
 ```
 
 6. Проверить базовые данные:
@@ -64,7 +65,9 @@ SELECT
   (SELECT count(*) FROM artist) AS artists,
   (SELECT count(*) FROM categories) AS categories,
   (SELECT count(*) FROM artworks) AS artworks,
-  (SELECT count(*) FROM orders) AS orders;
+  (SELECT count(*) FROM orders
+admin_audit_logs) AS orders
+admin_audit_logs;
 '
 ```
 

@@ -268,3 +268,18 @@ DROP TABLE IF EXISTS artworks;
 DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS artist;
 DROP TABLE IF EXISTS admins;
+-- Admin audit history filters and pagination.
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_created_at
+    ON admin_audit_logs (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_action
+    ON admin_audit_logs (action);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_entity_type
+    ON admin_audit_logs (entity_type);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_admin_email
+    ON admin_audit_logs (admin_email);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_entity_created
+    ON admin_audit_logs (entity_type, created_at DESC);

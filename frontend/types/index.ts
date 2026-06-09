@@ -100,6 +100,16 @@ export interface AnalyticsSummary {
 }
 
 
+export interface AdminAuditLogFilter {
+  limit?: number;
+  offset?: number;
+  action?: string;
+  entity_type?: string;
+  admin_email?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
 export interface AdminAuditLog {
   id: number;
   admin_id: number | null;
@@ -109,4 +119,11 @@ export interface AdminAuditLog {
   entity_id: number | null;
   metadata: Record<string, unknown>;
   created_at: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
 }

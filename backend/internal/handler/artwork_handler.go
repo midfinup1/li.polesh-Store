@@ -90,6 +90,12 @@ func (h *ArtworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldArtwork, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		respondServiceError(w, err, "artwork not found")
+		return
+	}
+
 	var a domain.Artwork
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
@@ -103,9 +109,36 @@ func (h *ArtworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	recordAdminAudit(r, h.audit, "artwork.update", "artwork", &updated.ID, map[string]any{
-		"title":       updated.Title,
-		"status":      updated.Status,
-		"category_id": updated.CategoryID,
+		"old": map[string]any{
+			"title":          oldArtwork.Title,
+			"title_en":       oldArtwork.TitleEN,
+			"description":    oldArtwork.Description,
+			"description_en": oldArtwork.DescriptionEN,
+			"price":          oldArtwork.Price,
+			"status":         oldArtwork.Status,
+			"category_id":    oldArtwork.CategoryID,
+			"year":           oldArtwork.Year,
+			"size":           oldArtwork.Size,
+			"size_en":        oldArtwork.SizeEN,
+			"materials":      oldArtwork.Materials,
+			"materials_en":   oldArtwork.MaterialsEN,
+			"sort_order":     oldArtwork.SortOrder,
+		},
+		"new": map[string]any{
+			"title":          updated.Title,
+			"title_en":       updated.TitleEN,
+			"description":    updated.Description,
+			"description_en": updated.DescriptionEN,
+			"price":          updated.Price,
+			"status":         updated.Status,
+			"category_id":    updated.CategoryID,
+			"year":           updated.Year,
+			"size":           updated.Size,
+			"size_en":        updated.SizeEN,
+			"materials":      updated.Materials,
+			"materials_en":   updated.MaterialsEN,
+			"sort_order":     updated.SortOrder,
+		},
 	})
 	respondOK(w, updated)
 }
@@ -117,11 +150,17 @@ func (h *ArtworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldArtwork, _ := h.svc.GetByID(r.Context(), id)
+
 	if err := h.svc.Delete(r.Context(), id); err != nil {
 		respondServiceError(w, err, "failed to delete artwork")
 		return
 	}
-	recordAdminAudit(r, h.audit, "artwork.delete", "artwork", &id, nil)
+	metadata := map[string]any{}
+	if oldArtwork != nil {
+		metadata["old"] = oldArtwork
+	}
+	recordAdminAudit(r, h.audit, "artwork.delete", "artwork", &id, metadata)
 	w.WriteHeader(http.StatusNoContent)
 }
 

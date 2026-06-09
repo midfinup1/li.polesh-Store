@@ -145,11 +145,7 @@ func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 		)
 	}
 
-	if err := s.orders.DeleteInactiveByArtworkID(ctx, id); err != nil {
-		return err
-	}
-
-	if err := s.artworks.Delete(ctx, id); err != nil {
+	if err := s.artworks.DeleteWithInactiveOrders(ctx, id); err != nil {
 		return err
 	}
 	slog.Info("artwork deleted", "artwork_id", id)
@@ -320,6 +316,10 @@ func NewCategoryService(repo domain.CategoryRepository) *CategoryService {
 
 func (s *CategoryService) List(ctx context.Context) ([]domain.Category, error) {
 	return s.repo.GetAll(ctx)
+}
+
+func (s *CategoryService) GetByID(ctx context.Context, id int64) (*domain.Category, error) {
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *CategoryService) Create(ctx context.Context, c *domain.Category) (*domain.Category, error) {

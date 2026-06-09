@@ -157,7 +157,7 @@ func (r *artworkRepository) Create(ctx context.Context, artwork *domain.Artwork)
 }
 
 func (r *artworkRepository) Update(ctx context.Context, artwork *domain.Artwork) (*domain.Artwork, error) {
-	_, err := r.db.ExecContext(
+	result, err := r.db.ExecContext(
 		ctx,
 		`
 			UPDATE artworks
@@ -195,25 +195,79 @@ func (r *artworkRepository) Update(ctx context.Context, artwork *domain.Artwork)
 	if err != nil {
 		return nil, err
 	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if rowsAffected == 0 {
+		return nil, fmt.Errorf("%w: artwork", domain.ErrNotFound)
+	}
 
 	return r.GetByID(ctx, artwork.ID)
 }
 
 func (r *artworkRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(
+	result, err := r.db.ExecContext(
 		ctx,
 		`DELETE FROM artworks WHERE id = $1`,
 		id,
 	)
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) && pqErr.Code == "23503" {
-		// foreign_key_violation: an order still references this artwork
-		// (orders.artwork_id ON DELETE RESTRICT). Surface as a conflict so the
-		// admin can hide the work instead of destroying order history.
 		return fmt.Errorf("%w: artwork has related orders; hide it instead of deleting", domain.ErrConflict)
 	}
+	if err != nil {
+		return err
+	}
 
-	return err
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%w: artwork", domain.ErrNotFound)
+	}
+
+	return nil
+}
+
+func (r *artworkRepository) DeleteWithInactiveOrders(ctx context.Context, id int64) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(
+		ctx,
+		`
+			DELETE FROM orders
+			WHERE artwork_id = $1
+			  AND status NOT IN ('new', 'contacted')
+		`,
+		id,
+	); err != nil {
+		return err
+	}
+
+	result, err := tx.ExecContext(ctx, `DELETE FROM artworks WHERE id = $1`, id)
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "23503" {
+		return fmt.Errorf("%w: artwork has active related orders", domain.ErrConflict)
+	}
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%w: artwork", domain.ErrNotFound)
+	}
+
+	return tx.Commit()
 }
 
 func (r *artworkRepository) AddImage(ctx context.Context, image *domain.ArtworkImage) (*domain.ArtworkImage, error) {
@@ -285,13 +339,23 @@ func (r *artworkRepository) GetImagesByArtworkID(ctx context.Context, artworkID 
 }
 
 func (r *artworkRepository) DeleteImage(ctx context.Context, imageID int64) error {
-	_, err := r.db.ExecContext(
+	result, err := r.db.ExecContext(
 		ctx,
 		`DELETE FROM artwork_images WHERE id = $1`,
 		imageID,
 	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%w: artwork image", domain.ErrNotFound)
+	}
 
-	return err
+	return nil
 }
 
 func (r *artworkRepository) UpdateImageAltText(ctx context.Context, artworkID int64, imageID int64, altText string) (*domain.ArtworkImage, error) {
@@ -327,7 +391,7 @@ func (r *artworkRepository) ReorderImages(ctx context.Context, artworkID int64, 
 	defer transaction.Rollback()
 
 	for order, imageID := range imageIDs {
-		_, err := transaction.ExecContext(
+		result, err := transaction.ExecContext(
 			ctx,
 			`
 				UPDATE artwork_images
@@ -341,6 +405,13 @@ func (r *artworkRepository) ReorderImages(ctx context.Context, artworkID int64, 
 		)
 		if err != nil {
 			return err
+		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("%w: artwork image", domain.ErrNotFound)
 		}
 	}
 

@@ -13,6 +13,7 @@ type ArtworkRepository interface {
 	Create(ctx context.Context, a *Artwork) (*Artwork, error)
 	Update(ctx context.Context, a *Artwork) (*Artwork, error)
 	Delete(ctx context.Context, id int64) error
+	DeleteWithInactiveOrders(ctx context.Context, id int64) error
 
 	AddImage(ctx context.Context, img *ArtworkImage) (*ArtworkImage, error)
 	GetImageByID(ctx context.Context, imageID int64) (*ArtworkImage, error)
@@ -71,5 +72,22 @@ type AnalyticsRepository interface {
 // AdminAuditLogRepository defines DB operations for admin action history.
 type AdminAuditLogRepository interface {
 	Create(ctx context.Context, log *AdminAuditLog) error
-	GetRecent(ctx context.Context, limit int) ([]AdminAuditLog, error)
+	GetRecent(ctx context.Context, filter AdminAuditLogFilter) (*AdminAuditLogPage, error)
+}
+
+type AdminAuditLogFilter struct {
+	Limit      int
+	Offset     int
+	Action     string
+	EntityType string
+	AdminEmail string
+	DateFrom   *time.Time
+	DateTo     *time.Time
+}
+
+type AdminAuditLogPage struct {
+	Items  []AdminAuditLog `json:"items"`
+	Total  int64           `json:"total"`
+	Limit  int             `json:"limit"`
+	Offset int             `json:"offset"`
 }

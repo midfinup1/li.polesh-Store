@@ -17,8 +17,8 @@ func NewAuditService(repo domain.AdminAuditLogRepository) *AuditService {
 	return &AuditService{repo: repo}
 }
 
-func (s *AuditService) ListRecent(ctx context.Context, limit int) ([]domain.AdminAuditLog, error) {
-	return s.repo.GetRecent(ctx, limit)
+func (s *AuditService) ListRecent(ctx context.Context, filter domain.AdminAuditLogFilter) (*domain.AdminAuditLogPage, error) {
+	return s.repo.GetRecent(ctx, filter)
 }
 
 func (s *AuditService) Record(

@@ -6,6 +6,8 @@ import type {
   Order,
   AnalyticsSummary,
   AdminAuditLog,
+  AdminAuditLogFilter,
+  PaginatedResponse,
 } from "@/types";
 
 export class ApiError extends Error {
@@ -239,8 +241,8 @@ export const api = {
     },
 
     auditLogs: {
-      list: (limit = 100) =>
-        request<AdminAuditLog[]>(`/admin/audit-logs${buildQuery({ limit })}`),
+      list: (params: AdminAuditLogFilter = { limit: 50, offset: 0 }) =>
+        request<PaginatedResponse<AdminAuditLog>>(`/admin/audit-logs${buildQuery(params as Record<string, string | number | boolean | null | undefined>)}`),
     },
 
     artist: {

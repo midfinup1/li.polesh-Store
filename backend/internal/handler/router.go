@@ -85,6 +85,7 @@ func NewRouter(d Deps) http.Handler {
 
 		r.Group(func(r chi.Router) {
 			r.Use(required.Require)
+			r.Use(middleware.RequireSafeOrigin(d.Config.App.CORSAllowedOrigins))
 			r.Get("/admin/artworks", artworks.ListAdmin)
 			r.Post("/admin/artworks", artworks.Create)
 			r.Put("/admin/artworks/{id}", artworks.Update)

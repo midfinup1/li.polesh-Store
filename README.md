@@ -21,6 +21,7 @@
 - Telegram-уведомления о новых заявках
 - внутренние health/readiness endpoints
 - внутренняя аналитика просмотров и кликов по категориям
+- audit log действий админов с old/new значениями для работ, категорий и статусов заявок
 - автоматическая очистка старых analytics events
 
 ### Frontend
@@ -77,6 +78,8 @@ scripts/
 
 docs/
   monitoring-and-telegram.md
+  admin-maintenance.md
+  ops/restore-drill.md
 
 .github/
   workflows/
@@ -208,3 +211,9 @@ https://lipolesh.art/api/v1/ready
 - загрузку изображения на production;
 - backup/restore drill на тестовой базе;
 - SSH hardening на VPS.
+
+## Admin improvements
+
+В админке добавлены: расширенный audit log с old/new значениями, фильтрация и пагинация истории, более понятные loading-состояния, защита от ухода со страницы с несохранённой формой, разделение больших frontend admin-файлов, проверка RowsAffected в backend и транзакционное удаление работы вместе с неактивными заявками.
+
+Подробнее: `docs/admin-maintenance.md`.

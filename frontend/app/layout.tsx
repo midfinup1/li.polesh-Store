@@ -88,7 +88,11 @@ export default async function RootLayout({
   const initialTheme = normalizeTheme(cookieStore.get("site-theme")?.value);
 
   return (
-    <html lang={initialLanguage} suppressHydrationWarning>
+    <html
+      lang={initialLanguage}
+      className={initialTheme === "dark" ? "dark" : undefined}
+      suppressHydrationWarning
+    >
       <body className={`${inter.variable} bg-paper text-ink antialiased`}>
         <SiteSettingsProvider
           initialLanguage={initialLanguage}

@@ -278,6 +278,44 @@ func (r *artworkRepository) DeleteWithInactiveOrders(ctx context.Context, id int
 	return tx.Commit()
 }
 
+func (r *artworkRepository) ReorderArtworks(ctx context.Context, categoryID int64, artworkIDs []int64) error {
+	transaction, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer transaction.Rollback()
+
+	for sortOrder, artworkID := range artworkIDs {
+		result, err := transaction.ExecContext(
+			ctx,
+			`
+				UPDATE artworks
+				SET sort_order = $1,
+					updated_at = NOW()
+				WHERE id = $2
+				  AND category_id = $3
+			`,
+			sortOrder,
+			artworkID,
+			categoryID,
+		)
+		if err != nil {
+			return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("%w: artwork", domain.ErrNotFound)
+		}
+	}
+
+	return transaction.Commit()
+}
+
 func (r *artworkRepository) AddImage(ctx context.Context, image *domain.ArtworkImage) (*domain.ArtworkImage, error) {
 	err := r.db.QueryRowContext(
 		ctx,

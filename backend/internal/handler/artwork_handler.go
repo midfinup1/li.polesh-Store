@@ -246,6 +246,46 @@ func (h *ArtworkHandler) UpdateImageAltText(w http.ResponseWriter, r *http.Reque
 	respondOK(w, image)
 }
 
+func (h *ArtworkHandler) ReorderArtworks(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		CategoryID int64   `json:"category_id"`
+		ArtworkIDs []int64 `json:"artwork_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+
+	if body.CategoryID <= 0 || len(body.ArtworkIDs) == 0 {
+		respondError(w, http.StatusBadRequest, "category_id and artwork_ids are required")
+		return
+	}
+
+	oldArtworks, err := h.svc.List(r.Context(), domain.ArtworkFilter{CategoryID: &body.CategoryID})
+	if err != nil {
+		respondServiceError(w, err, "failed to fetch current artwork order")
+		return
+	}
+
+	oldOrder := make([]int64, 0, len(oldArtworks))
+	for _, artwork := range oldArtworks {
+		oldOrder = append(oldOrder, artwork.ID)
+	}
+
+	if err := h.svc.ReorderArtworks(r.Context(), body.CategoryID, body.ArtworkIDs); err != nil {
+		respondServiceError(w, err, "failed to reorder artworks")
+		return
+	}
+
+	recordAdminAudit(r, h.audit, "artwork.reorder", "category", &body.CategoryID, map[string]any{
+		"category_id": body.CategoryID,
+		"old_order":   oldOrder,
+		"new_order":   body.ArtworkIDs,
+	})
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *ArtworkHandler) ReorderImages(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

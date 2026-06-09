@@ -10,7 +10,6 @@ import { api, ApiError } from "@/lib/api";
 import { absoluteUrl, getImageUrl } from "@/lib/metadata";
 import type { Artwork } from "@/types";
 
-export const revalidate = 60;
 
 type ArtworkPageProps = {
   params: Promise<{
@@ -35,7 +34,17 @@ function formatPriceEn(price: number | null | undefined) {
 }
 
 function getRandomItems<T>(items: T[], limit: number) {
-  return [...items].sort(() => Math.random() - 0.5).slice(0, limit);
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [
+      shuffled[randomIndex],
+      shuffled[index],
+    ];
+  }
+
+  return shuffled.slice(0, limit);
 }
 
 async function getArtworkById(id: number): Promise<Artwork> {

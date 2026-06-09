@@ -14,6 +14,7 @@ type ArtworkRepository interface {
 	Update(ctx context.Context, a *Artwork) (*Artwork, error)
 	Delete(ctx context.Context, id int64) error
 	DeleteWithInactiveOrders(ctx context.Context, id int64) error
+	ReorderArtworks(ctx context.Context, categoryID int64, artworkIDs []int64) error
 
 	AddImage(ctx context.Context, img *ArtworkImage) (*ArtworkImage, error)
 	GetImageByID(ctx context.Context, imageID int64) (*ArtworkImage, error)

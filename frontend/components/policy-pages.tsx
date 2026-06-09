@@ -1,6 +1,7 @@
 "use client";
 
 import { useSiteSettings } from "@/lib/site-settings";
+import { policyDictionaries } from "@/lib/policy-dictionaries";
 
 function Section({ title, text }: { title: string; text: string }) {
   return (
@@ -14,8 +15,8 @@ function Section({ title, text }: { title: string; text: string }) {
 }
 
 export function PrivacyContent() {
-  const { t } = useSiteSettings();
-  const p = t.privacy;
+  const { language, t } = useSiteSettings();
+  const p = policyDictionaries[language].privacy;
 
   return (
     <main className="mx-auto max-w-[960px] px-6 py-[124px] md:px-10">
@@ -43,8 +44,8 @@ export function PrivacyContent() {
 }
 
 export function PersonalDataContent() {
-  const { t } = useSiteSettings();
-  const p = t.personalData;
+  const { language, t } = useSiteSettings();
+  const p = policyDictionaries[language].personalData;
 
   return (
     <main className="mx-auto max-w-[960px] px-6 py-[124px] md:px-10">

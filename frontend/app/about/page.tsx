@@ -4,7 +4,6 @@ import { LocalizedText } from "@/components/localized-text";
 import { absoluteUrl } from "@/lib/metadata";
 import { api } from "@/lib/api";
 
-export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Об авторе",

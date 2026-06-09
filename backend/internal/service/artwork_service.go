@@ -63,6 +63,8 @@ func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain
 	a.TitleEN = strings.TrimSpace(a.TitleEN)
 	a.Description = strings.TrimSpace(a.Description)
 	a.DescriptionEN = strings.TrimSpace(a.DescriptionEN)
+	a.PurchaseComment = strings.TrimSpace(a.PurchaseComment)
+	a.PurchaseCommentEN = strings.TrimSpace(a.PurchaseCommentEN)
 	a.Size = strings.TrimSpace(a.Size)
 	a.SizeEN = strings.TrimSpace(a.SizeEN)
 	a.Materials = strings.TrimSpace(a.Materials)
@@ -97,6 +99,8 @@ func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain
 	a.TitleEN = strings.TrimSpace(a.TitleEN)
 	a.Description = strings.TrimSpace(a.Description)
 	a.DescriptionEN = strings.TrimSpace(a.DescriptionEN)
+	a.PurchaseComment = strings.TrimSpace(a.PurchaseComment)
+	a.PurchaseCommentEN = strings.TrimSpace(a.PurchaseCommentEN)
 	a.Size = strings.TrimSpace(a.Size)
 	a.SizeEN = strings.TrimSpace(a.SizeEN)
 	a.Materials = strings.TrimSpace(a.Materials)
@@ -290,6 +294,26 @@ func (s *ArtworkService) UpdateImageAltText(
 	}
 
 	return s.artworks.UpdateImageAltText(ctx, artworkID, imageID, altText)
+}
+
+func (s *ArtworkService) ReorderArtworks(
+	ctx context.Context,
+	categoryID int64,
+	artworkIDs []int64,
+) error {
+	if categoryID <= 0 {
+		return fmt.Errorf("%w: category_id is required", domain.ErrValidation)
+	}
+
+	if len(artworkIDs) == 0 {
+		return fmt.Errorf("%w: artwork_ids must not be empty", domain.ErrValidation)
+	}
+
+	if _, err := s.categories.GetByID(ctx, categoryID); err != nil {
+		return err
+	}
+
+	return s.artworks.ReorderArtworks(ctx, categoryID, artworkIDs)
 }
 
 func (s *ArtworkService) ReorderImages(

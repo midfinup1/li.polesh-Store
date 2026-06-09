@@ -195,6 +195,15 @@ export const api = {
           body: JSON.stringify({ alt_text: altText }),
         }),
 
+      reorder: (categoryId: number, artworkIds: number[]) =>
+        request<void>("/admin/artworks/reorder", {
+          method: "PATCH",
+          body: JSON.stringify({
+            category_id: categoryId,
+            artwork_ids: artworkIds,
+          }),
+        }),
+
       reorderImages: (id: number, imageIds: number[]) =>
         request<void>(`/admin/artworks/${id}/images/reorder`, {
           method: "PATCH",

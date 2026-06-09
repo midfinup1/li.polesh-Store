@@ -469,16 +469,39 @@ export function AdminPageContainer() {
       return;
     }
 
-    await run(async () => {
-      await Promise.all(
-        reordered.map((artwork, sortOrder) =>
-          api.admin.artworks.update(artwork.id, {
-            ...artwork,
-            sort_order: sortOrder,
-          }),
-        ),
+    const reorderedIds = reordered.map((artwork) => artwork.id);
+    const reorderedById = new Map<number, Artwork>(
+      reordered.map((artwork, sortOrder) => [
+        artwork.id,
+        { ...artwork, sort_order: sortOrder },
+      ]),
+    );
+    const previousArtworks = artworks;
+
+    setError("");
+    setNotice("");
+    setSaving(true);
+    setArtworks((items) =>
+      items.map((item) => reorderedById.get(item.id) ?? item),
+    );
+
+    try {
+      await api.admin.artworks.reorder(categoryId, reorderedIds);
+      setNotice("Порядок работ обновлён");
+      void reloadAuditLogs();
+    } catch (err) {
+      setArtworks(previousArtworks);
+
+      if (handleAuthError(err)) {
+        return;
+      }
+
+      setError(
+        err instanceof Error ? err.message : "Не удалось обновить порядок работ",
       );
-    }, "Порядок работ обновлён");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function uploadImage(artworkId: number, file: File | undefined) {

@@ -102,9 +102,9 @@ export default async function OrderPage() {
           </a>
         </div>
 
-        <div className="mt-10 flex w-full justify-center">
-          <div className="w-full max-w-[520px]">
-            <div className="grid grid-cols-2 gap-x-10 pb-6 text-center text-[16px] font-semibold leading-[150%] text-ink-light">
+        <div className="mt-10 flex w-full justify-center overflow-x-auto">
+          <div className="w-full min-w-[330px] max-w-[560px]">
+            <div className="grid grid-cols-[minmax(90px,1fr)_minmax(170px,1.4fr)] gap-x-4 pb-6 text-center text-[16px] font-semibold leading-[150%] text-ink-light">
               <p>
                 <LocalizedText ru="Формат" en="Format" />
               </p>
@@ -114,14 +114,17 @@ export default async function OrderPage() {
               </p>
             </div>
 
-            <div className="space-y-2 text-center text-[16px] font-medium leading-[150%] text-ink">
+            <div className="space-y-2 text-center text-[15px] font-medium leading-[150%] text-ink sm:text-[16px]">
               {priceRows.map((row) => (
-                <div key={row.formatRu} className="grid grid-cols-2 gap-x-10">
+                <div
+                  key={row.formatRu}
+                  className="grid grid-cols-[minmax(90px,1fr)_minmax(170px,1.4fr)] gap-x-4"
+                >
                   <p>
                     <LocalizedValue ru={row.formatRu} en={row.formatEn} />
                   </p>
 
-                  <p>
+                  <p className="whitespace-nowrap">
                     <LocalizedValue ru={row.priceRu} en={row.priceEn} />
                   </p>
                 </div>

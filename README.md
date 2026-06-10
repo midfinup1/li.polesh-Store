@@ -1,6 +1,6 @@
 # Каталог работ lipolesh
 
-Публичный каталог работ художницы lipolesh.art с заявками на обратную связь, защищённой админкой, загрузкой изображений, Telegram-уведомлениями и production-деплоем через Docker Compose.
+Публичный каталог работ художницы lipolesh.art с заявками на обратную связь, защищённой админкой, загрузкой изображений, Telegram-уведомлениями, PostgreSQL backup и production-деплоем через Docker Compose.
 
 ## Стек
 
@@ -16,23 +16,24 @@
 - обработка изображений:
   - original
   - JPEG thumbnail
-  - WebP thumbnail через `cwebp`
-  - AVIF thumbnail через `avifenc`
+  - WebP thumbnail через cwebp
+  - AVIF thumbnail через avifenc
 - Telegram-уведомления о новых заявках
-- внутренние health/readiness endpoints
-- внутренняя аналитика просмотров и кликов по категориям
-- audit log действий админов с old/new значениями для работ, категорий и статусов заявок
+- health/readiness endpoints
+- внутренняя аналитика просмотров и кликов
+- audit log действий админов с old/new значениями
 - автоматическая очистка старых analytics events
 
 ### Frontend
 
-- Next.js 14 App Router
+- Next.js App Router
 - React
 - TypeScript
 - Tailwind CSS
 - SEO metadata, OpenGraph, sitemap, robots
 - RU/EN-переключение
 - светлая/тёмная тема
+- адаптивная публичная часть и админка
 
 ### Infrastructure
 
@@ -51,169 +52,84 @@
 
 ## Структура проекта
 
-```text
-backend/
-  cmd/
-  internal/
-  migrations/
-
-frontend/
-  app/
-  components/
-  lib/
-  public/
-  types/
-
-infra/
-  Caddyfile
-  docker-compose.yml
-  docker-compose.prod.yml
-  .env.example
-  .env.prod.example
-
-scripts/
-  install-vps.sh
-  backup-postgres.sh
-  restore-postgres.sh
-
-docs/
-  monitoring-and-telegram.md
-  admin-maintenance.md
-  ops/restore-drill.md
-
-.github/
-  workflows/
-    ci.yml
-    deploy.yml
-```
+text backend/   cmd/   internal/   migrations/  frontend/   app/   components/   lib/   public/   types/  infra/   Caddyfile   docker-compose.yml   docker-compose.prod.yml   .env.example   .env.prod.example  scripts/   install-vps.sh   backup-postgres.sh   restore-postgres.sh   test-restore-postgres.sh   local-restore-and-up.sh  docs/   operations.md  .github/   workflows/     ci.yml     deploy.yml 
 
 ## Локальный запуск
 
 Требуется:
 
-```text
-Docker
-Go
-Node.js
-npm
-```
+text Docker Go Node.js npm 
 
 Подготовка:
 
-```bash
-make init
-```
+bash make init 
 
 Запуск:
 
-```bash
-make up
-```
+bash make up 
 
 Адреса:
 
-```text
-Сайт:     http://localhost:3000
-API:      http://localhost:8080/api/v1
-Adminer:  http://localhost:8081
-```
+text Сайт:     http://localhost:3000 API:      http://localhost:8080/api/v1 Adminer:  http://localhost:8081 
 
 Логи:
 
-```bash
-make logs
-```
+bash make logs 
 
 Остановка:
 
-```bash
-make down
-```
+bash make down 
 
 Проверки:
 
-```bash
-make test
-```
+bash make test 
 
 Создать администратора локально:
 
-```bash
-ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="password" make admin
-```
+bash ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="password123456" make admin 
 
-Вход:
+Вход в админку:
 
-```text
-http://localhost:3000/admin/login
-```
+text http://localhost:3000/admin/login 
+
+## Локальный запуск на базе из backup
+
+Скачать dump с сервера или из S3, положить его в папку backups/, затем выполнить:
+
+bash ./scripts/local-restore-and-up.sh backups/ИМЯ_БЭКАПА.dump 
+
+Скрипт восстановит dump в локальную PostgreSQL-базу и поднимет проект через local Docker Compose.
 
 ## Production
 
-Основной production compose:
+Production compose:
 
-```text
-infra/docker-compose.prod.yml
-```
+text infra/docker-compose.prod.yml 
 
-Основной env-файл:
+Production env:
 
-```text
-infra/.env.prod
-```
+text infra/.env.prod 
 
-Пример env-файла:
+Основные production endpoints:
 
-```text
-infra/.env.prod.example
-```
+text https://lipolesh.art https://lipolesh.art/admin/login https://lipolesh.art/api/health https://lipolesh.art/api/v1/health https://lipolesh.art/api/v1/ready 
 
-Production health endpoints:
+Деплой и rollback выполняются через GitHub Actions:
 
-```text
-https://lipolesh.art/api/health
-https://lipolesh.art/api/v1/health
-https://lipolesh.art/api/v1/ready
-```
+text GitHub -> Actions -> Deploy -> Run workflow 
 
-Внешний uptime-monitoring настроен через UptimeRobot.
+При push в main собираются и публикуются Docker images. На сервер они не выкатываются автоматически.
 
-## Что уже сделано
+Ручной deploy:
 
-- backend/frontend production compose;
-- Caddy reverse proxy;
-- backend/frontend healthcheck;
-- readiness endpoint с проверкой БД;
-- автоматический migrate service;
-- CI для backend и frontend;
-- deploy workflow в GitHub Actions;
-- Telegram-уведомления о новых заявках;
-- favicon;
-- OpenGraph metadata и fallback OG image;
-- загрузка изображений в S3/local storage;
-- ограничение размера загружаемых изображений;
-- JPEG/WebP/AVIF thumbnails;
-- автоматический и ручной `alt_text`;
-- фото художницы отдельно для главной и страницы «Об авторе»;
-- внутренняя аналитика просмотров и кликов;
-- политики обработки персональных данных;
-- PostgreSQL backup и restore-скрипты;
-- удаление заявок из админки;
-- ограниченные `remotePatterns` для изображений Next.js;
-- админка разнесена на отдельные секции-компоненты.
+text action = deploy rollback_sha = пусто 
 
-## Что осталось проверить вручную
+Rollback:
 
-- мобильную версию: главная, каталог, карточка, форма, меню, админка;
-- OpenGraph preview в Telegram/VK после деплоя;
-- отправку заявки на production;
-- получение Telegram-уведомления на production;
-- загрузку изображения на production;
-- backup/restore drill на тестовой базе;
-- SSH hardening на VPS.
+text action = rollback rollback_sha = полный SHA коммита 
 
-## Admin improvements
+## Документация по эксплуатации
 
-В админке добавлены: расширенный audit log с old/new значениями, фильтрация и пагинация истории, более понятные loading-состояния, защита от ухода со страницы с несохранённой формой, разделение больших frontend admin-файлов, проверка RowsAffected в backend и транзакционное удаление работы вместе с неактивными заявками.
+Краткая памятка по управлению production, backup, restore, S3, Telegram, UptimeRobot и аварийным действиям находится здесь:
 
-Подробнее: `docs/admin-maintenance.md`.
+text docs/operations.md 

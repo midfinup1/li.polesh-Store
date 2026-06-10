@@ -73,36 +73,15 @@ export function ArtworkImageCarousel({
 
   return (
     <div className="relative w-full">
-      <div className="relative overflow-hidden rounded-[8px] bg-paper-dark">
+      <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-[8px] bg-paper-dark md:min-h-[520px]">
         {activeUrl ? (
-          <div
-            className="flex transition-transform duration-[650ms] ease-in-out"
-            style={{
-              width: `${preparedImages.length * 100}%`,
-              transform: `translateX(-${
-                safeActiveIndex * (100 / preparedImages.length)
-              }%)`,
-            }}
-          >
-            {preparedImages.map((image) => {
-              const imageUrl = getImageUrl(image);
-
-              return (
-                <div
-                  key={image.id}
-                  className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
-                  style={{ width: `${100 / preparedImages.length}%` }}
-                >
-                  <img
-                    src={imageUrl}
-                    alt={image.alt_text || title}
-                    className="max-h-[72vh] w-full rounded-[8px] object-contain"
-                    loading={image.id === preparedImages[0]?.id ? "eager" : "lazy"}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          <img
+            key={activeImage?.id}
+            src={activeUrl}
+            alt={activeImage?.alt_text || title}
+            className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
+            loading="eager"
+          />
         ) : (
           <div className="flex aspect-[505/678] items-center justify-center rounded-[8px] text-[16px] text-ink-light">
             <LocalizedText ru="Нет изображения" en="No image" />

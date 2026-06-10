@@ -92,7 +92,12 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
   }
 
   const cover = artwork.images?.[0];
-  const imageUrl = getImageUrl(cover);
+  const imageUrl =
+    cover?.thumb_url ||
+    cover?.thumb_webp_url ||
+    cover?.original_url ||
+    getImageUrl(cover);
+
   const absoluteImageUrl = imageUrl
     ? absoluteUrl(imageUrl)
     : absoluteUrl("/og-image.png");

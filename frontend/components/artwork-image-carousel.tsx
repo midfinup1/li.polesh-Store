@@ -71,41 +71,45 @@ export function ArtworkImageCarousel({
 
   return (
     <div className="relative w-full">
-      <div className="relative mx-auto flex min-h-[320px] w-full max-w-[620px] items-center justify-center overflow-visible rounded-[8px] bg-transparent md:min-h-[520px]">
-        {preparedImages.length > 0 ? (
-          <div
-            className="flex w-full transition-transform duration-[650ms] ease-in-out"
-            style={{
-              width: `${preparedImages.length * 100}%`,
-              transform: `translateX(-${
-                safeActiveIndex * (100 / preparedImages.length)
-              }%)`,
-            }}
-          >
-            {preparedImages.map((image) => {
-              const imageUrl = getImageUrl(image);
+      <div className="relative mx-auto w-full max-w-[620px]">
+        <div className="overflow-hidden rounded-[8px] bg-transparent">
+          {preparedImages.length > 0 ? (
+            <div
+              className="flex transition-transform duration-[650ms] ease-in-out"
+              style={{
+                width: `${preparedImages.length * 100}%`,
+                transform: `translateX(-${
+                  safeActiveIndex * (100 / preparedImages.length)
+                }%)`,
+              }}
+            >
+              {preparedImages.map((image) => {
+                const imageUrl = getImageUrl(image);
 
-              return (
-                <div
-                  key={image.id}
-                  className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
-                  style={{ width: `${100 / preparedImages.length}%` }}
-                >
-                  <img
-                    src={imageUrl}
-                    alt={image.alt_text || title}
-                    className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
-                    loading={image.id === preparedImages[0]?.id ? "eager" : "lazy"}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex aspect-[505/678] items-center justify-center rounded-[8px] text-[16px] text-ink-light">
-            <LocalizedText ru="Нет изображения" en="No image" />
-          </div>
-        )}
+                return (
+                  <div
+                    key={image.id}
+                    className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
+                    style={{ width: `${100 / preparedImages.length}%` }}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={image.alt_text || title}
+                      className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
+                      loading={
+                        image.id === preparedImages[0]?.id ? "eager" : "lazy"
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex aspect-[505/678] items-center justify-center rounded-[8px] text-[16px] text-ink-light">
+              <LocalizedText ru="Нет изображения" en="No image" />
+            </div>
+          )}
+        </div>
 
         {hasManyImages && (
           <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-3 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.18)] backdrop-blur">

@@ -28,6 +28,14 @@ const productionImageHosts = uniqueHosts([
 const nextConfig = {
   output: "standalone",
 
+  // Next >=15.2 streams metadata on dynamic pages: <meta> tags can end up in
+  // <body> instead of <head>. Bots matching this list get blocking (in-<head>)
+  // metadata. Setting the option REPLACES the default list, so it repeats the
+  // defaults and adds TelegramBot (absent from defaults), which cannot parse
+  // streamed metadata — that is what broke link previews in Telegram.
+  htmlLimitedBots:
+    /Mediapartners-Google|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|vkShare|TelegramBot|Telegram/i,
+
   images: {
     remotePatterns: [
       {

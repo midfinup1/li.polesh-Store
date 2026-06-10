@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  /* Declares native light/dark support. Without this, Yandex Browser's
+     "dark theme for sites" force-darkens the page itself and applies its own
+     brightness filters to images (washed-out artworks). Declaring color-scheme
+     tells the browser the site handles dark mode natively. */
+  color-scheme: light;
   --paper: #ffffff;
   --ink: #000000;
   --paper-dark: #e6e6e6;
@@ -12,6 +17,7 @@
 }
 
 html.dark {
+  color-scheme: dark;
   --paper: #111111;
   --ink: #f5f5f5;
   --paper-dark: #1c1c1c;

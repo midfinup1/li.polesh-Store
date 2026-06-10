@@ -50,6 +50,9 @@ func NewRouter(d Deps) http.Handler {
 
 	loginLimiter := middleware.RateLimit(10, time.Minute)
 	orderLimiter := middleware.RateLimit(10, time.Hour)
+	// Public write endpoint: without a limit a bot can flood analytics_events
+	// (disk growth, table bloat). 60/min per IP is far above real user traffic.
+	analyticsLimiter := middleware.RateLimit(60, time.Minute)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		healthHandler := func(w http.ResponseWriter, _ *http.Request) {
@@ -79,7 +82,7 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/categories", categories.List)
 		r.Get("/artist", artist.Get)
 		r.With(orderLimiter).Post("/orders", orders.Create)
-		r.Post("/analytics/view", analytics.Track)
+		r.With(analyticsLimiter).Post("/analytics/view", analytics.Track)
 		r.With(loginLimiter).Post("/auth/login", auth.Login)
 		r.Post("/auth/logout", auth.Logout)
 

@@ -22,7 +22,7 @@ function ArtworkThumbnail({
     <img
       src={imageUrl}
       alt={image.alt_text || title}
-      className="h-auto w-full rounded-[8px] object-contain transition-opacity duration-300 group-hover:opacity-90"
+      className="h-auto w-full rounded-[8px] object-contain transition-transform duration-300 group-hover:scale-[1.01]"
       loading="lazy"
     />
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 
@@ -21,9 +20,9 @@ type ArtworkImageCarouselProps = {
 function getImageUrl(image: ArtworkImageCarouselImage) {
   return (
     image.original_url ||
-    image.thumb_avif_url ||
-    image.thumb_webp_url ||
     image.thumb_url ||
+    image.thumb_webp_url ||
+    image.thumb_avif_url ||
     ""
   );
 }
@@ -43,6 +42,7 @@ export function ArtworkImageCarousel({
     preparedImages.length > 0
       ? Math.min(activeIndex, preparedImages.length - 1)
       : 0;
+
   const activeImage = preparedImages[safeActiveIndex];
   const activeUrl = activeImage ? getImageUrl(activeImage) : "";
   const hasManyImages = preparedImages.length > 1;
@@ -90,17 +90,14 @@ export function ArtworkImageCarousel({
               return (
                 <div
                   key={image.id}
-                  className="shrink-0"
+                  className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
                   style={{ width: `${100 / preparedImages.length}%` }}
                 >
-                  <Image
+                  <img
                     src={imageUrl}
                     alt={image.alt_text || title}
-                    width={1010}
-                    height={1356}
-                    priority={image.id === preparedImages[0]?.id}
-                    sizes="(max-width: 768px) 100vw, 505px"
-                    className="h-auto w-full object-contain"
+                    className="max-h-[72vh] w-full rounded-[8px] object-contain"
+                    loading={image.id === preparedImages[0]?.id ? "eager" : "lazy"}
                   />
                 </div>
               );

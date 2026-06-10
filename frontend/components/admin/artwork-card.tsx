@@ -9,6 +9,9 @@ import {
 } from "@/components/admin/forms";
 import { formatPrice, statusLabel } from "@/components/admin/helpers";
 
+const selectClassName = `${smallInputClassName} bg-paper text-ink`;
+const optionClassName = "bg-white text-black dark:bg-[#111111] dark:text-white";
+
 function getArtworkImageUrl(image: ArtworkImage) {
   return (
     image.original_url ||
@@ -117,6 +120,7 @@ export function ArtworkAdminCard({
             placeholder="Цена"
             className={smallInputClassName}
           />
+
           <select
             value={draft.category_id ?? ""}
             onChange={(event) =>
@@ -126,12 +130,18 @@ export function ArtworkAdminCard({
                   event.target.value === "" ? null : Number(event.target.value),
               })
             }
-            className={smallInputClassName}
+            className={selectClassName}
             required
           >
-            <option value="">Выберите категорию</option>
+            <option value="" className={optionClassName}>
+              Выберите категорию
+            </option>
             {categories.map((category) => (
-              <option key={category.id} value={category.id}>
+              <option
+                key={category.id}
+                value={category.id}
+                className={optionClassName}
+              >
                 {category.name}
               </option>
             ))}
@@ -193,10 +203,14 @@ export function ArtworkAdminCard({
                 status: event.target.value as ArtworkStatus,
               })
             }
-            className={smallInputClassName}
+            className={selectClassName}
           >
             {(Object.keys(statusLabel) as ArtworkStatus[]).map((status) => (
-              <option key={status} value={status}>
+              <option
+                key={status}
+                value={status}
+                className={optionClassName}
+              >
                 {statusLabel[status]}
               </option>
             ))}
@@ -332,7 +346,11 @@ export function ArtworkAdminCard({
                 className="h-[42px] rounded-[8px] border border-border bg-paper px-3 text-[15px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40"
               >
                 {(Object.keys(statusLabel) as ArtworkStatus[]).map((status) => (
-                  <option key={status} value={status}>
+                  <option
+                    key={status}
+                    value={status}
+                    className={optionClassName}
+                  >
                     {statusLabel[status]}
                   </option>
                 ))}

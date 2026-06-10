@@ -53,7 +53,7 @@ export function SiteFooter() {
               />
             </p>
             <p>
-              <LocalizedText ru="ИНН" en="Tax ID" />
+              <LocalizedText ru="ИНН 794248777" en="Tax ID 794248777" />
             </p>
             <a
               href="mailto:lis.polesh@gmail.com"

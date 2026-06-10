@@ -16,7 +16,8 @@ function ArtworkThumbnail({
     image.original_url ||
     image.thumb_url ||
     image.thumb_webp_url ||
-    image.thumb_avif_url;
+    image.thumb_avif_url ||
+    "";
 
   return (
     <img

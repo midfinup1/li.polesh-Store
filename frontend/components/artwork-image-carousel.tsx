@@ -43,8 +43,6 @@ export function ArtworkImageCarousel({
       ? Math.min(activeIndex, preparedImages.length - 1)
       : 0;
 
-  const activeImage = preparedImages[safeActiveIndex];
-  const activeUrl = activeImage ? getImageUrl(activeImage) : "";
   const hasManyImages = preparedImages.length > 1;
 
   function showPrevious() {
@@ -73,15 +71,36 @@ export function ArtworkImageCarousel({
 
   return (
     <div className="relative w-full">
-      <div className="relative mx-auto flex min-h-[320px] w-full max-w-[620px] items-center justify-center overflow-hidden rounded-[8px] bg-paper-dark p-4 md:min-h-[520px]">
-        {activeUrl ? (
-          <img
-            key={activeImage?.id}
-            src={activeUrl}
-            alt={activeImage?.alt_text || title}
-            className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
-            loading="eager"
-          />
+      <div className="relative mx-auto flex min-h-[320px] w-full max-w-[620px] items-center justify-center overflow-visible rounded-[8px] bg-transparent md:min-h-[520px]">
+        {preparedImages.length > 0 ? (
+          <div
+            className="flex w-full transition-transform duration-[650ms] ease-in-out"
+            style={{
+              width: `${preparedImages.length * 100}%`,
+              transform: `translateX(-${
+                safeActiveIndex * (100 / preparedImages.length)
+              }%)`,
+            }}
+          >
+            {preparedImages.map((image) => {
+              const imageUrl = getImageUrl(image);
+
+              return (
+                <div
+                  key={image.id}
+                  className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
+                  style={{ width: `${100 / preparedImages.length}%` }}
+                >
+                  <img
+                    src={imageUrl}
+                    alt={image.alt_text || title}
+                    className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
+                    loading={image.id === preparedImages[0]?.id ? "eager" : "lazy"}
+                  />
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="flex aspect-[505/678] items-center justify-center rounded-[8px] text-[16px] text-ink-light">
             <LocalizedText ru="Нет изображения" en="No image" />

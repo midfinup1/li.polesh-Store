@@ -73,7 +73,7 @@ export function ArtworkImageCarousel({
 
   return (
     <div className="relative w-full">
-      <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-[8px] bg-paper-dark md:min-h-[520px]">
+      <div className="relative mx-auto flex min-h-[320px] w-full max-w-[620px] items-center justify-center overflow-hidden rounded-[8px] bg-paper-dark p-4 md:min-h-[520px]">
         {activeUrl ? (
           <img
             key={activeImage?.id}
@@ -89,7 +89,7 @@ export function ArtworkImageCarousel({
         )}
 
         {hasManyImages && (
-          <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-3 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.18)] backdrop-blur">
+          <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-3 py-2 shadow-[0_4px_18px_rgba(0,0,0,0.18)] backdrop-blur">
             {preparedImages.map((image, index) => (
               <button
                 key={image.id}
@@ -106,33 +106,33 @@ export function ArtworkImageCarousel({
             ))}
           </div>
         )}
+
+        {hasManyImages && (
+          <>
+            <button
+              type="button"
+              onClick={showPrevious}
+              className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform duration-300 hover:scale-105"
+              aria-label="Предыдущее изображение"
+            >
+              <span className="flex h-full w-full items-center justify-center pb-[3px] pr-[2px] text-[34px] font-medium leading-none">
+                ‹
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={showNext}
+              className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform duration-300 hover:scale-105"
+              aria-label="Следующее изображение"
+            >
+              <span className="flex h-full w-full items-center justify-center pb-[3px] pl-[2px] text-[34px] font-medium leading-none">
+                ›
+              </span>
+            </button>
+          </>
+        )}
       </div>
-
-      {hasManyImages && (
-        <>
-          <button
-            type="button"
-            onClick={showPrevious}
-            className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-x-[100%] -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform duration-300 hover:scale-105"
-            aria-label="Предыдущее изображение"
-          >
-            <span className="flex h-full w-full items-center justify-center pb-[3px] pr-[2px] text-[34px] font-medium leading-none">
-              ‹
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={showNext}
-            className="absolute right-0 top-1/2 z-10 flex h-11 w-11 translate-x-[100%] -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-[0_4px_18px_rgba(0,0,0,0.18)] transition-transform duration-300 hover:scale-105"
-            aria-label="Следующее изображение"
-          >
-            <span className="flex h-full w-full items-center justify-center pb-[3px] pl-[2px] text-[34px] font-medium leading-none">
-              ›
-            </span>
-          </button>
-        </>
-      )}
     </div>
   );
 }

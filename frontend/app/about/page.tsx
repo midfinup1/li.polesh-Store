@@ -16,9 +16,9 @@ export const metadata: Metadata = {
     url: absoluteUrl("/about"),
     images: [
       {
-        url: absoluteUrl("/favicon.png"),
-        width: 512,
-        height: 512,
+        url: absoluteUrl("/og-image.png"),
+        width: 1200,
+        height: 630,
         alt: "Елизавета Полещенко",
       },
     ],
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Об авторе",
     description: "Информация о художнице Елизавете Полещенко",
-    images: [absoluteUrl("/favicon.png")],
+    images: [absoluteUrl("/og-image.png")],
   },
 };
 

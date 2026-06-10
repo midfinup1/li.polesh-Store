@@ -14,9 +14,9 @@ export const metadata: Metadata = {
     url: absoluteUrl("/order"),
     images: [
       {
-        url: absoluteUrl("/favicon.png"),
-        width: 512,
-        height: 512,
+        url: absoluteUrl("/og-image.png"),
+        width: 1200,
+        height: 630,
         alt: "lipolesh.art",
       },
     ],
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "На заказ",
     description: "Информация о заказе картины у художницы Елизаветы Полещенко",
-    images: [absoluteUrl("/favicon.png")],
+    images: [absoluteUrl("/og-image.png")],
   },
 };
 

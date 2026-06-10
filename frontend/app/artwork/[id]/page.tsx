@@ -7,7 +7,7 @@ import { LocalizedText } from "@/components/localized-text";
 import { LocalizedValue } from "@/components/localized-value";
 import { SoldBadge } from "@/components/sold-badge";
 import { api, ApiError } from "@/lib/api";
-import { absoluteUrl, getImageUrl } from "@/lib/metadata";
+import { absoluteUrl } from "@/lib/metadata";
 import type { Artwork } from "@/types";
 
 
@@ -92,14 +92,8 @@ export async function generateMetadata({ params }: ArtworkPageProps) {
   }
 
   const cover = artwork.images?.[0];
-  const imageUrl =
-    cover?.thumb_url ||
-    cover?.thumb_webp_url ||
-    cover?.original_url ||
-    getImageUrl(cover);
-
-  const absoluteImageUrl = imageUrl
-    ? absoluteUrl(imageUrl)
+  const absoluteImageUrl = cover
+    ? absoluteUrl(`/og-image/artwork/${artwork.id}.jpg`)
     : absoluteUrl("/og-image.png");
 
   const title = artwork.title || "Работа";

@@ -61,6 +61,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=/api/v1
             NEXT_PUBLIC_SITE_URL=https://lipolesh.art
+            NEXT_IMAGE_REMOTE_HOSTS=s3.twcstorage.ru,3mjjbew73k.cdn.twcstorage.ru
           tags: |
             ghcr.io/midfinup1/li-polesh-store-frontend:latest
             ghcr.io/midfinup1/li-polesh-store-frontend:${{ github.sha }}

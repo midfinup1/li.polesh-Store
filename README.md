@@ -16,8 +16,8 @@
 - обработка изображений:
   - original
   - JPEG thumbnail
-  - WebP thumbnail через cwebp
-  - AVIF thumbnail через avifenc
+  - WebP thumbnail через `cwebp`
+  - AVIF thumbnail через `avifenc`
 - Telegram-уведомления о новых заявках
 - health/readiness endpoints
 - внутренняя аналитика просмотров и кликов
@@ -52,51 +52,110 @@
 
 ## Структура проекта
 
-text backend/   cmd/   internal/   migrations/  frontend/   app/   components/   lib/   public/   types/  infra/   Caddyfile   docker-compose.yml   docker-compose.prod.yml   .env.example   .env.prod.example  scripts/   install-vps.sh   backup-postgres.sh   restore-postgres.sh   test-restore-postgres.sh   local-restore-and-up.sh  docs/   operations.md  .github/   workflows/     ci.yml     deploy.yml 
+```text
+backend/
+  cmd/
+  internal/
+  migrations/
+
+frontend/
+  app/
+  components/
+  lib/
+  public/
+  types/
+
+infra/
+  Caddyfile
+  docker-compose.yml
+  docker-compose.prod.yml
+  .env.example
+  .env.prod.example
+
+scripts/
+  install-vps.sh
+  backup-postgres.sh
+  restore-postgres.sh
+  test-restore-postgres.sh
+  local-restore-and-up.sh
+
+docs/
+  operations.md
+
+.github/
+  workflows/
+    ci.yml
+    deploy.yml
+```
 
 ## Локальный запуск
 
 Требуется:
 
-text Docker Go Node.js npm 
+```text
+Docker
+Go
+Node.js
+npm
+```
 
 Подготовка:
 
-bash make init 
+```bash
+make init
+```
 
 Запуск:
 
-bash make up 
+```bash
+make up
+```
 
 Адреса:
 
-text Сайт:     http://localhost:3000 API:      http://localhost:8080/api/v1 Adminer:  http://localhost:8081 
+```text
+Сайт:     http://localhost:3000
+API:      http://localhost:8080/api/v1
+Adminer:  http://localhost:8081
+```
 
 Логи:
 
-bash make logs 
+```bash
+make logs
+```
 
 Остановка:
 
-bash make down 
+```bash
+make down
+```
 
 Проверки:
 
-bash make test 
+```bash
+make test
+```
 
 Создать администратора локально:
 
-bash ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="password123456" make admin 
+```bash
+ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="password123456" make admin
+```
 
 Вход в админку:
 
-text http://localhost:3000/admin/login 
+```text
+http://localhost:3000/admin/login
+```
 
 ## Локальный запуск на базе из backup
 
-Скачать dump с сервера или из S3, положить его в папку backups/, затем выполнить:
+Скачать dump с сервера или из S3, положить его в папку `backups/`, затем выполнить:
 
-bash ./scripts/local-restore-and-up.sh backups/ИМЯ_БЭКАПА.dump 
+```bash
+./scripts/local-restore-and-up.sh backups/ИМЯ_БЭКАПА.dump
+```
 
 Скрипт восстановит dump в локальную PostgreSQL-базу и поднимет проект через local Docker Compose.
 
@@ -104,32 +163,52 @@ bash ./scripts/local-restore-and-up.sh backups/ИМЯ_БЭКАПА.dump
 
 Production compose:
 
-text infra/docker-compose.prod.yml 
+```text
+infra/docker-compose.prod.yml
+```
 
 Production env:
 
-text infra/.env.prod 
+```text
+infra/.env.prod
+```
 
 Основные production endpoints:
 
-text https://lipolesh.art https://lipolesh.art/admin/login https://lipolesh.art/api/health https://lipolesh.art/api/v1/health https://lipolesh.art/api/v1/ready 
+```text
+https://lipolesh.art
+https://lipolesh.art/admin/login
+https://lipolesh.art/api/health
+https://lipolesh.art/api/v1/health
+https://lipolesh.art/api/v1/ready
+```
 
 Деплой и rollback выполняются через GitHub Actions:
 
-text GitHub -> Actions -> Deploy -> Run workflow 
+```text
+GitHub -> Actions -> Deploy -> Run workflow
+```
 
-При push в main собираются и публикуются Docker images. На сервер они не выкатываются автоматически.
+При push в `main` собираются и публикуются Docker images. На сервер они не выкатываются автоматически.
 
 Ручной deploy:
 
-text action = deploy rollback_sha = пусто 
+```text
+action = deploy
+rollback_sha = пусто
+```
 
 Rollback:
 
-text action = rollback rollback_sha = полный SHA коммита 
+```text
+action = rollback
+rollback_sha = полный SHA коммита
+```
 
 ## Документация по эксплуатации
 
 Краткая памятка по управлению production, backup, restore, S3, Telegram, UptimeRobot и аварийным действиям находится здесь:
 
-text docs/operations.md 
+```text
+docs/operations.md
+```

@@ -12,23 +12,19 @@ function ArtworkThumbnail({
   image: ArtworkImage;
   title: string;
 }) {
-  const fallback = image.thumb_url || image.original_url;
+  const imageUrl =
+    image.original_url ||
+    image.thumb_url ||
+    image.thumb_webp_url ||
+    image.thumb_avif_url;
 
   return (
-    <picture>
-      {image.thumb_avif_url && (
-        <source srcSet={image.thumb_avif_url} type="image/avif" />
-      )}
-      {image.thumb_webp_url && (
-        <source srcSet={image.thumb_webp_url} type="image/webp" />
-      )}
-      <img
-        src={fallback}
-        alt={image.alt_text || title}
-        className="h-auto w-full rounded-[8px] object-contain transition-opacity duration-300 group-hover:opacity-90"
-        loading="lazy"
-      />
-    </picture>
+    <img
+      src={imageUrl}
+      alt={image.alt_text || title}
+      className="h-auto w-full rounded-[8px] object-contain transition-opacity duration-300 group-hover:opacity-90"
+      loading="lazy"
+    />
   );
 }
 

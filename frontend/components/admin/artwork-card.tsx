@@ -9,6 +9,16 @@ import {
 } from "@/components/admin/forms";
 import { formatPrice, statusLabel } from "@/components/admin/helpers";
 
+function getArtworkImageUrl(image: ArtworkImage) {
+  return (
+    image.original_url ||
+    image.thumb_url ||
+    image.thumb_webp_url ||
+    image.thumb_avif_url ||
+    ""
+  );
+}
+
 export function ArtworkAdminCard({
   artwork,
   draft,
@@ -60,12 +70,7 @@ export function ArtworkAdminCard({
 }) {
   const isCollapsed = collapsed === true && draft === null;
   const coverImage = artwork.images[0];
-  const coverUrl = coverImage
-    ? coverImage.thumb_webp_url ||
-      coverImage.thumb_avif_url ||
-      coverImage.thumb_url ||
-      coverImage.original_url
-    : "";
+  const coverUrl = coverImage ? getArtworkImageUrl(coverImage) : "";
 
   return (
     <article
@@ -359,56 +364,63 @@ export function ArtworkAdminCard({
         <div className="mt-4 border-t border-border pt-4">
           {artwork.images.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {artwork.images.map((image) => (
-                <div
-                  key={image.id}
-                  draggable
-                  onDragStart={() => onImageDragStart(image.id)}
-                  onDragEnd={onImageDragEnd}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={() => onImageDrop(image.id)}
-                  className={[
-                    "rounded-[8px] border border-border p-2 transition-opacity",
-                    draggedImageId === image.id ? "opacity-40" : "opacity-100",
-                  ].join(" ")}
-                >
-                  <div className="aspect-square overflow-hidden rounded-[6px] bg-paper-dark">
-                    <img
-                      src={
-                        image.thumb_webp_url ||
-                        image.thumb_avif_url ||
-                        image.thumb_url ||
-                        image.original_url
-                      }
-                      alt={image.alt_text || artwork.title}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+              {artwork.images.map((image) => {
+                const imageUrl = getArtworkImageUrl(image);
 
-                  <label className="mt-2 block text-[12px] font-semibold leading-[150%] text-ink-light">
-                    Alt text
-                    <input
-                      defaultValue={image.alt_text || artwork.title}
-                      onBlur={(event) => {
-                        const value = event.target.value.trim();
-                        if (value !== image.alt_text) {
-                          onImageAltTextSave(image, value);
-                        }
-                      }}
-                      className="mt-1 w-full rounded-[6px] border border-border bg-transparent px-2 py-1 text-[13px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40"
-                      placeholder="Описание изображения"
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => onImageDelete(image)}
-                    className="mt-2 w-full text-[13px] font-medium text-red-600 hover:opacity-70"
+                return (
+                  <div
+                    key={image.id}
+                    draggable
+                    onDragStart={() => onImageDragStart(image.id)}
+                    onDragEnd={onImageDragEnd}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => onImageDrop(image.id)}
+                    className={[
+                      "rounded-[8px] border border-border p-2 transition-opacity",
+                      draggedImageId === image.id
+                        ? "opacity-40"
+                        : "opacity-100",
+                    ].join(" ")}
                   >
-                    Удалить
-                  </button>
-                </div>
-              ))}
+                    <div className="aspect-square overflow-hidden rounded-[6px] bg-paper-dark">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={image.alt_text || artwork.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[12px] text-ink-light">
+                          Нет фото
+                        </div>
+                      )}
+                    </div>
+
+                    <label className="mt-2 block text-[12px] font-semibold leading-[150%] text-ink-light">
+                      Alt text
+                      <input
+                        defaultValue={image.alt_text || artwork.title}
+                        onBlur={(event) => {
+                          const value = event.target.value.trim();
+                          if (value !== image.alt_text) {
+                            onImageAltTextSave(image, value);
+                          }
+                        }}
+                        className="mt-1 w-full rounded-[6px] border border-border bg-transparent px-2 py-1 text-[13px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40"
+                        placeholder="Описание изображения"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => onImageDelete(image)}
+                      className="mt-2 w-full text-[13px] font-medium text-red-600 hover:opacity-70"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 

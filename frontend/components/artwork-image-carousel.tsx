@@ -98,23 +98,15 @@ export function ArtworkImageCarousel({
                     className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
                     style={{ width: `${100 / preparedImages.length}%` }}
                   >
-                    <picture>
-                      {image.display_webp_url && (
-                        <source
-                          srcSet={image.display_webp_url}
-                          type="image/webp"
-                        />
-                      )}
-                      <img
-                        src={imageUrl}
-                        alt={image.alt_text || title}
-                        className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
-                        decoding="async"
-                        loading={
-                          image.id === preparedImages[0]?.id ? "eager" : "lazy"
-                        }
-                      />
-                    </picture>
+                    <img
+                      src={imageUrl}
+                      alt={image.alt_text || title}
+                      className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
+                      decoding="async"
+                      loading={
+                        image.id === preparedImages[0]?.id ? "eager" : "lazy"
+                      }
+                    />
                   </div>
                 );
               })}

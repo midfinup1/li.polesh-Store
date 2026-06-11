@@ -22,10 +22,11 @@ const (
 	ThumbnailJPEGQuality = 82
 
 	// Display variants are what the public artwork page (carousel) serves
-	// instead of multi-megabyte originals: 1600px covers retina laptops at the
-	// carousel's max width while staying ~200-400KB as JPEG.
-	DisplayMaxDim      = 1600
-	DisplayJPEGQuality = 85
+	// instead of multi-megabyte originals. 2400px keeps artwork details crisp on
+	// retina screens while still being much lighter than the original upload.
+	DisplayMaxDim      = 2400
+	DisplayJPEGQuality = 92
+	DisplayWebPQuality = 90
 )
 
 type Result struct {
@@ -64,7 +65,7 @@ func (p *Processor) Generate(ctx context.Context, data []byte, _ string) (*Resul
 		return nil, err
 	}
 
-	webpBytes, _ := encodeWebP(ctx, jpegBytes)
+	webpBytes, _ := encodeWebPQuality(ctx, jpegBytes, 82)
 	avifBytes, _ := encodeAVIF(ctx, jpegBytes)
 
 	// Display variant reuses the already-decoded image (no second decode of a
@@ -76,7 +77,7 @@ func (p *Processor) Generate(ctx context.Context, data []byte, _ string) (*Resul
 	if err != nil {
 		return nil, err
 	}
-	displayWebP, _ := encodeWebP(ctx, displayJPEG)
+	displayWebP, _ := encodeWebPQuality(ctx, displayJPEG, DisplayWebPQuality)
 
 	return &Result{
 		JPEG:        jpegBytes,
@@ -97,11 +98,11 @@ func encodeJPEG(img image.Image, quality int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func encodeWebP(ctx context.Context, inputData []byte) ([]byte, error) {
+func encodeWebPQuality(ctx context.Context, inputData []byte, quality int) ([]byte, error) {
 	return encodeWithCLI(
 		ctx,
 		"cwebp",
-		[]string{"-quiet", "-q", "82"},
+		[]string{"-quiet", "-q", fmt.Sprintf("%d", quality)},
 		".jpg",
 		".webp",
 		inputData,

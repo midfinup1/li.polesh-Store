@@ -37,6 +37,7 @@ type imageRow struct {
 
 func main() {
 	dryRun := flag.Bool("dry-run", false, "print planned actions without writing")
+	force := flag.Bool("force", false, "regenerate display variants even when they already exist")
 	skipHeaders := flag.Bool("skip-cache-headers", false, "skip the bucket-wide Cache-Control pass")
 	flag.Parse()
 
@@ -65,7 +66,7 @@ func main() {
 		log.Fatalf("s3 client: %v", err)
 	}
 
-	if err := backfillDisplayVariants(ctx, db, s3, bucket, publicURL, *dryRun); err != nil {
+	if err := backfillDisplayVariants(ctx, db, s3, bucket, publicURL, *dryRun, *force); err != nil {
 		log.Fatalf("display backfill: %v", err)
 	}
 
@@ -78,17 +79,28 @@ func main() {
 	log.Println("done")
 }
 
-func backfillDisplayVariants(ctx context.Context, db *sqlx.DB, s3 *minio.Client, bucket, publicURL string, dryRun bool) error {
+func backfillDisplayVariants(ctx context.Context, db *sqlx.DB, s3 *minio.Client, bucket, publicURL string, dryRun bool, force bool) error {
 	var rows []imageRow
-	if err := db.SelectContext(ctx, &rows,
-		`SELECT id, artwork_id, original_url, display_url
+	query := `SELECT id, artwork_id, original_url, display_url
 		   FROM artwork_images
 		  WHERE display_url = ''
-		  ORDER BY id`); err != nil {
+		  ORDER BY id`
+	if force {
+		query = `SELECT id, artwork_id, original_url, display_url
+		   FROM artwork_images
+		  WHERE original_url <> ''
+		  ORDER BY id`
+	}
+
+	if err := db.SelectContext(ctx, &rows, query); err != nil {
 		return fmt.Errorf("select images: %w", err)
 	}
 
-	log.Printf("images without display variant: %d", len(rows))
+	if force {
+		log.Printf("images selected for display regeneration: %d", len(rows))
+	} else {
+		log.Printf("images without display variant: %d", len(rows))
+	}
 	processor := imageprocessor.New()
 
 	for _, row := range rows {
@@ -166,6 +178,11 @@ func setCacheHeaders(ctx context.Context, s3 *minio.Client, bucket string, dryRu
 			return fmt.Errorf("list objects: %w", object.Err)
 		}
 
+		if !shouldUpdateCacheHeaders(object.Key) {
+			skipped++
+			continue
+		}
+
 		stat, err := s3.StatObject(ctx, bucket, object.Key, minio.StatObjectOptions{})
 		if err != nil {
 			log.Printf("%s: stat: %v — skipped", object.Key, err)
@@ -204,6 +221,10 @@ func setCacheHeaders(ctx context.Context, s3 *minio.Client, bucket string, dryRu
 
 	log.Printf("cache headers: updated %d objects, skipped %d", updated, skipped)
 	return nil
+}
+
+func shouldUpdateCacheHeaders(key string) bool {
+	return strings.HasPrefix(key, "artworks/") || strings.HasPrefix(key, "artist/")
 }
 
 func putObject(ctx context.Context, s3 *minio.Client, bucket, publicURL, key string, data []byte, contentType string) (string, error) {

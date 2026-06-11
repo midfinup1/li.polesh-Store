@@ -60,6 +60,31 @@ services:
     networks:
       - app
 
+  telegram-proxy:
+    image: alpine:3.20
+    restart: unless-stopped
+    logging: *default-logging
+    command: >
+      sh -c "
+        apk add --no-cache openssh-client &&
+        mkdir -p /root/.ssh &&
+        cp /run/secrets/telegram_tunnel_key /root/.ssh/id_ed25519 &&
+        chmod 600 /root/.ssh/id_ed25519 &&
+        ssh -i /root/.ssh/id_ed25519
+          -N
+          -D 0.0.0.0:1080
+          root@78.17.86.10
+          -o ExitOnForwardFailure=yes
+          -o ServerAliveInterval=30
+          -o ServerAliveCountMax=3
+          -o IdentitiesOnly=yes
+          -o StrictHostKeyChecking=no
+      "
+    secrets:
+      - telegram_tunnel_key
+    networks:
+      - app
+
   backend:
     image: ghcr.io/midfinup1/li-polesh-store-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
@@ -69,6 +94,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      telegram-proxy:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/api/v1/ready || exit 1"]
       interval: 30s
@@ -98,6 +125,10 @@ volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+
+secrets:
+  telegram_tunnel_key:
+    file: /home/deploy/.ssh/li_polesh_github_actions
 
 networks:
   app:

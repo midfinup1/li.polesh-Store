@@ -4,7 +4,11 @@ import Link from "next/link";
 import type { Artwork, ArtworkImage } from "@/types";
 import { useSiteSettings } from "@/lib/site-settings";
 import { pickLocalized } from "@/lib/i18n";
+import { ArtworkPicture } from "@/components/artwork-picture";
 
+// Catalog cards must serve thumbnails (~30-100KB avif/webp/jpeg), never the
+// multi-megabyte originals: a category grid of 15 works with originals is
+// 75-150MB of traffic — the "images load for minutes" bug.
 function ArtworkThumbnail({
   image,
   title,
@@ -12,19 +16,11 @@ function ArtworkThumbnail({
   image: ArtworkImage;
   title: string;
 }) {
-  const imageUrl =
-    image.original_url ||
-    image.thumb_url ||
-    image.thumb_webp_url ||
-    image.thumb_avif_url ||
-    "";
-
   return (
-    <img
-      src={imageUrl}
-      alt={image.alt_text || title}
+    <ArtworkPicture
+      image={image}
+      title={title}
       className="h-auto w-full rounded-[8px] object-contain transition-transform duration-300 group-hover:scale-[1.01]"
-      loading="lazy"
     />
   );
 }

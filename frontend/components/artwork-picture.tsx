@@ -22,6 +22,7 @@ export function ArtworkPicture({
         alt={image.alt_text || title}
         className={className}
         loading={loading}
+        decoding="async"
       />
     </picture>
   );

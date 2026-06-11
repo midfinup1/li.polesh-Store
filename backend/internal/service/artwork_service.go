@@ -171,6 +171,8 @@ func (s *ArtworkService) Delete(ctx context.Context, id int64) error {
 			image.ThumbURL,
 			image.ThumbWebPURL,
 			image.ThumbAVIFURL,
+			image.DisplayURL,
+			image.DisplayWebPURL,
 		} {
 			if url == "" || url == image.OriginalURL {
 				continue
@@ -213,12 +215,14 @@ func (s *ArtworkService) UploadImage(
 	}
 
 	img := &domain.ArtworkImage{
-		ArtworkID:    artworkID,
-		OriginalURL:  uploaded.OriginalURL,
-		ThumbURL:     uploaded.ThumbURL,
-		ThumbWebPURL: uploaded.ThumbWebPURL,
-		ThumbAVIFURL: uploaded.ThumbAVIFURL,
-		AltText:      altText,
+		ArtworkID:      artworkID,
+		OriginalURL:    uploaded.OriginalURL,
+		ThumbURL:       uploaded.ThumbURL,
+		ThumbWebPURL:   uploaded.ThumbWebPURL,
+		ThumbAVIFURL:   uploaded.ThumbAVIFURL,
+		DisplayURL:     uploaded.DisplayURL,
+		DisplayWebPURL: uploaded.DisplayWebPURL,
+		AltText:        altText,
 	}
 
 	created, err := s.artworks.AddImage(ctx, img)
@@ -253,6 +257,8 @@ func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
 		image.ThumbURL,
 		image.ThumbWebPURL,
 		image.ThumbAVIFURL,
+		image.DisplayURL,
+		image.DisplayWebPURL,
 	} {
 		if url == "" || url == image.OriginalURL {
 			continue

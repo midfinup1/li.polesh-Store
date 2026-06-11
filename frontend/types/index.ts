@@ -7,6 +7,8 @@ export interface ArtworkImage {
   thumb_url: string;
   thumb_webp_url: string;
   thumb_avif_url: string;
+  display_url: string;
+  display_webp_url: string;
   alt_text: string;
   sort_order: number;
 }

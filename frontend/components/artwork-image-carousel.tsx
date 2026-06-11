@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 
 type ArtworkImageCarouselImage = {
+  display_url?: string;
+  display_webp_url?: string;
   id: number;
   alt_text?: string;
   original_url?: string;
@@ -17,8 +19,12 @@ type ArtworkImageCarouselProps = {
   title: string;
 };
 
+// Display variant (~1600px, ~200-400KB) first; the multi-megabyte original is
+// only a last-resort fallback for images uploaded before display variants
+// existed (until backfill-images is run).
 function getImageUrl(image: ArtworkImageCarouselImage) {
   return (
+    image.display_url ||
     image.original_url ||
     image.thumb_url ||
     image.thumb_webp_url ||
@@ -92,14 +98,23 @@ export function ArtworkImageCarousel({
                     className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
                     style={{ width: `${100 / preparedImages.length}%` }}
                   >
-                    <img
-                      src={imageUrl}
-                      alt={image.alt_text || title}
-                      className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
-                      loading={
-                        image.id === preparedImages[0]?.id ? "eager" : "lazy"
-                      }
-                    />
+                    <picture>
+                      {image.display_webp_url && (
+                        <source
+                          srcSet={image.display_webp_url}
+                          type="image/webp"
+                        />
+                      )}
+                      <img
+                        src={imageUrl}
+                        alt={image.alt_text || title}
+                        className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
+                        decoding="async"
+                        loading={
+                          image.id === preparedImages[0]?.id ? "eager" : "lazy"
+                        }
+                      />
+                    </picture>
                   </div>
                 );
               })}

@@ -29,10 +29,12 @@ var allowedImageTypes = map[string]string{
 }
 
 type UploadedArtworkImage struct {
-	OriginalURL  string
-	ThumbURL     string
-	ThumbWebPURL string
-	ThumbAVIFURL string
+	OriginalURL    string
+	ThumbURL       string
+	ThumbWebPURL   string
+	ThumbAVIFURL   string
+	DisplayURL     string
+	DisplayWebPURL string
 }
 
 type StorageService struct {
@@ -107,6 +109,22 @@ func (s *StorageService) UploadArtworkImage(ctx context.Context, artworkID int64
 		}
 	}
 
+	// Display variants (~1600px) — what the public carousel serves instead of
+	// the original. On failure the frontend falls back to the original.
+	if len(thumbs.DisplayJPEG) > 0 {
+		displayKey := fmt.Sprintf("artworks/%d/%d_display.jpg", artworkID, timestamp)
+		if url, err := s.put(ctx, displayKey, thumbs.DisplayJPEG, "image/jpeg"); err == nil {
+			result.DisplayURL = url
+		}
+	}
+
+	if len(thumbs.DisplayWebP) > 0 {
+		displayWebPKey := fmt.Sprintf("artworks/%d/%d_display.webp", artworkID, timestamp)
+		if url, err := s.put(ctx, displayWebPKey, thumbs.DisplayWebP, "image/webp"); err == nil {
+			result.DisplayWebPURL = url
+		}
+	}
+
 	return result, nil
 }
 
@@ -149,7 +167,14 @@ func (s *StorageService) put(ctx context.Context, key string, data []byte, conte
 		return "/uploads/" + key, nil
 	}
 
-	_, err := s.client.PutObject(ctx, s.bucket, key, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{ContentType: contentType})
+	// Object keys are timestamped and never rewritten, so aggressive immutable
+	// caching is safe. Without Cache-Control the S3 endpoint sends none, and
+	// browsers fall back to heuristic caching — visitors re-download images on
+	// almost every visit.
+	_, err := s.client.PutObject(ctx, s.bucket, key, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{
+		ContentType:  contentType,
+		CacheControl: "public, max-age=31536000, immutable",
+	})
 	if err != nil {
 		return "", fmt.Errorf("upload failed: %w", err)
 	}

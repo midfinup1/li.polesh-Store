@@ -326,10 +326,12 @@ func (r *artworkRepository) AddImage(ctx context.Context, image *domain.ArtworkI
 				thumb_url,
 				thumb_webp_url,
 				thumb_avif_url,
+				display_url,
+				display_webp_url,
 				alt_text,
 				sort_order
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			RETURNING id
 		`,
 		image.ArtworkID,
@@ -337,6 +339,8 @@ func (r *artworkRepository) AddImage(ctx context.Context, image *domain.ArtworkI
 		image.ThumbURL,
 		image.ThumbWebPURL,
 		image.ThumbAVIFURL,
+		image.DisplayURL,
+		image.DisplayWebPURL,
 		image.AltText,
 		image.SortOrder,
 	).Scan(&image.ID)

@@ -14,10 +14,11 @@ const optionClassName = "bg-white text-black dark:bg-[#111111] dark:text-white";
 
 function getArtworkImageUrl(image: ArtworkImage) {
   return (
-    image.original_url ||
     image.thumb_url ||
     image.thumb_webp_url ||
     image.thumb_avif_url ||
+    image.display_url ||
+    image.original_url ||
     ""
   );
 }

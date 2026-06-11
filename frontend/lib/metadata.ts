@@ -27,11 +27,14 @@ export function getImageUrl(image: {
     return "";
   }
 
+  // Scraper-safe ordering: JPEG thumb first (small, universally supported by
+  // preview bots), then webp, then the original. AVIF last — most link
+  // scrapers cannot decode it.
   return (
+    image.thumb_url ||
+    image.thumb_webp_url ||
     image.original_url ||
     image.thumb_avif_url ||
-    image.thumb_webp_url ||
-    image.thumb_url ||
     ""
   );
 }

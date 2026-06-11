@@ -20,12 +20,23 @@ import (
 const (
 	ThumbnailMaxDim      = 800
 	ThumbnailJPEGQuality = 82
+
+	// Display variants are what the public artwork page (carousel) serves
+	// instead of multi-megabyte originals: 1600px covers retina laptops at the
+	// carousel's max width while staying ~200-400KB as JPEG.
+	DisplayMaxDim      = 1600
+	DisplayJPEGQuality = 85
 )
 
 type Result struct {
 	JPEG []byte
 	WebP []byte
 	AVIF []byte
+
+	// Display-size variants (DisplayMaxDim). WebP may be empty when the cwebp
+	// binary is unavailable; JPEG is always present on success.
+	DisplayJPEG []byte
+	DisplayWebP []byte
 }
 
 type Processor struct {
@@ -56,10 +67,23 @@ func (p *Processor) Generate(ctx context.Context, data []byte, _ string) (*Resul
 	webpBytes, _ := encodeWebP(ctx, jpegBytes)
 	avifBytes, _ := encodeAVIF(ctx, jpegBytes)
 
+	// Display variant reuses the already-decoded image (no second decode of a
+	// potentially 10MB original). AVIF is intentionally skipped here: avifenc
+	// on 1600px inputs is too slow for a synchronous upload path, and JPEG+WebP
+	// already give the bulk of the savings.
+	display := downscale(img, DisplayMaxDim)
+	displayJPEG, err := encodeJPEG(display, DisplayJPEGQuality)
+	if err != nil {
+		return nil, err
+	}
+	displayWebP, _ := encodeWebP(ctx, displayJPEG)
+
 	return &Result{
-		JPEG: jpegBytes,
-		WebP: webpBytes,
-		AVIF: avifBytes,
+		JPEG:        jpegBytes,
+		WebP:        webpBytes,
+		AVIF:        avifBytes,
+		DisplayJPEG: displayJPEG,
+		DisplayWebP: displayWebP,
 	}, nil
 }
 

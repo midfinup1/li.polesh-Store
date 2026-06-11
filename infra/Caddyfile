@@ -20,6 +20,26 @@
 		reverse_proxy backend:8080
 	}
 
+	# Public media proxy for S3 objects.
+	# Example:
+	# /media/artworks/4/file_display.webp
+	# -> https://s3.twcstorage.ru/<S3_BUCKET>/artworks/4/file_display.webp
+	handle_path /media/* {
+		@mediaMethods method GET HEAD
+
+		handle @mediaMethods {
+			rewrite * /{$S3_BUCKET}{uri}
+
+			reverse_proxy https://{$S3_ENDPOINT} {
+				header_up Host {$S3_ENDPOINT}
+				header_down -X-Robots-Tag
+				header_down Cache-Control "public, max-age=31536000, immutable"
+			}
+		}
+
+		respond 405
+	}
+
 	handle {
 		reverse_proxy frontend:3000
 	}

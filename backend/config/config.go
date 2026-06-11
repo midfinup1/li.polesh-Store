@@ -47,6 +47,7 @@ type TelegramConfig struct {
 	BotToken             string
 	ChatID               string
 	NotificationsEnabled bool
+	ProxyURL             string
 }
 
 type AnalyticsConfig struct {
@@ -79,6 +80,7 @@ func Load() *Config {
 			BotToken:             getEnv("TELEGRAM_BOT_TOKEN", ""),
 			ChatID:               getEnv("TELEGRAM_CHAT_ID", ""),
 			NotificationsEnabled: getEnvBool("TELEGRAM_NOTIFICATIONS_ENABLED", false),
+			ProxyURL:             getEnv("TELEGRAM_PROXY_URL", ""),
 		},
 		Analytics: AnalyticsConfig{RetentionDays: getEnvInt("ANALYTICS_RETENTION_DAYS", 365)},
 	}

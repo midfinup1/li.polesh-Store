@@ -30,6 +30,7 @@ func NewServices(d Deps) *Services {
 		Token:   d.Config.Telegram.BotToken,
 		ChatID:  d.Config.Telegram.ChatID,
 		SiteURL: d.Config.App.PublicSiteURL,
+		ProxyURL: d.Config.Telegram.ProxyURL,
 	})
 
 	return &Services{

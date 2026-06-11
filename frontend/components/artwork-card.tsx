@@ -42,7 +42,7 @@ export function ArtworkCard({
   const size = pickLocalized(language, artwork.size, artwork.size_en);
 
   return (
-    <Link href={`/artwork/${artwork.id}`} className="group block">
+    <Link href={`/artwork/${artwork.id}`} scroll={false} className="group block">
       <div className="mb-6 overflow-hidden rounded-[8px] bg-paper-dark">
         {cover ? (
           <ArtworkThumbnail image={cover} title={title} />

@@ -5,11 +5,11 @@ import { ArtworkImageCarousel } from "@/components/artwork-image-carousel";
 import { ArtworkReservePanel } from "@/components/artwork-reserve-panel";
 import { LocalizedText } from "@/components/localized-text";
 import { LocalizedValue } from "@/components/localized-value";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { SoldBadge } from "@/components/sold-badge";
 import { api, ApiError } from "@/lib/api";
 import { absoluteUrl } from "@/lib/metadata";
 import type { Artwork } from "@/types";
-
 
 type ArtworkPageProps = {
   params: Promise<{
@@ -189,135 +189,142 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
     .join(", ");
 
   return (
-    <main className="bg-paper text-ink">
-      <section className="mx-auto grid max-w-[1280px] gap-14 px-6 pb-20 pt-[123px] md:grid-cols-[minmax(0,505px)_minmax(0,515px)] md:px-10 lg:gap-[143px]">
-        <ArtworkImageCarousel images={images} title={artwork.title} />
+    <>
+      <ScrollToTop />
 
-        <aside className="pt-0">
-          <div className="flex max-w-[515px] flex-col">
-            <h1 className="text-[32px] font-semibold leading-[120%] text-ink">
-              <LocalizedValue
-                ru={artwork.title}
-                en={artwork.title_en}
-                fallbackRu="Работа"
-                fallbackEn="Artwork"
-              />
-            </h1>
+      <main className="bg-paper text-ink">
+        <section className="mx-auto grid max-w-[1280px] gap-14 px-6 pb-20 pt-[123px] md:grid-cols-[minmax(0,505px)_minmax(0,515px)] md:px-10 lg:gap-[143px]">
+          <ArtworkImageCarousel images={images} title={artwork.title} />
 
-            <div className="mt-6 space-y-2">
-              {(artwork.size || artwork.size_en) && (
-                <p className="text-[16px] font-normal leading-[150%] text-ink-light">
-                  <LocalizedValue
-                    ru={artwork.size}
-                    en={artwork.size_en}
-                    fallbackRu={artwork.size}
-                    fallbackEn={artwork.size}
-                  />
-                </p>
-              )}
+          <aside className="pt-0">
+            <div className="flex max-w-[515px] flex-col">
+              <h1 className="text-[32px] font-semibold leading-[120%] text-ink">
+                <LocalizedValue
+                  ru={artwork.title}
+                  en={artwork.title_en}
+                  fallbackRu="Работа"
+                  fallbackEn="Artwork"
+                />
+              </h1>
 
-              {(detailsRu || detailsEn) && (
-                <p className="text-[16px] font-normal leading-[150%] text-ink-light">
-                  <LocalizedValue
-                    ru={detailsRu}
-                    en={detailsEn}
-                    fallbackRu={detailsRu}
-                    fallbackEn={detailsRu}
-                  />
-                </p>
-              )}
-            </div>
-
-            <div className="mt-10">
-              {isSold ? (
-                <div>
-                  <p className="text-[24px] font-semibold leading-[150%] text-ink">
-                    <LocalizedText ru="Продано" en="Sold" />
+              <div className="mt-6 space-y-2">
+                {(artwork.size || artwork.size_en) && (
+                  <p className="text-[16px] font-normal leading-[150%] text-ink-light">
+                    <LocalizedValue
+                      ru={artwork.size}
+                      en={artwork.size_en}
+                      fallbackRu={artwork.size}
+                      fallbackEn={artwork.size}
+                    />
                   </p>
+                )}
 
-                  {(priceRu || priceEn) && (
-                    <p className="mt-1 text-[16px] font-medium leading-[150%] text-ink-light line-through">
+                {(detailsRu || detailsEn) && (
+                  <p className="text-[16px] font-normal leading-[150%] text-ink-light">
+                    <LocalizedValue
+                      ru={detailsRu}
+                      en={detailsEn}
+                      fallbackRu={detailsRu}
+                      fallbackEn={detailsRu}
+                    />
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-10">
+                {isSold ? (
+                  <div>
+                    <p className="text-[24px] font-semibold leading-[150%] text-ink">
+                      <LocalizedText ru="Продано" en="Sold" />
+                    </p>
+
+                    {(priceRu || priceEn) && (
+                      <p className="mt-1 text-[16px] font-medium leading-[150%] text-ink-light line-through">
+                        <LocalizedValue
+                          ru={priceRu || ""}
+                          en={priceEn || priceRu || ""}
+                        />
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[24px] font-medium leading-[150%] text-ink">
+                    {priceRu || priceEn ? (
                       <LocalizedValue
                         ru={priceRu || ""}
                         en={priceEn || priceRu || ""}
                       />
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-[24px] font-medium leading-[150%] text-ink">
-                  {priceRu || priceEn ? (
+                    ) : (
+                      <LocalizedText
+                        ru="Цена по запросу"
+                        en="Price on request"
+                      />
+                    )}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-8">
+                <ArtworkReservePanel
+                  artworkId={artwork.id}
+                  disabled={isUnavailable}
+                  sold={isSold}
+                />
+              </div>
+
+              {!isUnavailable &&
+                (artwork.purchase_comment || artwork.purchase_comment_en) && (
+                  <p className="mt-5 whitespace-pre-line text-[15px] font-medium leading-[150%] text-ink-light">
                     <LocalizedValue
-                      ru={priceRu || ""}
-                      en={priceEn || priceRu || ""}
+                      ru={artwork.purchase_comment}
+                      en={artwork.purchase_comment_en}
+                      fallbackRu={artwork.purchase_comment}
+                      fallbackEn={artwork.purchase_comment}
                     />
-                  ) : (
-                    <LocalizedText ru="Цена по запросу" en="Price on request" />
-                  )}
-                </p>
-              )}
-            </div>
+                  </p>
+                )}
 
-            <div className="mt-8">
-              <ArtworkReservePanel
-                artworkId={artwork.id}
-                disabled={isUnavailable}
-                sold={isSold}
-              />
-            </div>
-
-            {!isUnavailable &&
-              (artwork.purchase_comment || artwork.purchase_comment_en) && (
-                <p className="mt-5 whitespace-pre-line text-[15px] font-medium leading-[150%] text-ink-light">
+              {(artwork.description || artwork.description_en) && (
+                <p className="mt-8 whitespace-pre-line text-[16px] font-medium leading-[150%] text-ink">
                   <LocalizedValue
-                    ru={artwork.purchase_comment}
-                    en={artwork.purchase_comment_en}
-                    fallbackRu={artwork.purchase_comment}
-                    fallbackEn={artwork.purchase_comment}
+                    ru={artwork.description}
+                    en={artwork.description_en}
+                    fallbackRu={artwork.description}
+                    fallbackEn={artwork.description}
                   />
                 </p>
               )}
-
-            {(artwork.description || artwork.description_en) && (
-              <p className="mt-8 whitespace-pre-line text-[16px] font-medium leading-[150%] text-ink">
-                <LocalizedValue
-                  ru={artwork.description}
-                  en={artwork.description_en}
-                  fallbackRu={artwork.description}
-                  fallbackEn={artwork.description}
-                />
-              </p>
-            )}
-          </div>
-        </aside>
-      </section>
-
-      {relatedArtworks.length > 0 && (
-        <section className="mx-auto max-w-[1280px] px-6 pb-32 md:px-10">
-          <div className="flex items-end justify-between gap-4 border-t border-border pt-14">
-            <h2 className="text-[28px] font-semibold leading-[120%] tracking-[-0.02em] text-ink md:text-[36px]">
-              <LocalizedText ru="Похожие работы" en="Related artworks" />
-            </h2>
-
-            <Link
-              href="/#catalog"
-              className="text-[16px] font-medium leading-[150%] text-ink-light underline underline-offset-4 transition-colors hover:text-ink"
-            >
-              <LocalizedText ru="В каталог" en="Catalog" />
-            </Link>
-          </div>
-
-          <div className="mt-10 grid gap-10 md:grid-cols-3">
-            {relatedArtworks.map((relatedArtwork) => (
-              <div key={relatedArtwork.id} className="relative">
-                {relatedArtwork.status === "sold" && <SoldBadge />}
-
-                <ArtworkCard artwork={relatedArtwork} />
-              </div>
-            ))}
-          </div>
+            </div>
+          </aside>
         </section>
-      )}
-    </main>
+
+        {relatedArtworks.length > 0 && (
+          <section className="mx-auto max-w-[1280px] px-6 pb-32 md:px-10">
+            <div className="flex items-end justify-between gap-4 border-t border-border pt-14">
+              <h2 className="text-[28px] font-semibold leading-[120%] tracking-[-0.02em] text-ink md:text-[36px]">
+                <LocalizedText ru="Похожие работы" en="Related artworks" />
+              </h2>
+
+              <Link
+                href="/#catalog"
+                className="text-[16px] font-medium leading-[150%] text-ink-light underline underline-offset-4 transition-colors hover:text-ink"
+              >
+                <LocalizedText ru="В каталог" en="Catalog" />
+              </Link>
+            </div>
+
+            <div className="mt-10 grid gap-10 md:grid-cols-3">
+              {relatedArtworks.map((relatedArtwork) => (
+                <div key={relatedArtwork.id} className="relative">
+                  {relatedArtwork.status === "sold" && <SoldBadge />}
+
+                  <ArtworkCard artwork={relatedArtwork} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
+    </>
   );
 }

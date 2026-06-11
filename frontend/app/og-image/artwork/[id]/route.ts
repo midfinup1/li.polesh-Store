@@ -7,6 +7,10 @@ type OgImageRouteProps = {
   }>;
 };
 
+const PUBLIC_MEDIA_BASE_URL = "https://lipolesh.art/media";
+const S3_PUBLIC_BASE_URL =
+  "https://s3.twcstorage.ru/332f0fae-cd27-4aa5-b0b7-e21c7ebf02a5";
+
 function parseArtworkId(value: string) {
   const normalizedValue = value.replace(/\.jpe?g$/i, "");
   const id = Number(normalizedValue);
@@ -31,6 +35,14 @@ function getArtworkPreviewImageUrl(artwork: {
     cover?.thumb_avif_url ||
     null
   );
+}
+
+function toInternalImageUrl(url: string) {
+  if (url.startsWith(PUBLIC_MEDIA_BASE_URL)) {
+    return url.replace(PUBLIC_MEDIA_BASE_URL, S3_PUBLIC_BASE_URL);
+  }
+
+  return url;
 }
 
 function getContentTypeFromUrl(url: string) {
@@ -71,7 +83,9 @@ export async function GET(_request: Request, { params }: OgImageRouteProps) {
       return new NextResponse("Artwork image not found", { status: 404 });
     }
 
-    const imageResponse = await fetch(imageUrl, {
+    const internalImageUrl = toInternalImageUrl(imageUrl);
+
+    const imageResponse = await fetch(internalImageUrl, {
       cache: "no-store",
       headers: {
         Accept: "image/jpeg,image/png,image/webp,image/avif,image/*,*/*",
@@ -88,7 +102,7 @@ export async function GET(_request: Request, { params }: OgImageRouteProps) {
     const imageBuffer = await imageResponse.arrayBuffer();
     const contentType =
       imageResponse.headers.get("content-type") ||
-      getContentTypeFromUrl(imageUrl);
+      getContentTypeFromUrl(internalImageUrl);
 
     return new NextResponse(imageBuffer, {
       status: 200,

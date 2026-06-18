@@ -9,6 +9,7 @@ export default function AdminLoginPage() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,14 +46,24 @@ export default function AdminLoginPage() {
           className={inputClassName}
         />
 
-        <input
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          placeholder="Пароль"
-          className={inputClassName}
-        />
+        <div className="relative">
+          <input
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="current-password"
+            placeholder="Пароль"
+            className={`${inputClassName} pr-24`}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((value) => !value)}
+            aria-pressed={showPassword}
+            className="absolute inset-y-0 right-0 flex items-center px-4 text-[14px] font-medium leading-[150%] text-ink-light transition-colors hover:text-ink"
+          >
+            {showPassword ? "Скрыть" : "Показать"}
+          </button>
+        </div>
 
         {error && (
           <p className="text-[16px] font-medium leading-[150%] text-red-600">

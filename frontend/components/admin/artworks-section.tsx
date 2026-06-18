@@ -68,10 +68,17 @@ export function AdminArtworksSection({
   onImageDragEnd: () => void;
   onImageDrop: (artwork: Artwork, imageId: number) => void;
 }) {
-  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<
+  // The add-work form is collapsed by default — it's long and rarely the first
+  // thing you need when opening the tab.
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Artworks are collapsed by default. We track which ones are *expanded*
+  // (empty set = everything collapsed), so newly loaded artworks start
+  // compact automatically.
+  const [expandedArtworkIds, setExpandedArtworkIds] = useState<
     Record<number, boolean>
   >({});
-  const [collapsedArtworkIds, setCollapsedArtworkIds] = useState<
+  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<
     Record<number, boolean>
   >({});
 
@@ -94,14 +101,14 @@ export function AdminArtworksSection({
   }
 
   function toggleArtwork(artworkId: number) {
-    setCollapsedArtworkIds((current) => ({
+    setExpandedArtworkIds((current) => ({
       ...current,
       [artworkId]: !current[artworkId],
     }));
   }
 
-  function collapseAllArtworks() {
-    setCollapsedArtworkIds(
+  function expandAllArtworks() {
+    setExpandedArtworkIds(
       allArtworkIds.reduce<Record<number, boolean>>((result, artworkId) => {
         result[artworkId] = true;
         return result;
@@ -109,103 +116,62 @@ export function AdminArtworksSection({
     );
   }
 
-  function expandAllArtworks() {
-    setCollapsedArtworkIds({});
+  function collapseAllArtworks() {
+    setExpandedArtworkIds({});
+  }
+
+  function handleCreateArtwork(event: FormEvent<HTMLFormElement>) {
+    onCreateArtwork(event);
+    setShowAddForm(false);
   }
 
   return (
     <section className="mt-6 space-y-5">
       <div className="rounded-[8px] border border-border p-4">
-        <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
-          Добавить работу
-        </h2>
-
-        <form
-          onSubmit={onCreateArtwork}
-          className="mt-5 grid gap-3 md:grid-cols-2"
-        >
-          <input
-            required
-            name="title"
-            placeholder="Название RU"
-            className={inputClassName}
-          />
-          <input
-            name="title_en"
-            placeholder="Название EN"
-            className={inputClassName}
-          />
-          <input
-            name="price"
-            type="number"
-            min="0"
-            placeholder="Цена, руб."
-            className={inputClassName}
-          />
-          <select required name="category_id" className={inputClassName}>
-            <option value="">Выберите категорию</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          <input
-            name="year"
-            type="number"
-            min="1000"
-            max="9999"
-            placeholder="Год"
-            className={inputClassName}
-          />
-          <input name="size" placeholder="Размер RU" className={inputClassName} />
-          <input
-            name="size_en"
-            placeholder="Размер EN"
-            className={inputClassName}
-          />
-          <input
-            name="materials"
-            placeholder="Материалы RU"
-            className={inputClassName}
-          />
-          <input
-            name="materials_en"
-            placeholder="Материалы EN"
-            className={inputClassName}
-          />
-          <textarea
-            name="description"
-            placeholder="Описание RU"
-            rows={3}
-            className={`${inputClassName} md:col-span-2`}
-          />
-          <textarea
-            name="description_en"
-            placeholder="Описание EN"
-            rows={3}
-            className={`${inputClassName} md:col-span-2`}
-          />
-          <textarea
-            name="purchase_comment"
-            placeholder="Комментарий к покупке RU"
-            rows={2}
-            className={`${inputClassName} md:col-span-2`}
-          />
-          <textarea
-            name="purchase_comment_en"
-            placeholder="Комментарий к покупке EN"
-            rows={2}
-            className={`${inputClassName} md:col-span-2`}
-          />
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
+            Добавить работу
+          </h2>
           <button
-            type="submit"
-            disabled={saving}
-            className={`${buttonClassName} md:col-span-2`}
+            type="button"
+            onClick={() => setShowAddForm((value) => !value)}
+            className={buttonClassName}
+            aria-expanded={showAddForm}
           >
-            Сохранить работу
+            {showAddForm ? "Свернуть" : "+ Новая работа"}
           </button>
-        </form>
+        </div>
+
+        {showAddForm && (
+          <form
+            onSubmit={handleCreateArtwork}
+            className="mt-5 grid gap-3 md:grid-cols-2"
+          >
+            <input required name="title" placeholder="Название RU" className={inputClassName} />
+            <input name="title_en" placeholder="Название EN" className={inputClassName} />
+            <input name="price" type="number" min="0" placeholder="Цена, руб." className={inputClassName} />
+            <select required name="category_id" className={inputClassName} defaultValue="">
+              <option value="">Выберите категорию</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <input name="year" type="number" min="1000" max="9999" placeholder="Год" className={inputClassName} />
+            <input name="size" placeholder="Размер RU" className={inputClassName} />
+            <input name="size_en" placeholder="Размер EN" className={inputClassName} />
+            <input name="materials" placeholder="Материалы RU" className={inputClassName} />
+            <input name="materials_en" placeholder="Материалы EN" className={inputClassName} />
+            <textarea name="description" placeholder="Описание RU" rows={3} className={`${inputClassName} md:col-span-2`} />
+            <textarea name="description_en" placeholder="Описание EN" rows={3} className={`${inputClassName} md:col-span-2`} />
+            <textarea name="purchase_comment" placeholder="Комментарий к покупке RU" rows={2} className={`${inputClassName} md:col-span-2`} />
+            <textarea name="purchase_comment_en" placeholder="Комментарий к покупке EN" rows={2} className={`${inputClassName} md:col-span-2`} />
+            <button type="submit" disabled={saving} className={`${buttonClassName} md:col-span-2`}>
+              Сохранить работу
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="rounded-[8px] border border-border p-4">
@@ -215,24 +181,17 @@ export function AdminArtworksSection({
               Работы
             </h2>
             <p className="mt-1 text-[14px] font-medium leading-[150%] text-ink-light">
-              Для удобной сортировки сверните карточки и перетаскивайте компактные строки.
+              Карточки свёрнуты — раскрой нужную для редактирования или
+              перетаскивай компактные строки для сортировки.
             </p>
           </div>
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <button
-              type="button"
-              onClick={collapseAllArtworks}
-              className={secondaryButtonClassName}
-            >
-              Свернуть все
-            </button>
-            <button
-              type="button"
-              onClick={expandAllArtworks}
-              className={secondaryButtonClassName}
-            >
+            <button type="button" onClick={expandAllArtworks} className={secondaryButtonClassName}>
               Развернуть все
+            </button>
+            <button type="button" onClick={collapseAllArtworks} className={secondaryButtonClassName}>
+              Свернуть все
             </button>
             <input
               value={artworkSearch}
@@ -283,7 +242,7 @@ export function AdminArtworksSection({
                           draft={editingId === artwork.id ? draft : null}
                           categories={categories}
                           categoryName={categoryName(artwork.category_id)}
-                          collapsed={Boolean(collapsedArtworkIds[artwork.id])}
+                          collapsed={!expandedArtworkIds[artwork.id]}
                           draggedArtworkId={draggedArtworkId}
                           onToggleCollapsed={() => toggleArtwork(artwork.id)}
                           onDragStart={() => onDragArtworkStart(artwork.id)}

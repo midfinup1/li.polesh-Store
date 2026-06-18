@@ -32,7 +32,7 @@ func (h *ArtworkHandler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	filter := domain.ArtworkFilter{}
 
-	// Public endpoint: show available and sold artworks, never hidden drafts.
+	// Public endpoint: show available, reserved and sold artworks, never hidden drafts.
 	filter.ExcludeHidden = true
 
 	if catID := q.Get("category_id"); catID != "" {

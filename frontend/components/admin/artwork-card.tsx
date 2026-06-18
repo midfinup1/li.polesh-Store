@@ -7,7 +7,7 @@ import {
   secondaryButtonClassName,
   smallInputClassName,
 } from "@/components/admin/forms";
-import { formatPrice, statusLabel } from "@/components/admin/helpers";
+import { formatPrice, statusDotClassName, statusLabel } from "@/components/admin/helpers";
 
 const selectClassName = `${smallInputClassName} bg-paper text-ink`;
 const optionClassName = "bg-white text-black dark:bg-[#111111] dark:text-white";
@@ -309,7 +309,11 @@ export function ArtworkAdminCard({
                 </p>
               )}
 
-              <p className="mt-1 text-[14px] font-medium leading-[150%] text-ink-light">
+              <p className="mt-1 flex items-center gap-1.5 text-[14px] font-medium leading-[150%] text-ink-light">
+                <span
+                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusDotClassName[artwork.status]}`}
+                  aria-hidden
+                />
                 {statusLabel[artwork.status]}
                 {artwork.price != null && ` · ${formatPrice(artwork.price)}`} ·{" "}
                 {categoryName} · порядок: {artwork.sort_order}

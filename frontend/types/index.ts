@@ -1,4 +1,4 @@
-export type ArtworkStatus = "available" | "sold" | "hidden";
+export type ArtworkStatus = "available" | "reserved" | "sold" | "hidden";
 
 export interface ArtworkImage {
   id: number;

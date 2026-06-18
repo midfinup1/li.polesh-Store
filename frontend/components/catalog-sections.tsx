@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArtworkCard } from "@/components/artwork-card";
 import { LocalizedText } from "@/components/localized-text";
+import { ReservedBadge } from "@/components/reserved-badge";
 import { SoldBadge } from "@/components/sold-badge";
 import { useSiteSettings } from "@/lib/site-settings";
 import { pickLocalized } from "@/lib/i18n";
@@ -82,6 +83,7 @@ export function CatalogSection({ artworks, categories }: CatalogSectionProps) {
         <div className="mt-16 grid gap-16 lg:grid-cols-[1.25fr_1fr]">
           {mainArtwork && (
             <div className="relative">
+              {mainArtwork.status === "reserved" && <ReservedBadge />}
               {mainArtwork.status === "sold" && <SoldBadge />}
 
               <ArtworkCard artwork={mainArtwork} large />
@@ -91,6 +93,7 @@ export function CatalogSection({ artworks, categories }: CatalogSectionProps) {
           <div className="grid grid-cols-1 gap-16 sm:grid-cols-2 lg:grid-cols-1">
             {restArtworks.map((artwork) => (
               <div key={artwork.id} className="relative">
+                {artwork.status === "reserved" && <ReservedBadge />}
                 {artwork.status === "sold" && <SoldBadge />}
 
                 <ArtworkCard artwork={artwork} />

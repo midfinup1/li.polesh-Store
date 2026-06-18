@@ -11,6 +11,7 @@ type ArtworkStatus string
 
 const (
 	ArtworkStatusAvailable ArtworkStatus = "available"
+	ArtworkStatusReserved  ArtworkStatus = "reserved"
 	ArtworkStatusSold      ArtworkStatus = "sold"
 	ArtworkStatusHidden    ArtworkStatus = "hidden"
 )
@@ -40,18 +41,18 @@ type Artwork struct {
 }
 
 type ArtworkImage struct {
-	ID           int64     `db:"id"             json:"id"`
-	ArtworkID    int64     `db:"artwork_id"     json:"artwork_id"`
-	OriginalURL  string    `db:"original_url"   json:"original_url"`
-	ThumbURL     string    `db:"thumb_url"      json:"thumb_url"`
-	ThumbWebPURL string    `db:"thumb_webp_url" json:"thumb_webp_url"`
-	ThumbAVIFURL string    `db:"thumb_avif_url" json:"thumb_avif_url"`
-	DisplayURL     string  `db:"display_url"      json:"display_url"`
-	DisplayWebPURL string  `db:"display_webp_url" json:"display_webp_url"`
-	AltText      string    `db:"alt_text"       json:"alt_text"`
-	SortOrder    int       `db:"sort_order"     json:"sort_order"`
-	CreatedAt    time.Time `db:"created_at"     json:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"     json:"updated_at"`
+	ID             int64     `db:"id"             json:"id"`
+	ArtworkID      int64     `db:"artwork_id"     json:"artwork_id"`
+	OriginalURL    string    `db:"original_url"   json:"original_url"`
+	ThumbURL       string    `db:"thumb_url"      json:"thumb_url"`
+	ThumbWebPURL   string    `db:"thumb_webp_url" json:"thumb_webp_url"`
+	ThumbAVIFURL   string    `db:"thumb_avif_url" json:"thumb_avif_url"`
+	DisplayURL     string    `db:"display_url"      json:"display_url"`
+	DisplayWebPURL string    `db:"display_webp_url" json:"display_webp_url"`
+	AltText        string    `db:"alt_text"       json:"alt_text"`
+	SortOrder      int       `db:"sort_order"     json:"sort_order"`
+	CreatedAt      time.Time `db:"created_at"     json:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"     json:"updated_at"`
 }
 
 // ─── Category ─────────────────────────────────────────────────────────────────

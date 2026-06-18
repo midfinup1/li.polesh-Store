@@ -6,13 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
-
-	"golang.org/x/net/proxy"
 )
 
 type TelegramNotifier struct {
@@ -24,11 +20,10 @@ type TelegramNotifier struct {
 }
 
 type TelegramNotifierConfig struct {
-	Enabled  bool
-	Token    string
-	ChatID   string
-	SiteURL  string
-	ProxyURL string
+	Enabled bool
+	Token   string
+	ChatID  string
+	SiteURL string
 }
 
 type OrderNotification struct {
@@ -43,66 +38,15 @@ type OrderNotification struct {
 }
 
 func NewTelegramNotifier(config TelegramNotifierConfig) *TelegramNotifier {
-	client, err := newTelegramHTTPClient(strings.TrimSpace(config.ProxyURL))
-	if err != nil {
-		client = &http.Client{
-			Timeout: 10 * time.Second,
-		}
-	}
-
 	return &TelegramNotifier{
 		enabled: config.Enabled,
 		token:   strings.TrimSpace(config.Token),
 		chatID:  strings.TrimSpace(config.ChatID),
 		siteURL: strings.TrimRight(strings.TrimSpace(config.SiteURL), "/"),
-		client:  client,
-	}
-}
-
-func newTelegramHTTPClient(proxyURL string) (*http.Client, error) {
-	if proxyURL == "" {
-		return &http.Client{
+		client: &http.Client{
 			Timeout: 10 * time.Second,
-		}, nil
+		},
 	}
-
-	parsedProxyURL, err := url.Parse(proxyURL)
-	if err != nil {
-		return nil, fmt.Errorf("parse telegram proxy url: %w", err)
-	}
-
-	transport := &http.Transport{}
-
-	switch parsedProxyURL.Scheme {
-	case "http", "https":
-		transport.Proxy = http.ProxyURL(parsedProxyURL)
-
-	case "socks5", "socks5h":
-		auth := &proxy.Auth{}
-
-		if parsedProxyURL.User != nil {
-			auth.User = parsedProxyURL.User.Username()
-			password, _ := parsedProxyURL.User.Password()
-			auth.Password = password
-		}
-
-		dialer, err := proxy.SOCKS5("tcp", parsedProxyURL.Host, auth, proxy.Direct)
-		if err != nil {
-			return nil, fmt.Errorf("create telegram socks5 dialer: %w", err)
-		}
-
-		transport.DialContext = func(ctx context.Context, network string, address string) (net.Conn, error) {
-			return dialer.Dial(network, address)
-		}
-
-	default:
-		return nil, fmt.Errorf("unsupported telegram proxy scheme: %s", parsedProxyURL.Scheme)
-	}
-
-	return &http.Client{
-		Timeout:   15 * time.Second,
-		Transport: transport,
-	}, nil
 }
 
 func (n *TelegramNotifier) SendNewOrder(ctx context.Context, order OrderNotification) error {

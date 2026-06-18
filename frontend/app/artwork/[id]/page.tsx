@@ -6,6 +6,7 @@ import { ArtworkReservePanel } from "@/components/artwork-reserve-panel";
 import { LocalizedText } from "@/components/localized-text";
 import { LocalizedValue } from "@/components/localized-value";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { ReservedBadge } from "@/components/reserved-badge";
 import { SoldBadge } from "@/components/sold-badge";
 import { api, ApiError } from "@/lib/api";
 import { absoluteUrl } from "@/lib/metadata";
@@ -170,9 +171,12 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
   const images = artwork.images || [];
   const priceRu = formatPriceRu(artwork.price);
   const priceEn = formatPriceEn(artwork.price);
+  const isReserved = artwork.status === "reserved";
   const isSold = artwork.status === "sold";
   const isUnavailable =
-    artwork.status === "sold" || artwork.status === "hidden";
+    artwork.status === "reserved" ||
+    artwork.status === "sold" ||
+    artwork.status === "hidden";
 
   const detailsRu = [
     artwork.materials,
@@ -232,10 +236,14 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
               </div>
 
               <div className="mt-10">
-                {isSold ? (
+                {isSold || isReserved ? (
                   <div>
                     <p className="text-[24px] font-semibold leading-[150%] text-ink">
-                      <LocalizedText ru="Продано" en="Sold" />
+                      {isSold ? (
+                        <LocalizedText ru="Продано" en="Sold" />
+                      ) : (
+                        <LocalizedText ru="Забронировано" en="Reserved" />
+                      )}
                     </p>
 
                     {(priceRu || priceEn) && (
@@ -269,6 +277,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
                   artworkId={artwork.id}
                   disabled={isUnavailable}
                   sold={isSold}
+                  reserved={isReserved}
                 />
               </div>
 
@@ -316,6 +325,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
             <div className="mt-10 grid gap-10 md:grid-cols-3">
               {relatedArtworks.map((relatedArtwork) => (
                 <div key={relatedArtwork.id} className="relative">
+                  {relatedArtwork.status === "reserved" && <ReservedBadge />}
                   {relatedArtwork.status === "sold" && <SoldBadge />}
 
                   <ArtworkCard artwork={relatedArtwork} />

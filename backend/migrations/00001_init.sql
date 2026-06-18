@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS artworks (
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT artworks_status_check CHECK (
-        status IN ('available', 'sold', 'hidden')
+        status IN ('available', 'reserved', 'sold', 'hidden')
     ),
 
     CONSTRAINT artworks_price_check CHECK (

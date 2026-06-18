@@ -54,6 +54,7 @@ func (s *ArtworkService) GetPublicByID(ctx context.Context, id int64) (*domain.A
 
 func validArtworkStatus(status domain.ArtworkStatus) bool {
 	return status == domain.ArtworkStatusAvailable ||
+		status == domain.ArtworkStatusReserved ||
 		status == domain.ArtworkStatusSold ||
 		status == domain.ArtworkStatusHidden
 }

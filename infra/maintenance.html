@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Ведутся технические работы</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f8f3ec;
+      --card: rgba(255, 255, 255, 0.72);
+      --text: #2d241c;
+      --muted: #7a6d60;
+      --accent: #9b6b43;
+      --line: rgba(45, 36, 28, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(191, 151, 113, 0.22), transparent 34%),
+        radial-gradient(circle at 80% 72%, rgba(119, 86, 58, 0.16), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    main {
+      width: min(560px, 100%);
+      padding: 42px 34px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--card);
+      box-shadow: 0 24px 80px rgba(48, 34, 20, 0.12);
+      backdrop-filter: blur(18px);
+      text-align: center;
+    }
+
+    .mark {
+      width: 74px;
+      height: 74px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      font-size: 34px;
+      line-height: 1;
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 500;
+      font-size: clamp(32px, 7vw, 48px);
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+    }
+
+    p {
+      margin: 18px auto 0;
+      max-width: 420px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.7;
+    }
+
+    .domain {
+      margin-top: 26px;
+      color: var(--accent);
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">•</div>
+    <h1>Ведутся технические работы</h1>
+    <p>Сайт временно недоступен. Мы скоро всё восстановим, пожалуйста, зайдите немного позже.</p>
+    <div class="domain">lipolesh.art</div>
+  </main>
+</body>
+</html>

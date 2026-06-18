@@ -106,13 +106,15 @@ export function PhotoUploadCard({
         {title}
       </p>
       {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={title}
-          className="mt-3 h-40 w-full rounded-[8px] object-cover"
-        />
+        <div className="mt-3 flex h-44 items-center justify-center overflow-hidden rounded-[8px] bg-paper-dark">
+          <img
+            src={imageUrl}
+            alt={title}
+            className="max-h-44 w-auto max-w-full object-contain"
+          />
+        </div>
       ) : (
-        <div className="mt-3 flex h-40 items-center justify-center rounded-[8px] bg-paper-dark text-[14px] text-ink-light">
+        <div className="mt-3 flex h-44 items-center justify-center rounded-[8px] bg-paper-dark text-[14px] text-ink-light">
           Фото не загружено
         </div>
       )}

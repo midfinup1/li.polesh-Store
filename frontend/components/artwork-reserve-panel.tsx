@@ -10,6 +10,7 @@ type ArtworkReservePanelProps = {
   artworkId: number;
   disabled?: boolean;
   sold?: boolean;
+  reserved?: boolean;
 };
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
@@ -22,6 +23,7 @@ export function ArtworkReservePanel({
   artworkId,
   disabled = false,
   sold = false,
+  reserved = false,
 }: ArtworkReservePanelProps) {
   const { language } = useSiteSettings();
 
@@ -96,6 +98,17 @@ export function ArtworkReservePanel({
         <LocalizedText
           ru="Эта работа уже продана."
           en="This artwork has already been sold."
+        />
+      </p>
+    );
+  }
+
+  if (reserved) {
+    return (
+      <p className="text-[16px] font-medium leading-[150%] text-ink-light">
+        <LocalizedText
+          ru="Эта работа уже забронирована."
+          en="This artwork has already been reserved."
         />
       </p>
     );

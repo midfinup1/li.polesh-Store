@@ -23,6 +23,7 @@ import { ConfirmDeleteModal } from "@/components/admin/modals";
 import type { AdminTab, DeleteTarget } from "@/components/admin/types";
 import {
   moveInArray,
+  slugify,
   sortedArtworks,
   sortedCategories,
   statusLabel,
@@ -285,10 +286,12 @@ export function AdminPageContainer() {
     const data = new FormData(form);
     const name = String(data.get("name") ?? "").trim();
     const nameEn = String(data.get("name_en") ?? "").trim();
-    const slug = String(data.get("slug") ?? "").trim();
+    // Slug is no longer entered by hand: derive it from the EN name, falling
+    // back to a transliteration of the RU name.
+    const slug = slugify(nameEn, name);
 
     if (!name || !slug) {
-      setError("Заполните название и slug категории");
+      setError("Заполните название категории");
       return;
     }
 
@@ -321,8 +324,13 @@ export function AdminPageContainer() {
       return;
     }
 
+    const payload = {
+      ...categoryDraft,
+      slug: slugify(categoryDraft.name_en, categoryDraft.name),
+    };
+
     await run(
-      () => api.admin.categories.update(categoryDraft.id, categoryDraft),
+      () => api.admin.categories.update(payload.id, payload),
       "Категория обновлена",
     );
 
@@ -693,7 +701,7 @@ export function AdminPageContainer() {
         </p>
       )}
 
-      <nav className="mt-6 flex flex-wrap gap-2 border-b border-border pb-3">
+      <nav className="sticky top-0 z-20 mt-6 flex flex-wrap gap-2 border-b border-border bg-paper/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
         <TabButton
           active={activeTab === "artist"}
           onClick={() => {

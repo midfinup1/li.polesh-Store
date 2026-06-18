@@ -1,10 +1,5 @@
 import type { AnalyticsSummary } from "@/types";
 
-function formatPercent(value: number) {
-  return `${value.toFixed(1).replace(".", ",")}%`;
-}
-
-
 export function AdminAnalyticsSection({
   analytics,
   ordersCount,
@@ -19,11 +14,15 @@ export function AdminAnalyticsSection({
           Статистика
         </h2>
         <p className="mt-4 text-[15px] font-medium leading-[150%] text-ink-light">
-          Статистика пока недоступна. Проверь backend endpoint /admin/analytics.
+          Статистика пока недоступна.
         </p>
       </section>
     );
   }
+
+  // Derived from existing data (no backend change): average page views per day
+  // over the last 30 days — a more intuitive "how busy is the site" number.
+  const viewsPerDay = Math.round(analytics.views_30_days / 30);
 
   return (
     <section className="mt-6 space-y-5">
@@ -31,27 +30,26 @@ export function AdminAnalyticsSection({
         <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
           Статистика
         </h2>
-        <div className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+
+        <div className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <AnalyticsCard
+            title="Заявки за 30 дней"
+            value={analytics.orders_30_days}
+            note={`Всего заявок: ${ordersCount}`}
+            highlight
+          />
+          <AnalyticsCard
+            title="Просмотры за 30 дней"
+            value={analytics.views_30_days}
+            note={`≈ ${viewsPerDay} в день`}
+          />
           <AnalyticsCard
             title="Просмотры за 7 дней"
             value={analytics.views_7_days}
           />
           <AnalyticsCard
-            title="Просмотры за 30 дней"
-            value={analytics.views_30_days}
-          />
-          <AnalyticsCard
             title="Просмотры работ за 30 дней"
             value={analytics.artwork_views_30_days}
-          />
-          <AnalyticsCard
-            title="Заявки за 30 дней"
-            value={analytics.orders_30_days}
-            note={`Всего в админке: ${ordersCount}`}
-          />
-          <AnalyticsCard
-            title="Конверсия за 30 дней"
-            value={formatPercent(analytics.conversion_30_days)}
           />
         </div>
       </div>
@@ -91,13 +89,22 @@ function AnalyticsCard({
   title,
   value,
   note,
+  highlight,
 }: {
   title: string;
   value: number | string;
   note?: string;
+  highlight?: boolean;
 }) {
   return (
-    <div className="rounded-[8px] border border-border bg-paper-dark/40 p-4">
+    <div
+      className={[
+        "rounded-[8px] border p-4",
+        highlight
+          ? "border-ink/30 bg-ink/[0.04]"
+          : "border-border bg-paper-dark/40",
+      ].join(" ")}
+    >
       <p className="text-[13px] font-semibold leading-[150%] text-ink-light">
         {title}
       </p>

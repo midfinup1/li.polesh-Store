@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArtworkCard } from "@/components/artwork-card";
 import { LocalizedText } from "@/components/localized-text";
 import { LocalizedValue } from "@/components/localized-value";
+import { ReservedBadge } from "@/components/reserved-badge";
 import { SoldBadge } from "@/components/sold-badge";
 import { useSiteSettings } from "@/lib/site-settings";
 import { pickLocalized } from "@/lib/i18n";
@@ -234,6 +235,7 @@ export default function HomePage() {
             <div className="space-y-[70px]">
               {firstColumnArtworks.map((artwork) => (
                 <div key={artwork.id} className="relative">
+                  {artwork.status === "reserved" && <ReservedBadge />}
                   {artwork.status === "sold" && <SoldBadge />}
 
                   <ArtworkCard artwork={artwork} />
@@ -244,6 +246,7 @@ export default function HomePage() {
             <div className="space-y-[70px]">
               {secondColumnArtworks.map((artwork) => (
                 <div key={artwork.id} className="relative">
+                  {artwork.status === "reserved" && <ReservedBadge />}
                   {artwork.status === "sold" && <SoldBadge />}
 
                   <ArtworkCard artwork={artwork} />
@@ -254,6 +257,7 @@ export default function HomePage() {
             <div className="space-y-[70px]">
               {thirdColumnArtworks.map((artwork) => (
                 <div key={artwork.id} className="relative">
+                  {artwork.status === "reserved" && <ReservedBadge />}
                   {artwork.status === "sold" && <SoldBadge />}
 
                   <ArtworkCard artwork={artwork} />

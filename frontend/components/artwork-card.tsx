@@ -69,7 +69,9 @@ export function ArtworkCard({
         <p
           className={[
             "text-[16px] font-medium leading-[150%] text-ink",
-            artwork.status === "sold" ? "line-through text-ink-light" : "",
+            (artwork.status === "reserved" || artwork.status === "sold")
+              ? "line-through text-ink-light"
+              : "",
           ].join(" ")}
         >
           {artwork.price === null

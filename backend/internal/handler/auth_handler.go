@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -26,7 +25,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(w, r, &body, maxAuthJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}

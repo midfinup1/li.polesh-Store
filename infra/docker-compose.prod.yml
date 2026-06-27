@@ -6,7 +6,7 @@ x-logging: &default-logging
 
 services:
   caddy:
-    image: caddy:2-alpine
+    image: ghcr.io/midfinup1/li-polesh-store-caddy:${IMAGE_TAG:-latest}
     restart: unless-stopped
     logging: *default-logging
     depends_on:

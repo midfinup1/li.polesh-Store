@@ -2,6 +2,9 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
@@ -111,6 +114,78 @@ func (r *orderRepository) Create(ctx context.Context, order *domain.Order) (*dom
 	}
 
 	return r.GetByID(ctx, id)
+}
+
+func (r *orderRepository) CreateForAvailableArtwork(ctx context.Context, order *domain.Order) (*domain.Order, *domain.Artwork, error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback()
+
+	var artwork domain.Artwork
+	if err := tx.GetContext(
+		ctx,
+		&artwork,
+		`SELECT * FROM artworks WHERE id = $1 FOR UPDATE`,
+		order.ArtworkID,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, fmt.Errorf("%w: artwork", domain.ErrNotFound)
+		}
+		return nil, nil, err
+	}
+
+	if artwork.Status != domain.ArtworkStatusAvailable {
+		return nil, nil, fmt.Errorf("%w: artwork is not available for purchase", domain.ErrConflict)
+	}
+
+	var activeOrders int64
+	if err := tx.GetContext(
+		ctx,
+		&activeOrders,
+		`
+			SELECT COUNT(*)
+			FROM orders
+			WHERE artwork_id = $1
+			  AND status IN ('new', 'contacted')
+		`,
+		order.ArtworkID,
+	); err != nil {
+		return nil, nil, err
+	}
+
+	if activeOrders > 0 {
+		return nil, nil, fmt.Errorf("%w: artwork already has an active order", domain.ErrConflict)
+	}
+
+	var created domain.Order
+	if err := tx.GetContext(
+		ctx,
+		&created,
+		`
+			INSERT INTO orders (artwork_id, name, email, phone, message, status)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING *
+		`,
+		order.ArtworkID,
+		order.Name,
+		order.Email,
+		order.Phone,
+		order.Message,
+		domain.OrderStatusNew,
+	); err != nil {
+		return nil, nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+
+	artwork.Images = make([]domain.ArtworkImage, 0)
+	created.Artwork = &artwork
+
+	return &created, &artwork, nil
 }
 
 func (r *orderRepository) UpdateStatus(ctx context.Context, id int64, status domain.OrderStatus) error {

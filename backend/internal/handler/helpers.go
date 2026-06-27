@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -11,6 +13,30 @@ import (
 	"github.com/midfinup1/li.polesh-Store/backend/internal/middleware"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/service"
 )
+
+const (
+	maxAnalyticsJSONBodyBytes = 4 << 10
+	maxAuthJSONBodyBytes      = 8 << 10
+	maxOrderJSONBodyBytes     = 32 << 10
+	maxAdminJSONBodyBytes     = 1 << 20
+	maxUploadBodyBytes        = 11 << 20
+)
+
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any, limit int64) error {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	decoder := json.NewDecoder(r.Body)
+
+	if err := decoder.Decode(dst); err != nil {
+		return err
+	}
+
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return fmt.Errorf("multiple JSON values")
+	}
+
+	return nil
+}
 
 func respondJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")

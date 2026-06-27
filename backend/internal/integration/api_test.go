@@ -73,6 +73,7 @@ func TestPublicAndAdminAPI(t *testing.T) {
 	t.Run("public lists are arrays", func(t *testing.T) {
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/categories", nil, http.StatusOK)
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
+		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks?category_id=bad", nil, http.StatusBadRequest)
 	})
 
 	t.Run("admin route rejects anonymous request", func(t *testing.T) {
@@ -133,6 +134,34 @@ func TestPublicAndAdminAPI(t *testing.T) {
 		)
 
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
+	})
+
+	t.Run("only one active order is allowed per artwork", func(t *testing.T) {
+		artwork := map[string]any{
+			"title":  "Работа для заявки",
+			"status": "available",
+			"price":  1000,
+		}
+
+		createdArtwork := postAuthenticatedJSON[map[string]any](
+			t,
+			cookie,
+			server.URL+"/api/v1/admin/artworks",
+			artwork,
+			http.StatusCreated,
+		)
+
+		artworkID := int64(createdArtwork["id"].(float64))
+		order := map[string]any{
+			"artwork_id": artworkID,
+			"name":       "Покупатель",
+			"email":      "buyer@example.com",
+			"phone":      "+79990000000",
+			"message":    "Хочу купить",
+		}
+
+		assertJSONStatus(t, http.MethodPost, server.URL+"/api/v1/orders", order, http.StatusCreated)
+		assertJSONStatus(t, http.MethodPost, server.URL+"/api/v1/orders", order, http.StatusConflict)
 	})
 }
 
@@ -322,4 +351,41 @@ func assertAuthenticatedJSONStatus(
 	if res.StatusCode != want {
 		t.Fatalf("%s %s: expected status %d, got %d", method, url, want, res.StatusCode)
 	}
+}
+
+func postAuthenticatedJSON[T any](
+	t *testing.T,
+	cookie *http.Cookie,
+	url string,
+	payload any,
+	want int,
+) T {
+	t.Helper()
+
+	data, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != want {
+		t.Fatalf("POST %s: expected status %d, got %d", url, want, res.StatusCode)
+	}
+
+	var result T
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	return result
 }

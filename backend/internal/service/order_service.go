@@ -35,14 +35,7 @@ func (s *OrderService) Create(ctx context.Context, o *domain.Order) (*domain.Ord
 	if _, err := mail.ParseAddress(o.Email); err != nil {
 		return nil, fmt.Errorf("%w: valid email is required", domain.ErrValidation)
 	}
-	artwork, err := s.artworks.GetByID(ctx, o.ArtworkID)
-	if err != nil {
-		return nil, fmt.Errorf("%w: artwork", domain.ErrNotFound)
-	}
-	if artwork.Status != domain.ArtworkStatusAvailable {
-		return nil, fmt.Errorf("%w: artwork is not available for purchase", domain.ErrConflict)
-	}
-	order, err := s.orders.Create(ctx, o)
+	order, artwork, err := s.orders.CreateForAvailableArtwork(ctx, o)
 	if err != nil {
 		return nil, err
 	}

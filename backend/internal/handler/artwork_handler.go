@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -36,7 +35,11 @@ func (h *ArtworkHandler) List(w http.ResponseWriter, r *http.Request) {
 	filter.ExcludeHidden = true
 
 	if catID := q.Get("category_id"); catID != "" {
-		id, _ := strconv.ParseInt(catID, 10, 64)
+		id, err := strconv.ParseInt(catID, 10, 64)
+		if err != nil || id <= 0 {
+			respondError(w, http.StatusBadRequest, "invalid category_id")
+			return
+		}
 		filter.CategoryID = &id
 	}
 
@@ -65,7 +68,7 @@ func (h *ArtworkHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *ArtworkHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var a domain.Artwork
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
+	if err := decodeJSONBody(w, r, &a, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
@@ -97,7 +100,7 @@ func (h *ArtworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var a domain.Artwork
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
+	if err := decodeJSONBody(w, r, &a, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
@@ -175,7 +178,8 @@ func (h *ArtworkHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBodyBytes)
+	if err := r.ParseMultipartForm(maxUploadBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "image is too large")
 		return
 	}
@@ -229,7 +233,7 @@ func (h *ArtworkHandler) UpdateImageAltText(w http.ResponseWriter, r *http.Reque
 	var body struct {
 		AltText string `json:"alt_text"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(w, r, &body, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
@@ -251,7 +255,7 @@ func (h *ArtworkHandler) ReorderArtworks(w http.ResponseWriter, r *http.Request)
 		CategoryID int64   `json:"category_id"`
 		ArtworkIDs []int64 `json:"artwork_ids"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(w, r, &body, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
@@ -296,7 +300,7 @@ func (h *ArtworkHandler) ReorderImages(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ImageIDs []int64 `json:"image_ids"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(w, r, &body, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}

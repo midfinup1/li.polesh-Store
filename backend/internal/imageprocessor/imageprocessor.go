@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/color"
 	"image/jpeg"
 	_ "image/png"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 )
 
@@ -216,53 +216,7 @@ func downscale(src image.Image, maxDim int) image.Image {
 	}
 
 	dst := image.NewRGBA(image.Rect(0, 0, tw, th))
-
-	for y := 0; y < th; y++ {
-		sy0 := y * sh / th
-		sy1 := (y + 1) * sh / th
-
-		if sy1 <= sy0 {
-			sy1 = sy0 + 1
-		}
-
-		for x := 0; x < tw; x++ {
-			sx0 := x * sw / tw
-			sx1 := (x + 1) * sw / tw
-
-			if sx1 <= sx0 {
-				sx1 = sx0 + 1
-			}
-
-			var rSum, gSum, bSum, aSum, count uint64
-
-			for sy := sy0; sy < sy1; sy++ {
-				for sx := sx0; sx < sx1; sx++ {
-					cr, cg, cb, ca := src.At(b.Min.X+sx, b.Min.Y+sy).RGBA()
-
-					rSum += uint64(cr >> 8)
-					gSum += uint64(cg >> 8)
-					bSum += uint64(cb >> 8)
-					aSum += uint64(ca >> 8)
-					count++
-				}
-			}
-
-			if count == 0 {
-				count = 1
-			}
-
-			dst.Set(
-				x,
-				y,
-				color.RGBA{
-					R: uint8(rSum / count),
-					G: uint8(gSum / count),
-					B: uint8(bSum / count),
-					A: uint8(aSum / count),
-				},
-			)
-		}
-	}
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Over, nil)
 
 	return dst
 }

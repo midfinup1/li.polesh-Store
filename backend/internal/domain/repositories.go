@@ -46,6 +46,7 @@ type OrderRepository interface {
 	GetAll(ctx context.Context, status *OrderStatus) ([]Order, error)
 	GetByID(ctx context.Context, id int64) (*Order, error)
 	Create(ctx context.Context, o *Order) (*Order, error)
+	CreateForAvailableArtwork(ctx context.Context, o *Order) (*Order, *Artwork, error)
 	UpdateStatus(ctx context.Context, id int64, status OrderStatus) error
 	Delete(ctx context.Context, id int64) error
 	CountActiveByArtworkID(ctx context.Context, artworkID int64) (int64, error)

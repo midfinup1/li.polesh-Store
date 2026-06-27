@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -32,7 +31,7 @@ func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var c domain.Category
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+	if err := decodeJSONBody(w, r, &c, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
@@ -61,7 +60,7 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var c domain.Category
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+	if err := decodeJSONBody(w, r, &c, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}

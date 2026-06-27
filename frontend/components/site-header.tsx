@@ -5,8 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 import { useSiteSettings } from "@/lib/site-settings";
 
-type Language = "ru" | "en";
-type Theme = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
 
 export function SiteHeader() {

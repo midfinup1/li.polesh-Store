@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/pressly/goose/v3"
 
 	"github.com/midfinup1/li.polesh-Store/backend/config"
 	"github.com/midfinup1/li.polesh-Store/backend/internal/handler"
@@ -54,18 +53,6 @@ func main() {
 	defer db.Close()
 
 	logger.Info("connected to database")
-
-	if err := goose.SetDialect("postgres"); err != nil {
-		logger.Error("failed to configure migration dialect", "error", err)
-		os.Exit(1)
-	}
-
-	if err := goose.Up(db.DB, "migrations"); err != nil {
-		logger.Error("failed to run migrations", "error", err)
-		os.Exit(1)
-	}
-
-	logger.Info("migrations applied")
 
 	repos := repository.NewRepositories(db)
 

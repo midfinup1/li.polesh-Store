@@ -14,6 +14,8 @@ type AnalyticsService struct {
 	repo domain.AnalyticsRepository
 }
 
+const maxAnalyticsPathLength = 512
+
 func NewAnalyticsService(repo domain.AnalyticsRepository) *AnalyticsService {
 	return &AnalyticsService{repo: repo}
 }
@@ -22,6 +24,9 @@ func (s *AnalyticsService) Track(ctx context.Context, input domain.AnalyticsTrac
 	path := strings.TrimSpace(input.Path)
 	if path == "" || !strings.HasPrefix(path, "/") {
 		return fmt.Errorf("%w: path is required", domain.ErrValidation)
+	}
+	if len(path) > maxAnalyticsPathLength {
+		return fmt.Errorf("%w: path is too long", domain.ErrValidation)
 	}
 
 	eventType := input.EventType

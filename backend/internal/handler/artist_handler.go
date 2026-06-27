@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -37,7 +36,8 @@ func (h *ArtistHandler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBodyBytes)
+	if err := r.ParseMultipartForm(maxUploadBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "image is too large")
 		return
 	}
@@ -78,7 +78,7 @@ func (h *ArtistHandler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 	oldArtist, _ := h.svc.Get(r.Context())
 	var a domain.Artist
-	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
+	if err := decodeJSONBody(w, r, &a, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}

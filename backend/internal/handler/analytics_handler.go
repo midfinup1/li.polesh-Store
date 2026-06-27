@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -19,7 +18,7 @@ func NewAnalyticsHandler(svc *service.AnalyticsService) *AnalyticsHandler {
 
 func (h *AnalyticsHandler) Track(w http.ResponseWriter, r *http.Request) {
 	var input domain.AnalyticsTrackInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	if err := decodeJSONBody(w, r, &input, maxAnalyticsJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 
@@ -91,21 +92,22 @@ export function ArtworkImageCarousel({
             >
               {preparedImages.map((image) => {
                 const imageUrl = getImageUrl(image);
+                const isFirstImage = image.id === preparedImages[0]?.id;
 
                 return (
                   <div
                     key={image.id}
-                    className="flex min-h-[320px] shrink-0 items-center justify-center md:min-h-[520px]"
+                    className="relative flex h-[min(72vh,520px)] min-h-[320px] shrink-0 items-center justify-center"
                     style={{ width: `${100 / preparedImages.length}%` }}
                   >
-                    <img
+                    <Image
                       src={imageUrl}
                       alt={image.alt_text || title}
-                      className="h-auto max-h-[72vh] w-auto max-w-full rounded-[8px] object-contain"
-                      decoding="async"
-                      loading={
-                        image.id === preparedImages[0]?.id ? "eager" : "lazy"
-                      }
+                      fill
+                      sizes="(max-width: 768px) 100vw, 620px"
+                      className="rounded-[8px] object-contain"
+                      priority={isFirstImage}
+                      loading={isFirstImage ? undefined : "lazy"}
                     />
                   </div>
                 );

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -23,13 +22,13 @@ func NewOrderHandler(svc *service.OrderService, audit *service.AuditService) *Or
 
 func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var o domain.Order
-	if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
+	if err := decodeJSONBody(w, r, &o, maxOrderJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 	created, err := h.svc.Create(r.Context(), &o)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondServiceError(w, err, "failed to create order")
 		return
 	}
 	respondCreated(w, created)
@@ -67,7 +66,7 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Status domain.OrderStatus `json:"status"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(w, r, &body, maxAdminJSONBodyBytes); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}

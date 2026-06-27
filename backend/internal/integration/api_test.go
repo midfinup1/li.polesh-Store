@@ -136,7 +136,7 @@ func TestPublicAndAdminAPI(t *testing.T) {
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
 	})
 
-	t.Run("only one active order is allowed per artwork", func(t *testing.T) {
+	t.Run("multiple active orders are allowed until artwork status changes", func(t *testing.T) {
 		artwork := map[string]any{
 			"title":  "Работа для заявки",
 			"status": "available",
@@ -161,7 +161,7 @@ func TestPublicAndAdminAPI(t *testing.T) {
 		}
 
 		assertJSONStatus(t, http.MethodPost, server.URL+"/api/v1/orders", order, http.StatusCreated)
-		assertJSONStatus(t, http.MethodPost, server.URL+"/api/v1/orders", order, http.StatusConflict)
+		assertJSONStatus(t, http.MethodPost, server.URL+"/api/v1/orders", order, http.StatusCreated)
 	})
 }
 

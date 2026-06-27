@@ -140,25 +140,6 @@ func (r *orderRepository) CreateForAvailableArtwork(ctx context.Context, order *
 		return nil, nil, fmt.Errorf("%w: artwork is not available for purchase", domain.ErrConflict)
 	}
 
-	var activeOrders int64
-	if err := tx.GetContext(
-		ctx,
-		&activeOrders,
-		`
-			SELECT COUNT(*)
-			FROM orders
-			WHERE artwork_id = $1
-			  AND status IN ('new', 'contacted')
-		`,
-		order.ArtworkID,
-	); err != nil {
-		return nil, nil, err
-	}
-
-	if activeOrders > 0 {
-		return nil, nil, fmt.Errorf("%w: artwork already has an active order", domain.ErrConflict)
-	}
-
 	var created domain.Order
 	if err := tx.GetContext(
 		ctx,

@@ -1,56 +1,61 @@
-# Каталог работ lipolesh
+# lipolesh Art Catalog
 
-Публичный каталог работ художницы lipolesh.art с заявками на обратную связь, защищённой админкой, загрузкой изображений, Telegram-уведомлениями, PostgreSQL backup и production-деплоем через Docker Compose.
+A public catalog of works by the artist [lipolesh.art](https://lipolesh.art).
 
-## Стек
+The application includes a responsive public website, a protected administration panel, image uploads, feedback requests, Telegram notifications, internal analytics, and audit logging.
+
+## Features
+
+* Public catalog of artworks
+* Russian and English localization
+* Light and dark themes
+* Responsive public website and administration panel
+* Protected administrator authentication
+* Image upload and automatic thumbnail generation
+* Feedback request form
+* Telegram notifications for new requests
+* SEO metadata, Open Graph, sitemap, and robots.txt
+* Internal view and click analytics
+* Administrator audit log
+
+## Technology Stack
 
 ### Backend
 
-- Go
-- chi
-- sqlx
-- PostgreSQL
-- goose migrations
-- JWT в HttpOnly cookie
-- S3-compatible storage
-- обработка изображений:
-  - original
-  - JPEG thumbnail
-  - WebP thumbnail через `cwebp`
-  - AVIF thumbnail через `avifenc`
-- Telegram-уведомления о новых заявках
-- health/readiness endpoints
-- внутренняя аналитика просмотров и кликов
-- audit log действий админов с old/new значениями
-- автоматическая очистка старых analytics events
+* Go
+* chi
+* sqlx
+* PostgreSQL
+* goose migrations
+* JWT authentication using HttpOnly cookies
+* S3-compatible object storage
+* Telegram Bot API
+* Health and readiness endpoints
+
+Image processing:
+
+* Original image storage
+* JPEG thumbnails
+* WebP thumbnails using `cwebp`
+* AVIF thumbnails using `avifenc`
 
 ### Frontend
 
-- Next.js App Router
-- React
-- TypeScript
-- Tailwind CSS
-- SEO metadata, OpenGraph, sitemap, robots
-- RU/EN-переключение
-- светлая/тёмная тема
-- адаптивная публичная часть и админка
+* Next.js App Router
+* React
+* TypeScript
+* Tailwind CSS
 
 ### Infrastructure
 
-- Docker Compose
-- Caddy
-- GitHub Actions
-- GitHub Container Registry
-- VPS
-- S3-compatible object storage
-- PostgreSQL backup:
-  - локальный dump на VPS
-  - off-site dump в S3
-  - restore drill
-  - cron backup
-- внешний uptime-monitoring через UptimeRobot
+* Docker Compose
+* Caddy
+* GitHub Actions
+* GitHub Container Registry
+* S3-compatible object storage
+* PostgreSQL backups
 
-## Структура проекта
+## Project Structure
 
 ```text
 backend/
@@ -88,126 +93,80 @@ docs/
     deploy.yml
 ```
 
-## Локальный запуск
+## Local Development
 
-Требуется:
+### Requirements
 
-```text
-Docker
-Go
-Node.js
-npm
-```
+* Docker
+* Go
+* Node.js
+* npm
 
-Подготовка:
+### Initial Setup
 
 ```bash
 make init
 ```
 
-Запуск:
+### Start the Application
 
 ```bash
 make up
 ```
 
-Адреса:
+The following services will be available:
 
 ```text
-Сайт:     http://localhost:3000
+Website:  http://localhost:3000
 API:      http://localhost:8080/api/v1
 Adminer:  http://localhost:8081
 ```
 
-Логи:
+### View Logs
 
 ```bash
 make logs
 ```
 
-Остановка:
-
-```bash
-make down
-```
-
-Проверки:
+### Run Tests
 
 ```bash
 make test
 ```
 
-Создать администратора локально:
+### Stop the Application
 
 ```bash
-ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="password123456" make admin
+make down
 ```
 
-Вход в админку:
+## Create a Local Administrator
+
+```bash
+ADMIN_EMAIL="admin@example.com" \
+ADMIN_PASSWORD="password123456" \
+make admin
+```
+
+The administration panel is available at:
 
 ```text
 http://localhost:3000/admin/login
 ```
 
-## Локальный запуск на базе из backup
+## Restore a Local Database from a Backup
 
-Скачать dump с сервера или из S3, положить его в папку `backups/`, затем выполнить:
+Place the PostgreSQL dump in the `backups/` directory and run:
 
 ```bash
-./scripts/local-restore-and-up.sh backups/ИМЯ_БЭКАПА.dump
+./scripts/local-restore-and-up.sh backups/backup.dump
 ```
 
-Скрипт восстановит dump в локальную PostgreSQL-базу и поднимет проект через local Docker Compose.
+The script restores the dump into the local PostgreSQL database and starts the application using the local Docker Compose configuration.
 
-## Production
+## Operations
 
-Production compose:
-
-```text
-infra/docker-compose.prod.yml
-```
-
-Production env:
-
-```text
-infra/.env.prod
-```
-
-Основные production endpoints:
-
-```text
-https://lipolesh.art
-https://lipolesh.art/admin/login
-https://lipolesh.art/api/health
-https://lipolesh.art/api/v1/health
-https://lipolesh.art/api/v1/ready
-```
-
-Деплой и rollback выполняются через GitHub Actions:
-
-```text
-GitHub -> Actions -> Deploy -> Run workflow
-```
-
-При push в `main` собираются и публикуются Docker images. На сервер они не выкатываются автоматически.
-
-Ручной deploy:
-
-```text
-action = deploy
-rollback_sha = пусто
-```
-
-Rollback:
-
-```text
-action = rollback
-rollback_sha = полный SHA коммита
-```
-
-## Документация по эксплуатации
-
-Краткая памятка по управлению production, backup, restore, S3, Telegram, UptimeRobot и аварийным действиям находится здесь:
+Production deployment, rollback, backups, restore procedures, S3 configuration, Telegram notifications, uptime monitoring, and incident recovery are documented in:
 
 ```text
 docs/operations.md

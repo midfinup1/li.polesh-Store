@@ -43,10 +43,14 @@ func (h *ArtworkHandler) List(w http.ResponseWriter, r *http.Request) {
 		filter.CategoryID = &id
 	}
 
-	if exhibitionID := q.Get("exhibition_id"); exhibitionID != "" {
+	exhibitionID := q.Get("series_id")
+	if exhibitionID == "" {
+		exhibitionID = q.Get("exhibition_id")
+	}
+	if exhibitionID != "" {
 		id, err := strconv.ParseInt(exhibitionID, 10, 64)
 		if err != nil || id <= 0 {
-			respondError(w, http.StatusBadRequest, "invalid exhibition_id")
+			respondError(w, http.StatusBadRequest, "invalid series_id")
 			return
 		}
 		filter.ExhibitionID = &id
@@ -215,13 +219,19 @@ func (h *ArtworkHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ArtworkHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
+	artworkID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
 	imageID, err := strconv.ParseInt(chi.URLParam(r, "imageId"), 10, 64)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid imageId")
 		return
 	}
 
-	if err := h.svc.DeleteImage(r.Context(), imageID); err != nil {
+	if err := h.svc.DeleteImage(r.Context(), artworkID, imageID); err != nil {
 		respondServiceError(w, err, "failed to delete image")
 		return
 	}

@@ -109,3 +109,28 @@ func (r *exhibitionRepository) Delete(ctx context.Context, id int64) error {
 
 	return ensureRowsAffected(result, "exhibition")
 }
+
+func (r *exhibitionRepository) Reorder(ctx context.Context, ids []int64) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for sortOrder, id := range ids {
+		result, err := tx.ExecContext(
+			ctx,
+			`UPDATE exhibitions SET sort_order = $1, updated_at = NOW() WHERE id = $2`,
+			sortOrder,
+			id,
+		)
+		if err != nil {
+			return err
+		}
+		if err := ensureRowsAffected(result, "series"); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}

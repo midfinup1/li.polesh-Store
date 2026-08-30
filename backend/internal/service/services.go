@@ -34,7 +34,7 @@ func NewServices(d Deps) *Services {
 	})
 
 	return &Services{
-		Artworks:    NewArtworkService(d.Repos.Artworks, d.Repos.Categories, d.Repos.Orders, storage),
+		Artworks:    NewArtworkService(d.Repos.Artworks, d.Repos.Categories, d.Repos.Exhibitions, d.Repos.Orders, storage),
 		Categories:  NewCategoryService(d.Repos.Categories),
 		Exhibitions: NewExhibitionService(d.Repos.Exhibitions),
 		Orders:      NewOrderService(d.Repos.Orders, d.Repos.Artworks, telegramNotifier),

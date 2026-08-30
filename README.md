@@ -7,11 +7,12 @@ The application includes a responsive public website, a protected administration
 ## Features
 
 * Public catalog of artworks
+* Filtering by series and artwork category
 * Russian and English localization
 * Light and dark themes
 * Responsive public website and administration panel
 * Protected administrator authentication
-* Image upload and automatic thumbnail generation
+* Image upload with 1200px thumbnails and 2400px display variants
 * Feedback request form
 * Telegram notifications for new requests
 * SEO metadata, Open Graph, sitemap, and robots.txt
@@ -38,6 +39,8 @@ Image processing:
 * JPEG thumbnails
 * WebP thumbnails using `cwebp`
 * AVIF thumbnails using `avifenc`
+* High-quality Catmull-Rom downscaling
+* JPEG and WebP display variants for retina screens
 
 ### Frontend
 
@@ -90,6 +93,7 @@ docs/
 .github/
   workflows/
     ci.yml
+    build-images.yml
     deploy.yml
 ```
 

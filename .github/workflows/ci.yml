@@ -41,6 +41,7 @@ jobs:
               - 'Makefile'
               - '.github/workflows/ci.yml'
               - '.github/workflows/deploy.yml'
+              - '.github/workflows/build-images.yml'
 
   backend:
     name: Backend
@@ -90,6 +91,10 @@ jobs:
           git diff --exit-code go.mod go.sum
           go test ./...
 
+      - name: Scan Go dependencies
+        working-directory: backend
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -114,6 +119,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
       - name: Type check
         run: npm run type-check

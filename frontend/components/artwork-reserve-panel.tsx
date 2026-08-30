@@ -132,7 +132,7 @@ export function ArtworkReservePanel({
         onClick={openForm}
         className="flex h-[52px] w-full items-center justify-center rounded-[8px] bg-ink px-6 text-[16px] font-medium leading-[150%] text-paper shadow-sm transition-opacity hover:opacity-80"
       >
-        <LocalizedText ru="Забронировать" en="Reserve" />
+        <LocalizedText ru="Оставить заявку" en="Send request" />
       </button>
 
       {isOpen && (

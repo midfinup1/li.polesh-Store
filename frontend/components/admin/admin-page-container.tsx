@@ -1,18 +1,18 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import type {
   AdminAuditLog,
   AdminAuditLogFilter,
   AnalyticsSummary,
-    Artist,
-    Artwork,
-    ArtworkImage,
-    Category,
-  Exhibition,
+  Artist,
+  Artwork,
+  ArtworkImage,
+  Category,
   Order,
+  Series,
 } from "@/types";
 import {
   AdminState,
@@ -26,14 +26,14 @@ import {
   slugify,
   sortedArtworks,
   sortedCategories,
-  sortedExhibitions,
+  sortedSeries,
   statusLabel,
 } from "@/components/admin/helpers";
 import { AdminAnalyticsSection } from "@/components/admin/analytics-section";
 import { AdminArtistSection } from "@/components/admin/artist-section";
 import { AdminArtworksSection } from "@/components/admin/artworks-section";
 import { AdminCategoriesSection } from "@/components/admin/categories-section";
-import { AdminExhibitionsSection } from "@/components/admin/exhibitions-section";
+import { AdminSeriesSection } from "@/components/admin/series-section";
 import { AdminOrdersSection } from "@/components/admin/orders-section";
 import { AdminAuditHistorySection } from "@/components/admin/audit-section";
 
@@ -50,6 +50,18 @@ const blankArtist: Artist = {
   instagram: "",
 };
 
+function applySortOrder<T extends { id: number; sort_order: number }>(
+  items: T[],
+  ids: number[],
+) {
+  const orderById = new Map(ids.map((id, index) => [id, index]));
+
+  return items.map((item) => {
+    const sortOrder = orderById.get(item.id);
+    return sortOrder === undefined ? item : { ...item, sort_order: sortOrder };
+  });
+}
+
 export function AdminPageContainer() {
   const router = useRouter();
 
@@ -57,7 +69,7 @@ export function AdminPageContainer() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
+  const [series, setSeries] = useState<Series[]>([]);
   const [artist, setArtist] = useState<Artist>(blankArtist);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
@@ -82,15 +94,21 @@ export function AdminPageContainer() {
     null,
   );
   const [categoryDraft, setCategoryDraft] = useState<Category | null>(null);
-  const [editingExhibitionId, setEditingExhibitionId] = useState<number | null>(
+  const [editingSeriesId, setEditingSeriesId] = useState<number | null>(
     null,
   );
-  const [exhibitionDraft, setExhibitionDraft] = useState<Exhibition | null>(null);
+  const [seriesDraft, setSeriesDraft] = useState<Series | null>(null);
 
   const [artworkSearch, setArtworkSearch] = useState("");
   const [draggedArtworkId, setDraggedArtworkId] = useState<number | null>(null);
   const [draggedImageId, setDraggedImageId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const draggedArtworkIdRef = useRef<number | null>(null);
+  const draggedImageIdRef = useRef<number | null>(null);
+  const artworkDragSnapshot = useRef<Artwork[] | null>(null);
+  const artworkDropCommitted = useRef(false);
+  const imageDragSnapshot = useRef<{ artworkId: number; images: ArtworkImage[] } | null>(null);
+  const imageDropCommitted = useRef(false);
 
   const handleAuthError = useCallback(
     (err: unknown): boolean => {
@@ -112,7 +130,7 @@ export function AdminPageContainer() {
         worksResponse,
         ordersResponse,
         categoriesResponse,
-        exhibitionsResponse,
+        seriesResponse,
         artistResponse,
         analyticsResponse,
         auditLogsResponse,
@@ -120,7 +138,7 @@ export function AdminPageContainer() {
         api.admin.artworks.list(),
         api.admin.orders.list(),
         api.categories.list(),
-        api.exhibitions.list(),
+        api.series.list(),
         api.artist.get(),
         api.admin.analytics.summary().catch(() => null),
         api.admin.auditLogs
@@ -133,8 +151,8 @@ export function AdminPageContainer() {
       setCategories(
         Array.isArray(categoriesResponse) ? categoriesResponse : [],
       );
-      setExhibitions(
-        Array.isArray(exhibitionsResponse) ? exhibitionsResponse : [],
+      setSeries(
+        Array.isArray(seriesResponse) ? seriesResponse : [],
       );
       setArtist(artistResponse ?? blankArtist);
       setAnalytics(analyticsResponse);
@@ -177,7 +195,7 @@ export function AdminPageContainer() {
     };
   }, [load]);
 
-  const hasUnsavedChanges = Boolean(draft || categoryDraft || exhibitionDraft);
+  const hasUnsavedChanges = Boolean(draft || categoryDraft || seriesDraft);
 
   useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -228,7 +246,7 @@ export function AdminPageContainer() {
     action: () => Promise<unknown>,
     successMessage: string,
     fallbackErrorMessage = "Не удалось выполнить операцию",
-  ) {
+  ): Promise<boolean> {
     setError("");
     setNotice("");
     setSaving(true);
@@ -237,12 +255,14 @@ export function AdminPageContainer() {
       await action();
       setNotice(successMessage);
       await load();
+      return true;
     } catch (err) {
       if (handleAuthError(err)) {
-        return;
+        return false;
       }
 
       setError(err instanceof Error ? err.message : fallbackErrorMessage);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -307,7 +327,7 @@ export function AdminPageContainer() {
       return;
     }
 
-    await run(
+    const created = await run(
       () =>
         api.admin.categories.create({
           name,
@@ -318,7 +338,9 @@ export function AdminPageContainer() {
       "Категория добавлена",
     );
 
-    form.reset();
+    if (created) {
+      form.reset();
+    }
   }
 
   function startEditCategory(category: Category) {
@@ -341,35 +363,42 @@ export function AdminPageContainer() {
       slug: slugify(categoryDraft.name_en, categoryDraft.name),
     };
 
-    await run(
+    const saved = await run(
       () => api.admin.categories.update(payload.id, payload),
       "Категория обновлена",
     );
 
-    cancelEditCategory();
-  }
-
-  async function reorderCategories(fromIndex: number, toIndex: number) {
-    const current = sortedCategories(categories);
-    const reordered = moveInArray(current, fromIndex, toIndex);
-
-    if (reordered === current) {
-      return;
+    if (saved) {
+      cancelEditCategory();
     }
-
-    await run(async () => {
-      await Promise.all(
-        reordered.map((category, sortOrder) =>
-          api.admin.categories.update(category.id, {
-            ...category,
-            sort_order: sortOrder,
-          }),
-        ),
-      );
-    }, "Порядок категорий обновлён");
   }
 
-  async function createExhibition(event: FormEvent<HTMLFormElement>) {
+  function previewCategories(ids: number[]) {
+    setCategories((items) => applySortOrder(items, ids));
+  }
+
+  async function reorderCategories(ids: number[]) {
+    setError("");
+    setNotice("");
+    setSaving(true);
+
+    try {
+      await api.admin.categories.reorder(ids);
+      setNotice("Порядок категорий обновлён");
+      void reloadAuditLogs();
+    } catch (err) {
+      if (handleAuthError(err)) {
+        return;
+      }
+
+      setError(err instanceof Error ? err.message : "Не удалось обновить порядок категорий");
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createSeries(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const form = event.currentTarget;
@@ -379,70 +408,79 @@ export function AdminPageContainer() {
     const slug = slugify(nameEn, name);
 
     if (!name || !slug) {
-      setError("Заполните название выставки");
+      setError("Заполните название серии");
       return;
     }
 
-    await run(
+    const created = await run(
       () =>
-        api.admin.exhibitions.create({
+        api.admin.series.create({
           name,
           name_en: nameEn,
           slug,
-          sort_order: exhibitions.length,
+          sort_order: series.length,
         }),
-      "Выставка добавлена",
+      "Серия добавлена",
     );
 
-    form.reset();
+    if (created) {
+      form.reset();
+    }
   }
 
-  function startEditExhibition(exhibition: Exhibition) {
-    setEditingExhibitionId(exhibition.id);
-    setExhibitionDraft({ ...exhibition });
+  function startEditSeries(item: Series) {
+    setEditingSeriesId(item.id);
+    setSeriesDraft({ ...item });
   }
 
-  function cancelEditExhibition() {
-    setEditingExhibitionId(null);
-    setExhibitionDraft(null);
+  function cancelEditSeries() {
+    setEditingSeriesId(null);
+    setSeriesDraft(null);
   }
 
-  async function saveExhibitionEdit() {
-    if (!exhibitionDraft) {
+  async function saveSeriesEdit() {
+    if (!seriesDraft) {
       return;
     }
 
     const payload = {
-      ...exhibitionDraft,
-      slug: slugify(exhibitionDraft.name_en, exhibitionDraft.name),
+      ...seriesDraft,
+      slug: slugify(seriesDraft.name_en, seriesDraft.name),
     };
 
-    await run(
-      () => api.admin.exhibitions.update(payload.id, payload),
-      "Выставка обновлена",
+    const saved = await run(
+      () => api.admin.series.update(payload.id, payload),
+      "Серия обновлена",
     );
 
-    cancelEditExhibition();
+    if (saved) {
+      cancelEditSeries();
+    }
   }
 
-  async function reorderExhibitions(fromIndex: number, toIndex: number) {
-    const current = sortedExhibitions(exhibitions);
-    const reordered = moveInArray(current, fromIndex, toIndex);
+  function previewSeries(ids: number[]) {
+    setSeries((items) => applySortOrder(items, ids));
+  }
 
-    if (reordered === current) {
-      return;
+  async function reorderSeries(ids: number[]) {
+    setError("");
+    setNotice("");
+    setSaving(true);
+
+    try {
+      await api.admin.series.reorder(ids);
+      setNotice("Порядок серий обновлён");
+      void reloadAuditLogs();
+    } catch (err) {
+      if (handleAuthError(err)) {
+        return;
+      }
+
+      setError(err instanceof Error ? err.message : "Не удалось обновить порядок серий");
+      await load();
+    } finally {
+      setSaving(false);
     }
-
-    await run(async () => {
-      await Promise.all(
-        reordered.map((exhibition, sortOrder) =>
-          api.admin.exhibitions.update(exhibition.id, {
-            ...exhibition,
-            sort_order: sortOrder,
-          }),
-        ),
-      );
-    }, "Порядок выставок обновлён");
   }
 
   function getNextArtworkSortOrder(categoryId: number) {
@@ -459,7 +497,7 @@ export function AdminPageContainer() {
     );
   }
 
-  async function createArtwork(event: FormEvent<HTMLFormElement>) {
+  async function createArtwork(event: FormEvent<HTMLFormElement>): Promise<boolean> {
     event.preventDefault();
 
     const form = event.currentTarget;
@@ -467,22 +505,22 @@ export function AdminPageContainer() {
     const rawPrice = String(data.get("price") ?? "").trim();
     const rawYear = String(data.get("year") ?? "").trim();
     const rawCategoryId = String(data.get("category_id") ?? "").trim();
-    const rawExhibitionId = String(data.get("exhibition_id") ?? "").trim();
+    const rawSeriesId = String(data.get("exhibition_id") ?? "").trim();
     const title = String(data.get("title") ?? "").trim();
 
     if (!title) {
       setError("Укажите название работы");
-      return;
+      return false;
     }
 
     if (!rawCategoryId) {
       setError("Выберите категорию работы");
-      return;
+      return false;
     }
 
     const categoryId = Number(rawCategoryId);
 
-    await run(
+    const created = await run(
       () =>
         api.admin.artworks.create({
           title,
@@ -496,7 +534,7 @@ export function AdminPageContainer() {
           price: rawPrice === "" ? null : Number(rawPrice),
           status: "available",
           category_id: categoryId,
-          exhibition_id: rawExhibitionId === "" ? null : Number(rawExhibitionId),
+          exhibition_id: rawSeriesId === "" ? null : Number(rawSeriesId),
           year: rawYear === "" ? null : Number(rawYear),
           size: String(data.get("size") ?? "").trim(),
           size_en: String(data.get("size_en") ?? "").trim(),
@@ -507,7 +545,10 @@ export function AdminPageContainer() {
       "Работа добавлена",
     );
 
-    form.reset();
+    if (created) {
+      form.reset();
+    }
+    return created;
   }
 
   function startEdit(artwork: Artwork) {
@@ -536,52 +577,71 @@ export function AdminPageContainer() {
       return;
     }
 
-    await run(
+    const saved = await run(
       () => api.admin.artworks.update(draft.id, draft),
       "Работа обновлена",
     );
 
-    cancelEdit();
+    if (saved) {
+      cancelEdit();
+    }
   }
 
-  async function reorderArtworksInCategory(
-    categoryId: number,
-    fromId: number,
-    toId: number,
-  ) {
+  function startArtworkDrag(artworkId: number) {
+    artworkDragSnapshot.current = artworks;
+    artworkDropCommitted.current = false;
+    draggedArtworkIdRef.current = artworkId;
+    setDraggedArtworkId(artworkId);
+  }
+
+  function previewArtworkDrop(categoryId: number, targetId: number) {
+    const activeId = draggedArtworkIdRef.current;
+    if (activeId === null || activeId === targetId) {
+      return;
+    }
+
+    const draggedArtwork = artworks.find((artwork) => artwork.id === activeId);
+    if (!draggedArtwork || draggedArtwork.category_id !== categoryId) {
+      return;
+    }
+
     const current = sortedArtworks(
       artworks.filter((artwork) => artwork.category_id === categoryId),
     );
-    const fromIndex = current.findIndex((artwork) => artwork.id === fromId);
-    const toIndex = current.findIndex((artwork) => artwork.id === toId);
+    const fromIndex = current.findIndex((artwork) => artwork.id === activeId);
+    const toIndex = current.findIndex((artwork) => artwork.id === targetId);
     const reordered = moveInArray(current, fromIndex, toIndex);
 
     if (reordered === current) {
       return;
     }
 
-    const reorderedIds = reordered.map((artwork) => artwork.id);
-    const reorderedById = new Map<number, Artwork>(
-      reordered.map((artwork, sortOrder) => [
-        artwork.id,
-        { ...artwork, sort_order: sortOrder },
-      ]),
+    const nextById = new Map(
+      reordered.map((artwork, sortOrder) => [artwork.id, { ...artwork, sort_order: sortOrder }]),
     );
-    const previousArtworks = artworks;
+    setArtworks((items) => items.map((item) => nextById.get(item.id) ?? item));
+  }
+
+  async function commitArtworkDrop(categoryId: number) {
+    const reorderedIds = sortedArtworks(
+      artworks.filter((artwork) => artwork.category_id === categoryId),
+    ).map((artwork) => artwork.id);
+    const previousArtworks = artworkDragSnapshot.current;
+
+    artworkDropCommitted.current = true;
 
     setError("");
     setNotice("");
     setSaving(true);
-    setArtworks((items) =>
-      items.map((item) => reorderedById.get(item.id) ?? item),
-    );
 
     try {
       await api.admin.artworks.reorder(categoryId, reorderedIds);
       setNotice("Порядок работ обновлён");
       void reloadAuditLogs();
     } catch (err) {
-      setArtworks(previousArtworks);
+      if (previousArtworks) {
+        setArtworks(previousArtworks);
+      }
 
       if (handleAuthError(err)) {
         return;
@@ -592,7 +652,17 @@ export function AdminPageContainer() {
       );
     } finally {
       setSaving(false);
+      artworkDragSnapshot.current = null;
     }
+  }
+
+  function endArtworkDrag() {
+    if (!artworkDropCommitted.current && artworkDragSnapshot.current) {
+      setArtworks(artworkDragSnapshot.current);
+      artworkDragSnapshot.current = null;
+    }
+    draggedArtworkIdRef.current = null;
+    setDraggedArtworkId(null);
   }
 
   async function uploadImage(artworkId: number, file: File | undefined) {
@@ -617,24 +687,89 @@ export function AdminPageContainer() {
     );
   }
 
-  async function reorderImage(artwork: Artwork, fromId: number, toId: number) {
-    const current = artwork.images || [];
-    const fromIndex = current.findIndex((image) => image.id === fromId);
-    const toIndex = current.findIndex((image) => image.id === toId);
+  function startImageDrag(artwork: Artwork, imageId: number) {
+    imageDragSnapshot.current = { artworkId: artwork.id, images: artwork.images };
+    imageDropCommitted.current = false;
+    draggedImageIdRef.current = imageId;
+    setDraggedImageId(imageId);
+  }
+
+  function previewImageDrop(artworkId: number, targetId: number) {
+    const activeId = draggedImageIdRef.current;
+    if (activeId === null || activeId === targetId) {
+      return;
+    }
+
+    const artwork = artworks.find((item) => item.id === artworkId);
+    if (!artwork) {
+      return;
+    }
+
+    const current = [...artwork.images].sort(
+      (a, b) => a.sort_order - b.sort_order || a.id - b.id,
+    );
+    const fromIndex = current.findIndex((image) => image.id === activeId);
+    const toIndex = current.findIndex((image) => image.id === targetId);
     const reordered = moveInArray(current, fromIndex, toIndex);
 
     if (reordered === current) {
       return;
     }
 
-    await run(
-      () =>
-        api.admin.artworks.reorderImages(
-          artwork.id,
-          reordered.map((image) => image.id),
-        ),
-      "Порядок изображений обновлён",
+    const orderedImages = reordered.map((image, sortOrder) => ({ ...image, sort_order: sortOrder }));
+    setArtworks((items) =>
+      items.map((item) => item.id === artworkId ? { ...item, images: orderedImages } : item),
     );
+  }
+
+  async function commitImageDrop(artworkId: number) {
+    const artwork = artworks.find((item) => item.id === artworkId);
+    if (!artwork) {
+      return;
+    }
+
+    imageDropCommitted.current = true;
+    setError("");
+    setNotice("");
+    setSaving(true);
+
+    try {
+      await api.admin.artworks.reorderImages(
+        artwork.id,
+        [...artwork.images]
+          .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+          .map((image) => image.id),
+      );
+      setNotice("Порядок изображений обновлён");
+      void reloadAuditLogs();
+    } catch (err) {
+      const snapshot = imageDragSnapshot.current;
+      if (snapshot) {
+        setArtworks((items) =>
+          items.map((item) => item.id === snapshot.artworkId ? { ...item, images: snapshot.images } : item),
+        );
+      }
+
+      if (handleAuthError(err)) {
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Не удалось обновить порядок изображений");
+    } finally {
+      setSaving(false);
+      imageDragSnapshot.current = null;
+    }
+  }
+
+  function endImageDrag() {
+    const snapshot = imageDragSnapshot.current;
+    if (!imageDropCommitted.current && snapshot) {
+      setArtworks((items) =>
+        items.map((item) => item.id === snapshot.artworkId ? { ...item, images: snapshot.images } : item),
+      );
+      imageDragSnapshot.current = null;
+    }
+    draggedImageIdRef.current = null;
+    setDraggedImageId(null);
   }
 
   async function updateOrderStatus(orderId: number, status: Order["status"]) {
@@ -661,11 +796,11 @@ export function AdminPageContainer() {
       return;
     }
 
-    if (target.type === "exhibition") {
+    if (target.type === "series") {
       await run(
-        () => api.admin.exhibitions.delete(target.exhibition.id),
-        "Выставка удалена",
-        "Не удалось удалить выставку",
+        () => api.admin.series.delete(target.series.id),
+        "Серия удалена",
+        "Не удалось удалить серию",
       );
       return;
     }
@@ -700,9 +835,9 @@ export function AdminPageContainer() {
     [categories],
   );
 
-  const exhibitionsSorted = useMemo(
-    () => sortedExhibitions(exhibitions),
-    [exhibitions],
+  const seriesSorted = useMemo(
+    () => sortedSeries(series),
+    [series],
   );
 
   const filteredArtworks = useMemo(() => {
@@ -716,8 +851,8 @@ export function AdminPageContainer() {
       const categoryName =
         categories.find((category) => category.id === artwork.category_id)
           ?.name || "";
-      const exhibitionName =
-        exhibitions.find((exhibition) => exhibition.id === artwork.exhibition_id)
+      const seriesName =
+        series.find((item) => item.id === artwork.exhibition_id)
           ?.name || "";
       const text = [
         artwork.title,
@@ -725,7 +860,7 @@ export function AdminPageContainer() {
         artwork.materials,
         artwork.materials_en,
         categoryName,
-        exhibitionName,
+        seriesName,
         statusLabel[artwork.status],
       ]
         .join(" ")
@@ -733,7 +868,7 @@ export function AdminPageContainer() {
 
       return text.includes(query);
     });
-  }, [artworks, artworkSearch, categories, exhibitions]);
+  }, [artworks, artworkSearch, categories, series]);
 
   const artworksByCategory = useMemo(() => {
     const result = new Map<number, Artwork[]>();
@@ -762,14 +897,14 @@ export function AdminPageContainer() {
     );
   }
 
-  function exhibitionName(id: number | null) {
+  function seriesName(id: number | null) {
     if (id === null) {
-      return "Без выставки";
+      return "Без серии";
     }
 
     return (
-      exhibitions.find((exhibition) => exhibition.id === id)?.name ||
-      "Без выставки"
+      series.find((item) => item.id === id)?.name ||
+      "Без серии"
     );
   }
 
@@ -837,14 +972,14 @@ export function AdminPageContainer() {
         </TabButton>
 
         <TabButton
-          active={activeTab === "exhibitions"}
+          active={activeTab === "series"}
           onClick={() => {
             if (confirmUnsavedLeave()) {
-              setActiveTab("exhibitions");
+              setActiveTab("series");
             }
           }}
         >
-          Выставки
+          Серии
         </TabButton>
 
         <TabButton
@@ -914,31 +1049,29 @@ export function AdminPageContainer() {
           onSaveCategoryEdit={() => void saveCategoryEdit()}
           onCancelEditCategory={cancelEditCategory}
           onStartEditCategory={startEditCategory}
-          onReorderCategories={(fromIndex, toIndex) =>
-            void reorderCategories(fromIndex, toIndex)
-          }
+          onPreviewCategories={previewCategories}
+          onReorderCategories={(ids) => void reorderCategories(ids)}
           onDeleteCategory={(category) =>
             setDeleteTarget({ type: "category", category })
           }
         />
       )}
 
-      {activeTab === "exhibitions" && (
-        <AdminExhibitionsSection
-          exhibitions={exhibitionsSorted}
-          editingExhibitionId={editingExhibitionId}
-          exhibitionDraft={exhibitionDraft}
+      {activeTab === "series" && (
+        <AdminSeriesSection
+          series={seriesSorted}
+          editingSeriesId={editingSeriesId}
+          seriesDraft={seriesDraft}
           saving={saving}
-          onCreateExhibition={createExhibition}
-          onSetExhibitionDraft={setExhibitionDraft}
-          onSaveExhibitionEdit={() => void saveExhibitionEdit()}
-          onCancelEditExhibition={cancelEditExhibition}
-          onStartEditExhibition={startEditExhibition}
-          onReorderExhibitions={(fromIndex, toIndex) =>
-            void reorderExhibitions(fromIndex, toIndex)
-          }
-          onDeleteExhibition={(exhibition) =>
-            setDeleteTarget({ type: "exhibition", exhibition })
+          onCreateSeries={createSeries}
+          onSetSeriesDraft={setSeriesDraft}
+          onSaveSeriesEdit={() => void saveSeriesEdit()}
+          onCancelSeriesEdit={cancelEditSeries}
+          onStartSeriesEdit={startEditSeries}
+          onPreviewSeries={previewSeries}
+          onReorderSeries={(ids) => void reorderSeries(ids)}
+          onDeleteSeries={(item) =>
+            setDeleteTarget({ type: "series", series: item })
           }
         />
       )}
@@ -946,7 +1079,7 @@ export function AdminPageContainer() {
       {activeTab === "artworks" && (
         <AdminArtworksSection
           categories={categoriesSorted}
-          exhibitions={exhibitionsSorted}
+          series={seriesSorted}
           artworkSearch={artworkSearch}
           setArtworkSearch={setArtworkSearch}
           artworksByCategory={artworksByCategory}
@@ -956,7 +1089,7 @@ export function AdminPageContainer() {
           draggedImageId={draggedImageId}
           saving={saving}
           categoryName={categoryName}
-          exhibitionName={exhibitionName}
+          seriesName={seriesName}
           onCreateArtwork={createArtwork}
           onStartEdit={startEdit}
           onCancelEdit={cancelEdit}
@@ -972,24 +1105,14 @@ export function AdminPageContainer() {
           onImageAltTextSave={(artworkId, image, altText) =>
             void updateImageAltText(artworkId, image, altText)
           }
-          onDragArtworkStart={setDraggedArtworkId}
-          onDragArtworkEnd={() => setDraggedArtworkId(null)}
-          onDropArtwork={(categoryId, artworkId) => {
-            if (draggedArtworkId !== null) {
-              void reorderArtworksInCategory(
-                categoryId,
-                draggedArtworkId,
-                artworkId,
-              );
-            }
-          }}
-          onImageDragStart={setDraggedImageId}
-          onImageDragEnd={() => setDraggedImageId(null)}
-          onImageDrop={(artwork, imageId) => {
-            if (draggedImageId !== null) {
-              void reorderImage(artwork, draggedImageId, imageId);
-            }
-          }}
+          onDragArtworkStart={startArtworkDrag}
+          onDragArtworkEnter={previewArtworkDrop}
+          onDragArtworkEnd={endArtworkDrag}
+          onDropArtwork={(categoryId) => void commitArtworkDrop(categoryId)}
+          onImageDragStart={startImageDrag}
+          onImageDragEnter={previewImageDrop}
+          onImageDragEnd={endImageDrag}
+          onImageDrop={(artworkId) => void commitImageDrop(artworkId)}
         />
       )}
 

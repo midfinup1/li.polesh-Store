@@ -2,7 +2,7 @@ import type {
   Artist,
   Artwork,
   Category,
-  Exhibition,
+  Series,
   CreateOrderRequest,
   Order,
   AnalyticsSummary,
@@ -68,19 +68,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const text = await res.text();
 
   if (!text) {
-    return undefined as T;
+    throw new ApiError(502, "Server returned an empty response");
   }
 
   const contentType = res.headers.get("content-type") || "";
 
   if (!contentType.includes("application/json")) {
-    return undefined as T;
+    throw new ApiError(502, "Server returned an unsupported response format");
   }
 
   try {
     return JSON.parse(text) as T;
   } catch {
-    return undefined as T;
+    throw new ApiError(502, "Server returned invalid JSON");
   }
 }
 
@@ -106,7 +106,7 @@ function buildQuery(
 
 export const api = {
   artworks: {
-    list: (params?: { category_id?: number; exhibition_id?: number }) =>
+    list: (params?: { category_id?: number; series_id?: number }) =>
       request<Artwork[]>(`/artworks${buildQuery(params)}`),
 
     getById: (id: number) => request<Artwork>(`/artworks/${id}`),
@@ -116,8 +116,8 @@ export const api = {
     list: () => request<Category[]>("/categories"),
   },
 
-  exhibitions: {
-    list: () => request<Exhibition[]>("/exhibitions"),
+  series: {
+    list: () => request<Series[]>("/series"),
   },
 
   artist: {
@@ -233,24 +233,36 @@ export const api = {
         request<void>(`/admin/categories/${id}`, {
           method: "DELETE",
         }),
+
+      reorder: (ids: number[]) =>
+        request<void>("/admin/categories/reorder", {
+          method: "PATCH",
+          body: JSON.stringify({ category_ids: ids }),
+        }),
     },
 
-    exhibitions: {
-      create: (data: Partial<Exhibition>) =>
-        request<Exhibition>("/admin/exhibitions", {
+    series: {
+      create: (data: Partial<Series>) =>
+        request<Series>("/admin/series", {
           method: "POST",
           body: JSON.stringify(data),
         }),
 
-      update: (id: number, data: Partial<Exhibition>) =>
-        request<Exhibition>(`/admin/exhibitions/${id}`, {
+      update: (id: number, data: Partial<Series>) =>
+        request<Series>(`/admin/series/${id}`, {
           method: "PUT",
           body: JSON.stringify(data),
         }),
 
       delete: (id: number) =>
-        request<void>(`/admin/exhibitions/${id}`, {
+        request<void>(`/admin/series/${id}`, {
           method: "DELETE",
+        }),
+
+      reorder: (ids: number[]) =>
+        request<void>("/admin/series/reorder", {
+          method: "PATCH",
+          body: JSON.stringify({ series_ids: ids }),
         }),
     },
 

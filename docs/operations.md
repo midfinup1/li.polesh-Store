@@ -86,16 +86,16 @@ docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml down 
 При push в `main`:
 
 ```text
-1. запускаются проверки;
-2. собираются backend/frontend Docker images;
-3. images публикуются в GHCR;
+1. workflow CI запускает тесты, сборку и проверки уязвимостей;
+2. только после успешного CI workflow Build images собирает backend/frontend/caddy;
+3. images публикуются в GHCR с тегом точного SHA коммита;
 4. сервер автоматически не обновляется.
 ```
 
 Запустить deploy:
 
 ```text
-GitHub -> Actions -> Deploy -> Run workflow
+GitHub -> Actions -> Deploy production -> Run workflow
 action = deploy
 rollback_sha = пусто
 ```
@@ -104,10 +104,11 @@ rollback_sha = пусто
 
 ```text
 1. заходит на VPS;
-2. обновляет код из main;
-3. делает backup PostgreSQL;
-4. скачивает latest Docker images;
-5. перезапускает production-контейнеры.
+2. делает backup PostgreSQL;
+3. переключает код на точный SHA выбранного коммита;
+4. скачивает backend/frontend/caddy с тем же SHA;
+5. отдельно запускает migrate job;
+6. перезапускает production-контейнеры.
 ```
 
 ## Rollback
@@ -115,12 +116,12 @@ rollback_sha = пусто
 Rollback выполняется вручную через GitHub Actions:
 
 ```text
-GitHub -> Actions -> Deploy -> Run workflow
+GitHub -> Actions -> Deploy production -> Run workflow
 action = rollback
 rollback_sha = полный SHA коммита
 ```
 
-Rollback откатывает backend/frontend Docker images.
+Rollback откатывает код и все Docker images на один и тот же SHA.
 
 База данных автоматически назад не откатывается. Перед rollback создаётся backup текущей БД.
 
@@ -131,6 +132,22 @@ GitHub -> Actions -> нужный build -> Commit
 или
 GitHub -> Code -> Commits
 ```
+
+## Качество старых изображений
+
+Новые загрузки автоматически получают display-варианты до 2400 px. Старые
+загрузки без такого варианта показываются из оригинала, поэтому после деплоя
+они не растягиваются из миниатюры.
+
+Чтобы один раз создать оптимизированные display-варианты и для старых файлов:
+
+```bash
+docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml \
+  exec -T backend /app/backfill-images -skip-cache-headers
+```
+
+Команда идемпотентна: без `-force` она обрабатывает только изображения, у
+которых display-вариант ещё отсутствует.
 
 ## PostgreSQL backup
 

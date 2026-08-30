@@ -1,4 +1,4 @@
-import type { Artwork, ArtworkStatus, Category, Exhibition, Order } from "@/types";
+import type { Artwork, ArtworkStatus, Category, Order, Series } from "@/types";
 
 export const statusLabel: Record<ArtworkStatus, string> = {
   available: "В наличии",
@@ -43,8 +43,8 @@ export function sortedCategories(categories: Category[]) {
   );
 }
 
-export function sortedExhibitions(exhibitions: Exhibition[]) {
-  return [...exhibitions].sort(
+export function sortedSeries(series: Series[]) {
+  return [...series].sort(
     (a, b) => a.sort_order - b.sort_order || a.id - b.id,
   );
 }

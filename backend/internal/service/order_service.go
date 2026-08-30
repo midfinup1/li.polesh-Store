@@ -35,6 +35,9 @@ func (s *OrderService) Create(ctx context.Context, o *domain.Order) (*domain.Ord
 	if _, err := mail.ParseAddress(o.Email); err != nil {
 		return nil, fmt.Errorf("%w: valid email is required", domain.ErrValidation)
 	}
+	if len([]rune(o.Name)) > 200 || len([]rune(o.Email)) > 320 || len([]rune(o.Phone)) > 200 || len([]rune(o.Message)) > 4_000 {
+		return nil, fmt.Errorf("%w: request fields are too long", domain.ErrValidation)
+	}
 	order, artwork, err := s.orders.CreateForAvailableArtwork(ctx, o)
 	if err != nil {
 		return nil, err

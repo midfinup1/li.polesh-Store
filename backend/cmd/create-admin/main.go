@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/pressly/goose/v3"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/midfinup1/li.polesh-Store/backend/config"
@@ -41,14 +40,6 @@ func main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 	defer db.Close()
-
-	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatalf("failed to configure migration dialect: %v", err)
-	}
-
-	if err := goose.Up(db.DB, "migrations"); err != nil {
-		log.Fatalf("failed to apply migrations: %v", err)
-	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {

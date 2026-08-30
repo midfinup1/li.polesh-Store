@@ -76,51 +76,50 @@ func (s *StorageService) UploadArtworkImage(ctx context.Context, artworkID int64
 		return nil, fmt.Errorf("%w: only JPEG, PNG and WebP images are allowed", domain.ErrValidation)
 	}
 
+	processed, err := s.processor.Generate(ctx, data, contentType)
+	if err != nil {
+		return nil, fmt.Errorf("%w: invalid or oversized image: %v", domain.ErrValidation, err)
+	}
+
 	timestamp := time.Now().UnixNano()
 	originalKey := fmt.Sprintf("artworks/%d/%d%s", artworkID, timestamp, ext)
 	originalURL, err := s.put(ctx, originalKey, data, contentType)
 	if err != nil {
 		return nil, err
 	}
-
 	result := &UploadedArtworkImage{OriginalURL: originalURL, ThumbURL: originalURL}
 
-	thumbs, err := s.processor.Generate(ctx, data, contentType)
-	if err != nil {
-		return result, nil
-	}
-
 	jpegKey := fmt.Sprintf("artworks/%d/%d_thumb.jpg", artworkID, timestamp)
-	if url, err := s.put(ctx, jpegKey, thumbs.JPEG, "image/jpeg"); err == nil {
+	if url, err := s.put(ctx, jpegKey, processed.JPEG, "image/jpeg"); err == nil {
 		result.ThumbURL = url
 	}
 
-	if len(thumbs.WebP) > 0 {
+	if len(processed.WebP) > 0 {
 		webpKey := fmt.Sprintf("artworks/%d/%d_thumb.webp", artworkID, timestamp)
-		if url, err := s.put(ctx, webpKey, thumbs.WebP, "image/webp"); err == nil {
+		if url, err := s.put(ctx, webpKey, processed.WebP, "image/webp"); err == nil {
 			result.ThumbWebPURL = url
 		}
 	}
 
-	if len(thumbs.AVIF) > 0 {
+	if len(processed.AVIF) > 0 {
 		avifKey := fmt.Sprintf("artworks/%d/%d_thumb.avif", artworkID, timestamp)
-		if url, err := s.put(ctx, avifKey, thumbs.AVIF, "image/avif"); err == nil {
+		if url, err := s.put(ctx, avifKey, processed.AVIF, "image/avif"); err == nil {
 			result.ThumbAVIFURL = url
 		}
 	}
 
 	// Display variants (~2400px) — what the public carousel serves instead of
 	// the original. On failure the frontend falls back to the original.
-	if len(thumbs.DisplayJPEG) > 0 {
+	if len(processed.DisplayJPEG) > 0 {
 		displayKey := fmt.Sprintf("artworks/%d/%d_display.jpg", artworkID, timestamp)
-		if url, err := s.put(ctx, displayKey, thumbs.DisplayJPEG, "image/jpeg"); err == nil {
+		if url, err := s.put(ctx, displayKey, processed.DisplayJPEG, "image/jpeg"); err == nil {
 			result.DisplayURL = url
 		}
 	}
 
-	if len(thumbs.DisplayWebP) > 0 {
+	if len(processed.DisplayWebP) > 0 {
 		displayWebPKey := fmt.Sprintf("artworks/%d/%d_display.webp", artworkID, timestamp)
-		if url, err := s.put(ctx, displayWebPKey, thumbs.DisplayWebP, "image/webp"); err == nil {
+		if url, err := s.put(ctx, displayWebPKey, processed.DisplayWebP, "image/webp"); err == nil {
 			result.DisplayWebPURL = url
 		}
 	}
@@ -144,6 +143,9 @@ func (s *StorageService) UploadArtistImage(ctx context.Context, slot string, fil
 	contentType, ext, ok := detectImageType(data)
 	if !ok {
 		return "", fmt.Errorf("%w: only JPEG, PNG and WebP images are allowed", domain.ErrValidation)
+	}
+	if err := s.processor.Validate(data); err != nil {
+		return "", fmt.Errorf("%w: invalid or oversized image: %v", domain.ErrValidation, err)
 	}
 
 	safeSlot := "default"
@@ -186,14 +188,26 @@ func (s *StorageService) Delete(ctx context.Context, objectURL string) error {
 		return nil
 	}
 	if s.client == nil {
-		path := filepath.Join(s.uploadDir, filepath.FromSlash(strings.TrimPrefix(objectURL, "/uploads/")))
+		relativePath, ok := strings.CutPrefix(objectURL, "/uploads/")
+		if !ok {
+			return fmt.Errorf("refusing to delete an object outside the upload directory")
+		}
+		cleanPath := filepath.Clean(filepath.FromSlash(relativePath))
+		if cleanPath == "." || filepath.IsAbs(cleanPath) || cleanPath == ".." || strings.HasPrefix(cleanPath, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("refusing to delete an invalid upload path")
+		}
+		path := filepath.Join(s.uploadDir, cleanPath)
 		err := os.Remove(path)
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
 		return err
 	}
-	key := strings.TrimPrefix(objectURL, strings.TrimRight(s.publicURL, "/")+"/")
+	prefix := strings.TrimRight(s.publicURL, "/") + "/"
+	key, ok := strings.CutPrefix(objectURL, prefix)
+	if !ok || key == "" || strings.Contains(key, "..") {
+		return fmt.Errorf("refusing to delete an object outside the configured bucket URL")
+	}
 	return s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
 }
 

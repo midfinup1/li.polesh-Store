@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy production
 
 on:
   workflow_dispatch:
@@ -16,204 +16,18 @@ on:
         required: false
         default: ""
 
-  push:
-    branches:
-      - main
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
-  changes:
-    name: Detect changed parts
-    runs-on: ubuntu-latest
-
-    if: ${{ github.event_name == 'push' }}
-
-    permissions:
-      contents: read
-      pull-requests: read
-
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      infra: ${{ steps.filter.outputs.infra }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Detect changed files
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-              - '.github/workflows/deploy.yml'
-            frontend:
-              - 'frontend/**'
-              - '.github/workflows/deploy.yml'
-            infra:
-              - 'infra/**'
-              - 'scripts/**'
-              - 'Makefile'
-              - '.github/workflows/deploy.yml'
-
-  build-backend:
-    name: Build backend image
-    runs-on: ubuntu-latest
-
-    needs: changes
-    if: ${{ github.event_name == 'push' && needs.changes.outputs.backend == 'true' }}
-
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push backend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/midfinup1/li-polesh-store-backend:latest
-            ghcr.io/midfinup1/li-polesh-store-backend:${{ github.sha }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-
-  build-frontend:
-    name: Build frontend image
-    runs-on: ubuntu-latest
-
-    needs: changes
-    if: ${{ github.event_name == 'push' && needs.changes.outputs.frontend == 'true' }}
-
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          build-args: |
-            NEXT_PUBLIC_API_URL=/api/v1
-            NEXT_PUBLIC_SITE_URL=https://lipolesh.art
-            NEXT_IMAGE_REMOTE_HOSTS=s3.twcstorage.ru,3mjjbew73k.cdn.twcstorage.ru
-          tags: |
-            ghcr.io/midfinup1/li-polesh-store-frontend:latest
-            ghcr.io/midfinup1/li-polesh-store-frontend:${{ github.sha }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-
-  build-caddy:
-    name: Build Caddy image
-    runs-on: ubuntu-latest
-
-    needs: changes
-    if: ${{ github.event_name == 'push' && needs.changes.outputs.infra == 'true' }}
-
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push Caddy
-        uses: docker/build-push-action@v6
-        with:
-          context: ./infra/caddy
-          file: ./infra/caddy/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/midfinup1/li-polesh-store-caddy:latest
-            ghcr.io/midfinup1/li-polesh-store-caddy:${{ github.sha }}
-          cache-from: type=gha,scope=caddy
-          cache-to: type=gha,mode=max,scope=caddy
-
-  build-summary:
-    name: Build summary
-    runs-on: ubuntu-latest
-
-    needs:
-      - changes
-      - build-backend
-      - build-frontend
-      - build-caddy
-
-    if: ${{ always() && github.event_name == 'push' }}
-
-    steps:
-      - name: Print result
-        run: |
-          echo "backend changed:  ${{ needs.changes.outputs.backend }}"
-          echo "frontend changed: ${{ needs.changes.outputs.frontend }}"
-          echo "infra changed:    ${{ needs.changes.outputs.infra }}"
-          echo "backend build:    ${{ needs.build-backend.result }}"
-          echo "frontend build:   ${{ needs.build-frontend.result }}"
-          echo "caddy build:      ${{ needs.build-caddy.result }}"
-
-          if [ "${{ needs.build-backend.result }}" = "failure" ] || \
-             [ "${{ needs.build-frontend.result }}" = "failure" ] || \
-             [ "${{ needs.build-caddy.result }}" = "failure" ]; then
-            exit 1
-          fi
-
-          if [ "${{ needs.changes.outputs.backend }}" != "true" ] && \
-             [ "${{ needs.changes.outputs.frontend }}" != "true" ] && \
-             [ "${{ needs.changes.outputs.infra }}" != "true" ]; then
-            echo "No Docker image changes detected. Nothing to build."
-          fi
-
   deploy:
-    name: Deploy to VPS
+    name: Deploy tested commit to VPS
     runs-on: ubuntu-latest
-
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy' }}
+    if: ${{ github.event.inputs.action == 'deploy' }}
 
     steps:
-      - name: Deploy over SSH
+      - name: Deploy exact commit over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -223,13 +37,18 @@ jobs:
             set -e
             cd /opt/li-polesh-store
 
-            git fetch origin main
-            git reset --hard origin/main
+            DEPLOY_SHA="${{ github.sha }}"
+            echo "Deploying tested images for $DEPLOY_SHA"
 
             echo "Creating database backup before deploy..."
             ./scripts/backup-postgres.sh
 
-            echo "Pull latest images..."
+            git fetch origin main
+            git reset --hard "$DEPLOY_SHA"
+
+            export IMAGE_TAG="$DEPLOY_SHA"
+
+            echo "Pull exact images..."
             docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml pull
 
             echo "Restart production services..."
@@ -239,20 +58,19 @@ jobs:
             docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml ps
 
   rollback:
-    name: Rollback VPS
+    name: Roll back VPS to exact commit
     runs-on: ubuntu-latest
-
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'rollback' }}
+    if: ${{ github.event.inputs.action == 'rollback' }}
 
     steps:
       - name: Check rollback SHA
         run: |
-          if [ -z "${{ github.event.inputs.rollback_sha }}" ]; then
-            echo "rollback_sha is required for rollback"
+          if ! printf '%s' "${{ github.event.inputs.rollback_sha }}" | grep -Eq '^[0-9a-fA-F]{7,40}$'; then
+            echo "rollback_sha must be a Git commit SHA"
             exit 1
           fi
 
-      - name: Rollback over SSH
+      - name: Roll back exact images over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -263,19 +81,19 @@ jobs:
             cd /opt/li-polesh-store
 
             ROLLBACK_SHA="${{ github.event.inputs.rollback_sha }}"
-
-            echo "Rollback to SHA: $ROLLBACK_SHA"
+            echo "Rolling back to $ROLLBACK_SHA"
 
             echo "Creating database backup before rollback..."
             ./scripts/backup-postgres.sh
 
-            echo "Pull rollback images..."
-            docker pull ghcr.io/midfinup1/li-polesh-store-backend:$ROLLBACK_SHA
-            docker pull ghcr.io/midfinup1/li-polesh-store-frontend:$ROLLBACK_SHA
+            git fetch origin
+            git reset --hard "$ROLLBACK_SHA"
 
-            echo "Retag rollback images as local latest..."
-            docker tag ghcr.io/midfinup1/li-polesh-store-backend:$ROLLBACK_SHA ghcr.io/midfinup1/li-polesh-store-backend:latest
-            docker tag ghcr.io/midfinup1/li-polesh-store-frontend:$ROLLBACK_SHA ghcr.io/midfinup1/li-polesh-store-frontend:latest
+            export IMAGE_TAG="$ROLLBACK_SHA"
+
+            echo "Pull rollback images..."
+            docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml pull
 
             echo "Restart services with rollback images..."
             docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml up -d --remove-orphans
+            docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml ps

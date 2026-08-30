@@ -98,7 +98,7 @@ docker exec "${CONTAINER_NAME}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -
 
 select 'admins' as table_name, count(*) as rows_count from admins
 union all
-select 'artist_profiles', count(*) from artist_profiles
+select 'artist', count(*) from artist
 union all
 select 'categories', count(*) from categories
 union all

@@ -106,3 +106,19 @@ func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	recordAdminAudit(r, h.audit, "category.delete", "category", &id, metadata)
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *CategoryHandler) Reorder(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IDs []int64 `json:"category_ids"`
+	}
+	if err := decodeJSONBody(w, r, &body, maxAdminJSONBodyBytes); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if err := h.svc.Reorder(r.Context(), body.IDs); err != nil {
+		respondServiceError(w, err, "failed to reorder categories")
+		return
+	}
+	recordAdminAudit(r, h.audit, "category.reorder", "category", nil, map[string]any{"category_ids": body.IDs})
+	w.WriteHeader(http.StatusNoContent)
+}

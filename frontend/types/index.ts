@@ -22,7 +22,7 @@ export interface Category {
   created_at?: string;
 }
 
-export interface Exhibition {
+export interface Series {
   id: number;
   name: string;
   name_en: string;
@@ -30,6 +30,10 @@ export interface Exhibition {
   sort_order: number;
   created_at?: string;
 }
+
+// Kept as an API compatibility alias while production data still uses the
+// historical exhibition_id column.
+export type Exhibition = Series;
 
 export interface Artwork {
   id: number;
@@ -44,7 +48,7 @@ export interface Artwork {
   category_id: number | null;
   category?: Category;
   exhibition_id: number | null;
-  exhibition?: Exhibition;
+  exhibition?: Series;
   year: number | null;
   size: string;
   size_en: string;

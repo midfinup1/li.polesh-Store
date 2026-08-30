@@ -3,19 +3,25 @@
 import type { ReactNode } from "react";
 
 export const inputClassName =
-  "w-full rounded-[8px] border border-border/80 bg-white/40 px-4 py-4 text-[17px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent";
+  "w-full rounded-[8px] border border-border/70 bg-white/40 px-3 py-2.5 text-[15px] font-medium leading-[145%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent";
 
 export const smallInputClassName =
-  "w-full rounded-[8px] border border-border/80 bg-white/40 px-3 py-3 text-[16px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent";
+  "w-full rounded-[8px] border border-border/70 bg-white/40 px-3 py-2 text-[14px] font-medium leading-[145%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent";
 
 export const buttonClassName =
-  "inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-4 text-[15px] font-medium leading-[150%] text-paper transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-4 text-[14px] font-medium leading-[145%] text-paper transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const secondaryButtonClassName =
-  "inline-flex h-[42px] items-center justify-center rounded-[8px] border border-border/80 px-4 text-[15px] font-medium leading-[150%] transition-colors hover:border-ink/40";
+  "inline-flex h-11 items-center justify-center rounded-[8px] border border-border/70 px-4 text-[14px] font-medium leading-[145%] transition-colors hover:border-ink/40";
 
 export const dangerButtonClassName =
-  "inline-flex h-[42px] items-center justify-center rounded-[8px] border border-red-600 px-4 text-[15px] font-medium leading-[150%] text-red-600 transition-opacity hover:opacity-70";
+  "inline-flex h-11 items-center justify-center rounded-[8px] border border-red-600 px-4 text-[14px] font-medium leading-[145%] text-red-600 transition-opacity hover:opacity-70";
+
+export const iconButtonClassName =
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-border/70 bg-paper text-ink transition-colors hover:border-ink/40";
+
+export const dangerIconButtonClassName =
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-red-200 bg-paper text-red-600 transition-colors hover:border-red-500";
 
 export function TabButton({
   active,
@@ -101,20 +107,20 @@ export function PhotoUploadCard({
   onChange: (file: File | undefined) => void;
 }) {
   return (
-    <div className="rounded-[8px] bg-paper-dark/45 p-4">
+    <div className="rounded-[8px] bg-paper-dark/45 p-3">
       <p className="text-[15px] font-semibold leading-[150%] text-ink">
         {title}
       </p>
       {imageUrl ? (
-        <div className="mt-3 flex h-44 items-center justify-center overflow-hidden rounded-[8px] bg-paper-dark">
+        <div className="mt-2 flex h-36 items-center justify-center overflow-hidden rounded-[8px] bg-paper-dark">
           <img
             src={imageUrl}
             alt={title}
-            className="max-h-44 w-auto max-w-full object-contain"
+            className="max-h-36 w-auto max-w-full object-contain"
           />
         </div>
       ) : (
-        <div className="mt-3 flex h-44 items-center justify-center rounded-[8px] bg-paper-dark text-[14px] text-ink-light">
+        <div className="mt-2 flex h-36 items-center justify-center rounded-[8px] bg-paper-dark text-[14px] text-ink-light">
           Фото не загружено
         </div>
       )}

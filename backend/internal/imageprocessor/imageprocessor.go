@@ -20,6 +20,8 @@ import (
 const (
 	ThumbnailMaxDim      = 1200
 	ThumbnailJPEGQuality = 88
+	MaxImageDimension    = 20000
+	MaxImagePixels       = 60_000_000
 
 	// Display variants are what the public artwork page (carousel) serves
 	// instead of multi-megabyte originals. 2400px keeps artwork details crisp on
@@ -53,6 +55,10 @@ func New() *Processor {
 }
 
 func (p *Processor) Generate(ctx context.Context, data []byte, _ string) (*Result, error) {
+	if err := p.Validate(data); err != nil {
+		return nil, err
+	}
+
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("decode image: %w", err)
@@ -86,6 +92,27 @@ func (p *Processor) Generate(ctx context.Context, data []byte, _ string) (*Resul
 		DisplayJPEG: displayJPEG,
 		DisplayWebP: displayWebP,
 	}, nil
+}
+
+func (p *Processor) Validate(data []byte) error {
+	config, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("decode image config: %w", err)
+	}
+	return validateDimensions(config.Width, config.Height)
+}
+
+func validateDimensions(width int, height int) error {
+	if width <= 0 || height <= 0 {
+		return errors.New("image dimensions must be positive")
+	}
+	if width > MaxImageDimension || height > MaxImageDimension {
+		return fmt.Errorf("image dimensions exceed %d pixels", MaxImageDimension)
+	}
+	if int64(width)*int64(height) > MaxImagePixels {
+		return fmt.Errorf("image contains more than %d pixels", MaxImagePixels)
+	}
+	return nil
 }
 
 func encodeJPEG(img image.Image, quality int) ([]byte, error) {

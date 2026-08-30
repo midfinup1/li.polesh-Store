@@ -13,26 +13,29 @@ export function ArtworkPicture({
   loading?: "eager" | "lazy";
   sizes?: string;
 }) {
-  const fallback = image.display_url || image.thumb_url || image.original_url;
-  const webpSrcSet = [
-    image.thumb_webp_url ? `${image.thumb_webp_url} 800w` : "",
-    image.display_webp_url ? `${image.display_webp_url} 2400w` : "",
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const jpegSrcSet = [
-    image.thumb_url ? `${image.thumb_url} 800w` : "",
-    image.display_url ? `${image.display_url} 2400w` : "",
-  ]
-    .filter(Boolean)
-    .join(", ");
+  // Older uploads do not have a display variant. In that case use the
+  // original instead of stretching a 1200px thumbnail on large screens.
+  const fallback = image.display_url || image.original_url || image.thumb_url;
+  const webpSrcSet = image.display_webp_url
+    ? [
+        image.thumb_webp_url ? `${image.thumb_webp_url} 800w` : "",
+        `${image.display_webp_url} 2400w`,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "";
+  const jpegSrcSet = image.display_url
+    ? [
+        image.thumb_url ? `${image.thumb_url} 800w` : "",
+        `${image.display_url} 2400w`,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "";
 
   return (
     <picture>
       {webpSrcSet && <source srcSet={webpSrcSet} sizes={sizes} type="image/webp" />}
-      {!image.display_webp_url && image.thumb_avif_url && (
-        <source srcSet={`${image.thumb_avif_url} 800w`} sizes={sizes} type="image/avif" />
-      )}
       <img
         src={fallback}
         srcSet={jpegSrcSet || undefined}

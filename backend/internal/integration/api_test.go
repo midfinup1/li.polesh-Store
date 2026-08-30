@@ -72,10 +72,10 @@ func TestPublicAndAdminAPI(t *testing.T) {
 
 	t.Run("public lists are arrays", func(t *testing.T) {
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/categories", nil, http.StatusOK)
-		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/exhibitions", nil, http.StatusOK)
+		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/series", nil, http.StatusOK)
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks?category_id=bad", nil, http.StatusBadRequest)
-		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks?exhibition_id=bad", nil, http.StatusBadRequest)
+		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks?series_id=bad", nil, http.StatusBadRequest)
 	})
 
 	t.Run("admin route rejects anonymous request", func(t *testing.T) {
@@ -103,7 +103,10 @@ func TestPublicAndAdminAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("create category and artwork", func(t *testing.T) {
+	var categoryID int64
+	var seriesID int64
+
+	t.Run("create category, series and artwork", func(t *testing.T) {
 		category := map[string]any{
 			"name":       "Живопись",
 			"slug":       "painting",
@@ -117,22 +120,22 @@ func TestPublicAndAdminAPI(t *testing.T) {
 			category,
 			http.StatusCreated,
 		)
-		categoryID := int64(createdCategory["id"].(float64))
+		categoryID = int64(createdCategory["id"].(float64))
 
-		exhibition := map[string]any{
-			"name":       "Летняя выставка",
+		series := map[string]any{
+			"name":       "Летняя серия",
 			"slug":       "summer-show",
 			"sort_order": 1,
 		}
 
-		createdExhibition := postAuthenticatedJSON[map[string]any](
+		createdSeries := postAuthenticatedJSON[map[string]any](
 			t,
 			cookie,
-			server.URL+"/api/v1/admin/exhibitions",
-			exhibition,
+			server.URL+"/api/v1/admin/series",
+			series,
 			http.StatusCreated,
 		)
-		exhibitionID := int64(createdExhibition["id"].(float64))
+		seriesID = int64(createdSeries["id"].(float64))
 
 		artwork := map[string]any{
 			"title":         "Работа",
@@ -140,7 +143,7 @@ func TestPublicAndAdminAPI(t *testing.T) {
 			"status":        "available",
 			"price":         1000,
 			"category_id":   categoryID,
-			"exhibition_id": exhibitionID,
+			"exhibition_id": seriesID,
 		}
 
 		assertAuthenticatedJSONStatus(
@@ -153,14 +156,15 @@ func TestPublicAndAdminAPI(t *testing.T) {
 		)
 
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
-		assertJSONStatus(t, http.MethodGet, fmt.Sprintf("%s/api/v1/artworks?exhibition_id=%d", server.URL, exhibitionID), nil, http.StatusOK)
+		assertJSONStatus(t, http.MethodGet, fmt.Sprintf("%s/api/v1/artworks?series_id=%d", server.URL, seriesID), nil, http.StatusOK)
 	})
 
 	t.Run("multiple active orders are allowed until artwork status changes", func(t *testing.T) {
 		artwork := map[string]any{
-			"title":  "Работа для заявки",
-			"status": "available",
-			"price":  1000,
+			"title":       "Работа для заявки",
+			"status":      "available",
+			"price":       1000,
+			"category_id": categoryID,
 		}
 
 		createdArtwork := postAuthenticatedJSON[map[string]any](

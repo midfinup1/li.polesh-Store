@@ -5,29 +5,34 @@ import (
 	"fmt"
 	"log/slog"
 	"mime/multipart"
+	"net/mail"
+	"regexp"
 	"strings"
 
 	"github.com/midfinup1/li.polesh-Store/backend/internal/domain"
 )
 
 type ArtworkService struct {
-	artworks   domain.ArtworkRepository
-	categories domain.CategoryRepository
-	orders     domain.OrderRepository
-	storage    *StorageService
+	artworks    domain.ArtworkRepository
+	categories  domain.CategoryRepository
+	exhibitions domain.ExhibitionRepository
+	orders      domain.OrderRepository
+	storage     *StorageService
 }
 
 func NewArtworkService(
 	artworks domain.ArtworkRepository,
 	categories domain.CategoryRepository,
+	exhibitions domain.ExhibitionRepository,
 	orders domain.OrderRepository,
 	storage *StorageService,
 ) *ArtworkService {
 	return &ArtworkService{
-		artworks:   artworks,
-		categories: categories,
-		orders:     orders,
-		storage:    storage,
+		artworks:    artworks,
+		categories:  categories,
+		exhibitions: exhibitions,
+		orders:      orders,
+		storage:     storage,
 	}
 }
 
@@ -86,6 +91,12 @@ func (s *ArtworkService) Create(ctx context.Context, a *domain.Artwork) (*domain
 	if a.Price != nil && *a.Price < 0 {
 		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
+	if err := s.validateArtworkReferences(ctx, a); err != nil {
+		return nil, err
+	}
+	if err := validateArtworkFields(a); err != nil {
+		return nil, err
+	}
 
 	created, err := s.artworks.Create(ctx, a)
 	if err != nil {
@@ -118,6 +129,12 @@ func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain
 	if a.Price != nil && *a.Price < 0 {
 		return nil, fmt.Errorf("%w: price cannot be negative", domain.ErrValidation)
 	}
+	if err := s.validateArtworkReferences(ctx, a); err != nil {
+		return nil, err
+	}
+	if err := validateArtworkFields(a); err != nil {
+		return nil, err
+	}
 
 	updated, err := s.artworks.Update(ctx, a)
 	if err != nil {
@@ -125,6 +142,52 @@ func (s *ArtworkService) Update(ctx context.Context, a *domain.Artwork) (*domain
 	}
 	slog.Info("artwork updated", "artwork_id", updated.ID, "title", updated.Title, "status", updated.Status)
 	return updated, nil
+}
+
+func (s *ArtworkService) validateArtworkReferences(ctx context.Context, artwork *domain.Artwork) error {
+	if artwork.CategoryID == nil || *artwork.CategoryID <= 0 {
+		return fmt.Errorf("%w: category_id is required", domain.ErrValidation)
+	}
+	if _, err := s.categories.GetByID(ctx, *artwork.CategoryID); err != nil {
+		return err
+	}
+	if artwork.ExhibitionID != nil {
+		if *artwork.ExhibitionID <= 0 {
+			return fmt.Errorf("%w: series_id is invalid", domain.ErrValidation)
+		}
+		if _, err := s.exhibitions.GetByID(ctx, *artwork.ExhibitionID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateArtworkFields(artwork *domain.Artwork) error {
+	if artwork.Year != nil && (*artwork.Year < 1000 || *artwork.Year > 9999) {
+		return fmt.Errorf("%w: year must contain four digits", domain.ErrValidation)
+	}
+	fields := []struct {
+		name  string
+		value string
+		limit int
+	}{
+		{name: "title", value: artwork.Title, limit: 300},
+		{name: "title_en", value: artwork.TitleEN, limit: 300},
+		{name: "description", value: artwork.Description, limit: 20_000},
+		{name: "description_en", value: artwork.DescriptionEN, limit: 20_000},
+		{name: "purchase_comment", value: artwork.PurchaseComment, limit: 4_000},
+		{name: "purchase_comment_en", value: artwork.PurchaseCommentEN, limit: 4_000},
+		{name: "size", value: artwork.Size, limit: 500},
+		{name: "size_en", value: artwork.SizeEN, limit: 500},
+		{name: "materials", value: artwork.Materials, limit: 1_000},
+		{name: "materials_en", value: artwork.MaterialsEN, limit: 1_000},
+	}
+	for _, field := range fields {
+		if len([]rune(field.value)) > field.limit {
+			return fmt.Errorf("%w: %s is too long", domain.ErrValidation, field.name)
+		}
+	}
+	return nil
 }
 
 // Delete removes an artwork only when there are no active requests for it.
@@ -214,6 +277,9 @@ func (s *ArtworkService) UploadImage(
 	if altText == "" {
 		altText = "Работа художницы"
 	}
+	if len([]rune(altText)) > 500 {
+		return nil, fmt.Errorf("%w: alt_text is too long", domain.ErrValidation)
+	}
 
 	img := &domain.ArtworkImage{
 		ArtworkID:      artworkID,
@@ -228,16 +294,47 @@ func (s *ArtworkService) UploadImage(
 
 	created, err := s.artworks.AddImage(ctx, img)
 	if err != nil {
+		s.cleanupUploadedArtworkImage(ctx, uploaded)
 		return nil, err
 	}
 	slog.Info("artwork image uploaded", "artwork_id", artworkID, "image_id", created.ID)
 	return created, nil
 }
 
-func (s *ArtworkService) DeleteImage(ctx context.Context, imageID int64) error {
+func (s *ArtworkService) cleanupUploadedArtworkImage(ctx context.Context, uploaded *UploadedArtworkImage) {
+	if uploaded == nil {
+		return
+	}
+
+	seen := make(map[string]struct{})
+	for _, objectURL := range []string{
+		uploaded.OriginalURL,
+		uploaded.ThumbURL,
+		uploaded.ThumbWebPURL,
+		uploaded.ThumbAVIFURL,
+		uploaded.DisplayURL,
+		uploaded.DisplayWebPURL,
+	} {
+		if objectURL == "" {
+			continue
+		}
+		if _, exists := seen[objectURL]; exists {
+			continue
+		}
+		seen[objectURL] = struct{}{}
+		if err := s.storage.Delete(ctx, objectURL); err != nil {
+			slog.Error("failed to clean up uncommitted artwork image", "url", objectURL, "error", err)
+		}
+	}
+}
+
+func (s *ArtworkService) DeleteImage(ctx context.Context, artworkID int64, imageID int64) error {
 	image, err := s.artworks.GetImageByID(ctx, imageID)
 	if err != nil {
 		return err
+	}
+	if image.ArtworkID != artworkID {
+		return fmt.Errorf("%w: artwork image", domain.ErrNotFound)
 	}
 
 	if err := s.artworks.DeleteImage(ctx, imageID); err != nil {
@@ -299,6 +396,9 @@ func (s *ArtworkService) UpdateImageAltText(
 			altText = "Работа художницы"
 		}
 	}
+	if len([]rune(altText)) > 500 {
+		return nil, fmt.Errorf("%w: alt_text is too long", domain.ErrValidation)
+	}
 
 	return s.artworks.UpdateImageAltText(ctx, artworkID, imageID, altText)
 }
@@ -319,6 +419,17 @@ func (s *ArtworkService) ReorderArtworks(
 	if _, err := s.categories.GetByID(ctx, categoryID); err != nil {
 		return err
 	}
+	existing, err := s.artworks.GetAll(ctx, domain.ArtworkFilter{CategoryID: &categoryID})
+	if err != nil {
+		return err
+	}
+	existingIDs := make([]int64, 0, len(existing))
+	for _, artwork := range existing {
+		existingIDs = append(existingIDs, artwork.ID)
+	}
+	if err := validateExactOrderIDs(artworkIDs, existingIDs, "artwork_ids"); err != nil {
+		return err
+	}
 
 	return s.artworks.ReorderArtworks(ctx, categoryID, artworkIDs)
 }
@@ -328,11 +439,44 @@ func (s *ArtworkService) ReorderImages(
 	artworkID int64,
 	imageIDs []int64,
 ) error {
-	if len(imageIDs) == 0 {
+	if artworkID <= 0 || len(imageIDs) == 0 {
 		return fmt.Errorf("%w: image_ids must not be empty", domain.ErrValidation)
+	}
+	existing, err := s.artworks.GetImagesByArtworkID(ctx, artworkID)
+	if err != nil {
+		return err
+	}
+	existingIDs := make([]int64, 0, len(existing))
+	for _, image := range existing {
+		existingIDs = append(existingIDs, image.ID)
+	}
+	if err := validateExactOrderIDs(imageIDs, existingIDs, "image_ids"); err != nil {
+		return err
 	}
 
 	return s.artworks.ReorderImages(ctx, artworkID, imageIDs)
+}
+
+func validateExactOrderIDs(requested []int64, existing []int64, field string) error {
+	if len(requested) != len(existing) {
+		return fmt.Errorf("%w: %s must contain every item exactly once", domain.ErrValidation, field)
+	}
+
+	expected := make(map[int64]struct{}, len(existing))
+	for _, id := range existing {
+		expected[id] = struct{}{}
+	}
+	seen := make(map[int64]struct{}, len(requested))
+	for _, id := range requested {
+		if _, duplicate := seen[id]; duplicate {
+			return fmt.Errorf("%w: %s contains duplicate ids", domain.ErrValidation, field)
+		}
+		if _, exists := expected[id]; !exists {
+			return fmt.Errorf("%w: %s contains an unknown id", domain.ErrValidation, field)
+		}
+		seen[id] = struct{}{}
+	}
+	return nil
 }
 
 // ─── Category Service ─────────────────────────────────────────────────────────
@@ -358,8 +502,8 @@ func (s *CategoryService) Create(ctx context.Context, c *domain.Category) (*doma
 	c.NameEN = strings.TrimSpace(c.NameEN)
 	c.Slug = strings.TrimSpace(c.Slug)
 
-	if c.Name == "" || c.Slug == "" {
-		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
+	if err := validateNamedCollection(c.Name, c.NameEN, c.Slug); err != nil {
+		return nil, err
 	}
 
 	return s.repo.Create(ctx, c)
@@ -370,8 +514,8 @@ func (s *CategoryService) Update(ctx context.Context, c *domain.Category) (*doma
 	c.NameEN = strings.TrimSpace(c.NameEN)
 	c.Slug = strings.TrimSpace(c.Slug)
 
-	if c.Name == "" || c.Slug == "" {
-		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
+	if err := validateNamedCollection(c.Name, c.NameEN, c.Slug); err != nil {
+		return nil, err
 	}
 
 	return s.repo.Update(ctx, c)
@@ -379,6 +523,21 @@ func (s *CategoryService) Update(ctx context.Context, c *domain.Category) (*doma
 
 func (s *CategoryService) Delete(ctx context.Context, id int64) error {
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *CategoryService) Reorder(ctx context.Context, ids []int64) error {
+	existing, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+	existingIDs := make([]int64, 0, len(existing))
+	for _, category := range existing {
+		existingIDs = append(existingIDs, category.ID)
+	}
+	if err := validateExactOrderIDs(ids, existingIDs, "category_ids"); err != nil {
+		return err
+	}
+	return s.repo.Reorder(ctx, ids)
 }
 
 // ─── Exhibition Service ──────────────────────────────────────────────────────
@@ -404,8 +563,8 @@ func (s *ExhibitionService) Create(ctx context.Context, e *domain.Exhibition) (*
 	e.NameEN = strings.TrimSpace(e.NameEN)
 	e.Slug = strings.TrimSpace(e.Slug)
 
-	if e.Name == "" || e.Slug == "" {
-		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
+	if err := validateNamedCollection(e.Name, e.NameEN, e.Slug); err != nil {
+		return nil, err
 	}
 
 	return s.repo.Create(ctx, e)
@@ -416,8 +575,8 @@ func (s *ExhibitionService) Update(ctx context.Context, e *domain.Exhibition) (*
 	e.NameEN = strings.TrimSpace(e.NameEN)
 	e.Slug = strings.TrimSpace(e.Slug)
 
-	if e.Name == "" || e.Slug == "" {
-		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
+	if err := validateNamedCollection(e.Name, e.NameEN, e.Slug); err != nil {
+		return nil, err
 	}
 
 	return s.repo.Update(ctx, e)
@@ -425,6 +584,36 @@ func (s *ExhibitionService) Update(ctx context.Context, e *domain.Exhibition) (*
 
 func (s *ExhibitionService) Delete(ctx context.Context, id int64) error {
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *ExhibitionService) Reorder(ctx context.Context, ids []int64) error {
+	existing, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+	existingIDs := make([]int64, 0, len(existing))
+	for _, series := range existing {
+		existingIDs = append(existingIDs, series.ID)
+	}
+	if err := validateExactOrderIDs(ids, existingIDs, "series_ids"); err != nil {
+		return err
+	}
+	return s.repo.Reorder(ctx, ids)
+}
+
+var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+
+func validateNamedCollection(name string, nameEN string, slug string) error {
+	if name == "" || slug == "" {
+		return fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
+	}
+	if len([]rune(name)) > 300 || len([]rune(nameEN)) > 300 {
+		return fmt.Errorf("%w: name is too long", domain.ErrValidation)
+	}
+	if len(slug) > 200 || !slugPattern.MatchString(slug) {
+		return fmt.Errorf("%w: slug is invalid", domain.ErrValidation)
+	}
+	return nil
 }
 
 // ─── Artist Service ───────────────────────────────────────────────────────────
@@ -456,6 +645,24 @@ func (s *ArtistService) Update(ctx context.Context, a *domain.Artist) (*domain.A
 	if a.Name == "" {
 		return nil, fmt.Errorf("%w: artist name is required", domain.ErrValidation)
 	}
+	if len([]rune(a.Name)) > 300 || len([]rune(a.NameEN)) > 300 {
+		return nil, fmt.Errorf("%w: artist name is too long", domain.ErrValidation)
+	}
+	if len([]rune(a.Bio)) > 50_000 || len([]rune(a.BioEN)) > 50_000 {
+		return nil, fmt.Errorf("%w: artist bio is too long", domain.ErrValidation)
+	}
+	if len(a.PhotoURL) > 2_048 || len(a.HomePhotoURL) > 2_048 || len(a.AboutPhotoURL) > 2_048 || len(a.Instagram) > 2_048 {
+		return nil, fmt.Errorf("%w: artist URL is too long", domain.ErrValidation)
+	}
+	if len(a.Email) > 320 {
+		return nil, fmt.Errorf("%w: artist email is too long", domain.ErrValidation)
+	}
+	if a.Email != "" {
+		address, err := mail.ParseAddress(a.Email)
+		if err != nil || address.Address != a.Email {
+			return nil, fmt.Errorf("%w: artist email is invalid", domain.ErrValidation)
+		}
+	}
 
 	return s.repo.Update(ctx, a)
 }
@@ -466,9 +673,18 @@ func (s *ArtistService) UploadPhoto(
 	file multipart.File,
 	header *multipart.FileHeader,
 ) (*domain.Artist, error) {
+	if slot != "home" && slot != "about" {
+		return nil, fmt.Errorf("%w: invalid artist photo slot", domain.ErrValidation)
+	}
+
 	artist, err := s.repo.Get(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	oldURL := artist.HomePhotoURL
+	if slot == "about" {
+		oldURL = artist.AboutPhotoURL
 	}
 
 	url, err := s.storage.UploadArtistImage(ctx, slot, file, header)
@@ -481,9 +697,21 @@ func (s *ArtistService) UploadPhoto(
 		artist.HomePhotoURL = url
 	case "about":
 		artist.AboutPhotoURL = url
-	default:
-		return nil, fmt.Errorf("%w: invalid artist photo slot", domain.ErrValidation)
 	}
 
-	return s.Update(ctx, artist)
+	updated, err := s.Update(ctx, artist)
+	if err != nil {
+		if cleanupErr := s.storage.Delete(ctx, url); cleanupErr != nil {
+			slog.Error("failed to clean up uncommitted artist photo", "url", url, "error", cleanupErr)
+		}
+		return nil, err
+	}
+
+	if oldURL != "" && oldURL != updated.PhotoURL && oldURL != updated.HomePhotoURL && oldURL != updated.AboutPhotoURL {
+		if cleanupErr := s.storage.Delete(ctx, oldURL); cleanupErr != nil {
+			slog.Error("failed to delete replaced artist photo", "url", oldURL, "error", cleanupErr)
+		}
+	}
+
+	return updated, nil
 }

@@ -9,6 +9,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -228,7 +229,7 @@ func shouldUpdateCacheHeaders(key string) bool {
 }
 
 func putObject(ctx context.Context, s3 *minio.Client, bucket, publicURL, key string, data []byte, contentType string) (string, error) {
-	_, err := s3.PutObject(ctx, bucket, key, strings.NewReader(string(data)), int64(len(data)), minio.PutObjectOptions{
+	_, err := s3.PutObject(ctx, bucket, key, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{
 		ContentType:  contentType,
 		CacheControl: cacheControl,
 	})

@@ -80,6 +80,10 @@ export default function HomePage() {
   );
 
   const selectedCategoryId = useMemo(() => {
+    if (visibleCategories.length === 0) {
+      return null;
+    }
+
     if (
       activeCategoryId !== null &&
       visibleCategories.some((category) => category.id === activeCategoryId)
@@ -87,7 +91,7 @@ export default function HomePage() {
       return activeCategoryId;
     }
 
-    return null;
+    return visibleCategories[0].id;
   }, [activeCategoryId, visibleCategories]);
 
   const selectedExhibitionId = useMemo(() => {
@@ -248,19 +252,6 @@ export default function HomePage() {
 
         {visibleCategories.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-4">
-            <button
-              type="button"
-              onClick={() => setActiveCategoryId(null)}
-              className={[
-                "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
-                selectedCategoryId === null
-                  ? "bg-ink text-paper"
-                  : "bg-paper-dark text-ink",
-              ].join(" ")}
-            >
-              <LocalizedText ru="Все типы" en="All types" />
-            </button>
-
             {visibleCategories.map((category) => {
               const isActive = selectedCategoryId === category.id;
               const label = pickLocalized(

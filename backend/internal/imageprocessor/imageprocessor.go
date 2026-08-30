@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	ThumbnailMaxDim      = 800
-	ThumbnailJPEGQuality = 82
+	ThumbnailMaxDim      = 1200
+	ThumbnailJPEGQuality = 88
 
 	// Display variants are what the public artwork page (carousel) serves
 	// instead of multi-megabyte originals. 2400px keeps artwork details crisp on
@@ -70,8 +70,8 @@ func (p *Processor) Generate(ctx context.Context, data []byte, _ string) (*Resul
 
 	// Display variant reuses the already-decoded image (no second decode of a
 	// potentially 10MB original). AVIF is intentionally skipped here: avifenc
-	// on 1600px inputs is too slow for a synchronous upload path, and JPEG+WebP
-	// already give the bulk of the savings.
+	// on display-size inputs is too slow for a synchronous upload path, and
+	// JPEG+WebP already give the bulk of the savings.
 	display := downscale(img, DisplayMaxDim)
 	displayJPEG, err := encodeJPEG(display, DisplayJPEGQuality)
 	if err != nil {

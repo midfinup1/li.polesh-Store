@@ -10,6 +10,11 @@ import type {
 import { ArtworkAdminCard } from "@/components/admin/artwork-card";
 import { buttonClassName, inputClassName, secondaryButtonClassName } from "@/components/admin/forms";
 
+type ArtworkViewMode = "grid" | "list";
+
+const viewButtonClassName =
+  "inline-flex h-[42px] w-[42px] items-center justify-center rounded-[8px] border border-border/80 text-[20px] font-semibold leading-none transition-colors hover:border-ink/40";
+
 export function AdminArtworksSection({
   categories,
   exhibitions,
@@ -74,6 +79,7 @@ export function AdminArtworksSection({
   onImageDrop: (artwork: Artwork, imageId: number) => void;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [viewMode, setViewMode] = useState<ArtworkViewMode>("grid");
 
   const [expandedArtworkIds, setExpandedArtworkIds] = useState<
     Record<number, boolean>
@@ -191,6 +197,32 @@ export function AdminArtworksSection({
           </div>
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <div className="flex gap-2" aria-label="Вид списка работ">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={[
+                  viewButtonClassName,
+                  viewMode === "grid" ? "bg-ink text-paper" : "bg-paper text-ink",
+                ].join(" ")}
+                title="Сетка"
+                aria-label="Показать сеткой"
+              >
+                ▦
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={[
+                  viewButtonClassName,
+                  viewMode === "list" ? "bg-ink text-paper" : "bg-paper text-ink",
+                ].join(" ")}
+                title="Список"
+                aria-label="Показать списком"
+              >
+                ☰
+              </button>
+            </div>
             <button type="button" onClick={expandAllArtworks} className={secondaryButtonClassName}>
               Развернуть все
             </button>
@@ -238,7 +270,12 @@ export function AdminArtworksSection({
                       Работ в категории нет.
                     </p>
                   ) : (
-                    <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                    <div
+                      className={[
+                        "mt-4 grid gap-3",
+                        viewMode === "grid" ? "lg:grid-cols-2 2xl:grid-cols-3" : "grid-cols-1",
+                      ].join(" ")}
+                    >
                       {categoryArtworks.map((artwork) => (
                         <ArtworkAdminCard
                           key={artwork.id}
@@ -248,6 +285,7 @@ export function AdminArtworksSection({
                           exhibitions={exhibitions}
                           categoryName={categoryName(artwork.category_id)}
                           exhibitionName={exhibitionName(artwork.exhibition_id)}
+                          viewMode={viewMode}
                           collapsed={!expandedArtworkIds[artwork.id]}
                           draggedArtworkId={draggedArtworkId}
                           onToggleCollapsed={() => toggleArtwork(artwork.id)}

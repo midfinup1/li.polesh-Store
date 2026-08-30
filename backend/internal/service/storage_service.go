@@ -109,7 +109,7 @@ func (s *StorageService) UploadArtworkImage(ctx context.Context, artworkID int64
 		}
 	}
 
-	// Display variants (~1600px) — what the public carousel serves instead of
+	// Display variants (~2400px) — what the public carousel serves instead of
 	// the original. On failure the frontend falls back to the original.
 	if len(thumbs.DisplayJPEG) > 0 {
 		displayKey := fmt.Sprintf("artworks/%d/%d_display.jpg", artworkID, timestamp)

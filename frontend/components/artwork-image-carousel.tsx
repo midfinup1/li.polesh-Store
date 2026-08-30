@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { LocalizedText } from "@/components/localized-text";
 
@@ -20,9 +19,8 @@ type ArtworkImageCarouselProps = {
   title: string;
 };
 
-// Display variant (~1600px, ~200-400KB) first; the multi-megabyte original is
-// only a last-resort fallback for images uploaded before display variants
-// existed (until backfill-images is run).
+// Display variant (~2400px) first; original is only a last-resort fallback for
+// images uploaded before display variants existed (until backfill-images runs).
 function getImageUrl(image: ArtworkImageCarouselImage) {
   return (
     image.display_url ||
@@ -32,6 +30,10 @@ function getImageUrl(image: ArtworkImageCarouselImage) {
     image.thumb_avif_url ||
     ""
   );
+}
+
+function getDisplayWebPSrcSet(image: ArtworkImageCarouselImage) {
+  return image.display_webp_url || image.thumb_webp_url || "";
 }
 
 export function ArtworkImageCarousel({
@@ -92,6 +94,7 @@ export function ArtworkImageCarousel({
             >
               {preparedImages.map((image) => {
                 const imageUrl = getImageUrl(image);
+                const webpSrcSet = getDisplayWebPSrcSet(image);
                 const isFirstImage = image.id === preparedImages[0]?.id;
 
                 return (
@@ -100,15 +103,18 @@ export function ArtworkImageCarousel({
                     className="relative flex h-[min(72vh,520px)] min-h-[320px] shrink-0 items-center justify-center"
                     style={{ width: `${100 / preparedImages.length}%` }}
                   >
-                    <Image
-                      src={imageUrl}
-                      alt={image.alt_text || title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 620px"
-                      className="rounded-[8px] object-contain"
-                      priority={isFirstImage}
-                      loading={isFirstImage ? undefined : "lazy"}
-                    />
+                    <picture>
+                      {webpSrcSet && (
+                        <source srcSet={webpSrcSet} type="image/webp" />
+                      )}
+                      <img
+                        src={imageUrl}
+                        alt={image.alt_text || title}
+                        className="absolute inset-0 h-full w-full rounded-[8px] object-contain"
+                        loading={isFirstImage ? "eager" : "lazy"}
+                        decoding="async"
+                      />
+                    </picture>
                   </div>
                 );
               })}

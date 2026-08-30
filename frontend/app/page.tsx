@@ -251,7 +251,7 @@ export default function HomePage() {
         </div>
 
         {visibleCategories.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-4">
+          <div className="mt-8 flex flex-wrap gap-4 md:mt-10">
             {visibleCategories.map((category) => {
               const isActive = selectedCategoryId === category.id;
               const label = pickLocalized(

@@ -1,9 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 
+import type { ReactNode } from "react";
 import type { Artwork, ArtworkImage, ArtworkStatus, Category, Exhibition } from "@/types";
 import {
   buttonClassName,
-  dangerButtonClassName,
   secondaryButtonClassName,
   smallInputClassName,
 } from "@/components/admin/forms";
@@ -11,6 +11,10 @@ import { formatPrice, statusDotClassName, statusLabel } from "@/components/admin
 
 const selectClassName = `${smallInputClassName} bg-paper text-ink`;
 const optionClassName = "bg-white text-black dark:bg-[#111111] dark:text-white";
+const iconButtonClassName =
+  "inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-border/80 bg-paper text-[19px] font-semibold leading-none text-ink transition-colors hover:border-ink/40";
+const dangerIconButtonClassName =
+  "inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-red-200 bg-paper text-[22px] font-semibold leading-none text-red-600 transition-opacity hover:opacity-70";
 
 function getArtworkImageUrl(image: ArtworkImage) {
   return (
@@ -30,6 +34,7 @@ export function ArtworkAdminCard({
   exhibitions,
   categoryName,
   exhibitionName,
+  viewMode,
   collapsed,
   draggedArtworkId,
   onToggleCollapsed,
@@ -56,6 +61,7 @@ export function ArtworkAdminCard({
   exhibitions: Exhibition[];
   categoryName: string;
   exhibitionName: string;
+  viewMode: "grid" | "list";
   collapsed?: boolean;
   draggedArtworkId: number | null;
   onToggleCollapsed: () => void;
@@ -77,8 +83,25 @@ export function ArtworkAdminCard({
   onImageDrop: (imageId: number) => void;
 }) {
   const isCollapsed = collapsed === true && draft === null;
+  const isGrid = viewMode === "grid";
   const coverImage = artwork.images[0];
   const coverUrl = coverImage ? getArtworkImageUrl(coverImage) : "";
+  const details = (
+    <>
+      <span
+        className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusDotClassName[artwork.status]}`}
+        aria-hidden
+      />
+      <span>{statusLabel[artwork.status]}</span>
+      {artwork.price != null && <span>{formatPrice(artwork.price)}</span>}
+      <span>{categoryName}</span>
+      <span>{exhibitionName}</span>
+      <span>#{artwork.sort_order}</span>
+      {isCollapsed && artwork.images.length > 0 && (
+        <span>{artwork.images.length} фото</span>
+      )}
+    </>
+  );
 
   return (
     <article
@@ -88,7 +111,8 @@ export function ArtworkAdminCard({
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDrop}
       className={[
-        "rounded-[8px] bg-white p-4 shadow-sm transition-opacity dark:bg-paper",
+        "rounded-[8px] bg-white p-3 shadow-sm transition-opacity dark:bg-paper",
+        isGrid && !isCollapsed ? "2xl:col-span-3" : "",
         isCollapsed ? "cursor-grab active:cursor-grabbing" : "",
         draggedArtworkId === artwork.id ? "opacity-40" : "opacity-100",
       ].join(" ")}
@@ -304,15 +328,10 @@ export function ArtworkAdminCard({
           </div>
         </div>
       ) : (
-        <div
-          className={[
-            "flex flex-col justify-between gap-3 md:flex-row md:items-start",
-            isCollapsed ? "min-h-[72px]" : "",
-          ].join(" ")}
-        >
-          <div className="flex min-w-0 items-start gap-3">
+        <div className={isGrid && isCollapsed ? "flex h-full flex-col gap-3" : "flex flex-col justify-between gap-3 md:flex-row md:items-start"}>
+          <div className={isGrid && isCollapsed ? "min-w-0" : "flex min-w-0 items-start gap-3"}>
             {isCollapsed && (
-              <div className="h-[72px] w-[96px] shrink-0 overflow-hidden rounded-[6px] bg-paper-dark">
+              <div className={isGrid ? "aspect-[4/3] w-full overflow-hidden rounded-[6px] bg-paper-dark" : "h-[72px] w-[96px] shrink-0 overflow-hidden rounded-[6px] bg-paper-dark"}>
                 {coverUrl ? (
                   <img
                     src={coverUrl}
@@ -327,8 +346,8 @@ export function ArtworkAdminCard({
               </div>
             )}
 
-            <div className="min-w-0">
-              <p className="break-words text-[18px] font-semibold leading-[120%] text-ink">
+            <div className={isGrid && isCollapsed ? "mt-1 min-w-0" : "min-w-0"}>
+              <p className="break-words text-[17px] font-semibold leading-[125%] text-ink">
                 {artwork.title || `Работа #${artwork.id}`}
               </p>
 
@@ -338,38 +357,23 @@ export function ArtworkAdminCard({
                 </p>
               )}
 
-              <p className="mt-1 flex items-center gap-1.5 text-[14px] font-medium leading-[150%] text-ink-light">
-                <span
-                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusDotClassName[artwork.status]}`}
-                  aria-hidden
-                />
-                {statusLabel[artwork.status]}
-                {artwork.price != null && ` · ${formatPrice(artwork.price)}`} ·{" "}
-                {categoryName} · {exhibitionName} · порядок: {artwork.sort_order}
-                {isCollapsed && artwork.images.length > 0
-                  ? ` · фото: ${artwork.images.length}`
-                  : ""}
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium leading-[145%] text-ink-light">
+                {details}
               </p>
             </div>
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <button
-              type="button"
+          <div className={isGrid && isCollapsed ? "mt-auto flex shrink-0 flex-wrap items-center gap-2" : "flex shrink-0 flex-wrap items-center gap-2"}>
+            <IconButton
               onClick={onToggleCollapsed}
-              className={secondaryButtonClassName}
+              title={isCollapsed ? "Развернуть" : "Свернуть"}
             >
-              {isCollapsed ? "Развернуть" : "Свернуть"}
-            </button>
+              {isCollapsed ? "⤢" : "−"}
+            </IconButton>
 
-            <a
-              href={`/artwork/${artwork.id}`}
-              target="_blank"
-              rel="noreferrer"
-              className={secondaryButtonClassName}
-            >
-              Превью
-            </a>
+            <IconLink href={`/artwork/${artwork.id}`} title="Превью">
+              ↗
+            </IconLink>
 
             {!isCollapsed && (
               <select
@@ -394,18 +398,22 @@ export function ArtworkAdminCard({
             <button
               type="button"
               onClick={onStartEdit}
-              className={secondaryButtonClassName}
+              className={iconButtonClassName}
+              title="Редактировать"
+              aria-label="Редактировать"
             >
-              Редактировать
+              ✎
             </button>
 
             {!isCollapsed && (
               <button
                 type="button"
                 onClick={onDelete}
-                className={dangerButtonClassName}
+                className={dangerIconButtonClassName}
+                title="Удалить"
+                aria-label="Удалить"
               >
-                Удалить
+                ×
               </button>
             )}
           </div>
@@ -488,5 +496,50 @@ export function ArtworkAdminCard({
         </div>
       )}
     </article>
+  );
+}
+
+function IconButton({
+  children,
+  onClick,
+  title,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={iconButtonClassName}
+      title={title}
+      aria-label={title}
+    >
+      {children}
+    </button>
+  );
+}
+
+function IconLink({
+  children,
+  href,
+  title,
+}: {
+  children: ReactNode;
+  href: string;
+  title: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className={iconButtonClassName}
+      title={title}
+      aria-label={title}
+    >
+      {children}
+    </a>
   );
 }

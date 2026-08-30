@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import type {
   Artwork,
   ArtworkImage,
-  ArtworkStatus,
   Category,
   Exhibition,
 } from "@/types";
@@ -13,7 +12,7 @@ import { buttonClassName, inputClassName, secondaryButtonClassName } from "@/com
 type ArtworkViewMode = "grid" | "list";
 
 const viewButtonClassName =
-  "inline-flex h-[42px] w-[42px] items-center justify-center rounded-[8px] border border-border/80 text-[20px] font-semibold leading-none transition-colors hover:border-ink/40";
+  "inline-flex h-[42px] w-[42px] items-center justify-center rounded-[8px] border border-border/80 transition-colors hover:border-ink/40";
 
 export function AdminArtworksSection({
   categories,
@@ -33,7 +32,6 @@ export function AdminArtworksSection({
   onCancelEdit,
   onSaveEdit,
   onDraftChange,
-  onStatusChange,
   onDeleteArtwork,
   onUploadImage,
   onDeleteImage,
@@ -62,7 +60,6 @@ export function AdminArtworksSection({
   onCancelEdit: () => void;
   onSaveEdit: () => void;
   onDraftChange: (draft: Artwork) => void;
-  onStatusChange: (artwork: Artwork, status: ArtworkStatus) => void;
   onDeleteArtwork: (artwork: Artwork) => void;
   onUploadImage: (artworkId: number, file: File | undefined) => void;
   onDeleteImage: (artworkId: number, image: ArtworkImage) => void;
@@ -81,49 +78,15 @@ export function AdminArtworksSection({
   const [showAddForm, setShowAddForm] = useState(false);
   const [viewMode, setViewMode] = useState<ArtworkViewMode>("grid");
 
-  const [expandedArtworkIds, setExpandedArtworkIds] = useState<
-    Record<number, boolean>
-  >({});
   const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<
     Record<number, boolean>
   >({});
-
-  const allArtworkIds = useMemo(() => {
-    const ids: number[] = [];
-
-    for (const category of categories) {
-      const categoryArtworks = artworksByCategory.get(category.id) || [];
-      ids.push(...categoryArtworks.map((artwork) => artwork.id));
-    }
-
-    return ids;
-  }, [artworksByCategory, categories]);
 
   function toggleCategory(categoryId: number) {
     setCollapsedCategoryIds((current) => ({
       ...current,
       [categoryId]: !current[categoryId],
     }));
-  }
-
-  function toggleArtwork(artworkId: number) {
-    setExpandedArtworkIds((current) => ({
-      ...current,
-      [artworkId]: !current[artworkId],
-    }));
-  }
-
-  function expandAllArtworks() {
-    setExpandedArtworkIds(
-      allArtworkIds.reduce<Record<number, boolean>>((result, artworkId) => {
-        result[artworkId] = true;
-        return result;
-      }, {}),
-    );
-  }
-
-  function collapseAllArtworks() {
-    setExpandedArtworkIds({});
   }
 
   function handleCreateArtwork(event: FormEvent<HTMLFormElement>) {
@@ -208,7 +171,7 @@ export function AdminArtworksSection({
                 title="Сетка"
                 aria-label="Показать сеткой"
               >
-                ▦
+                <GridIcon />
               </button>
               <button
                 type="button"
@@ -220,15 +183,9 @@ export function AdminArtworksSection({
                 title="Список"
                 aria-label="Показать списком"
               >
-                ☰
+                <ListIcon />
               </button>
             </div>
-            <button type="button" onClick={expandAllArtworks} className={secondaryButtonClassName}>
-              Развернуть все
-            </button>
-            <button type="button" onClick={collapseAllArtworks} className={secondaryButtonClassName}>
-              Свернуть все
-            </button>
             <input
               value={artworkSearch}
               onChange={(event) => setArtworkSearch(event.target.value)}
@@ -273,7 +230,9 @@ export function AdminArtworksSection({
                     <div
                       className={[
                         "mt-4 grid gap-3",
-                        viewMode === "grid" ? "lg:grid-cols-2 2xl:grid-cols-3" : "grid-cols-1",
+                        viewMode === "grid"
+                          ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                          : "grid-cols-1",
                       ].join(" ")}
                     >
                       {categoryArtworks.map((artwork) => (
@@ -286,9 +245,8 @@ export function AdminArtworksSection({
                           categoryName={categoryName(artwork.category_id)}
                           exhibitionName={exhibitionName(artwork.exhibition_id)}
                           viewMode={viewMode}
-                          collapsed={!expandedArtworkIds[artwork.id]}
                           draggedArtworkId={draggedArtworkId}
-                          onToggleCollapsed={() => toggleArtwork(artwork.id)}
+                          saving={saving}
                           onDragStart={() => onDragArtworkStart(artwork.id)}
                           onDragEnd={onDragArtworkEnd}
                           onDrop={() => onDropArtwork(category.id, artwork.id)}
@@ -296,7 +254,6 @@ export function AdminArtworksSection({
                           onCancelEdit={onCancelEdit}
                           onSaveEdit={onSaveEdit}
                           onDraftChange={onDraftChange}
-                          onStatusChange={(status) => onStatusChange(artwork, status)}
                           onDelete={() => onDeleteArtwork(artwork)}
                           onUploadImage={(file) => onUploadImage(artwork.id, file)}
                           onImageDelete={(image) => onDeleteImage(artwork.id, image)}
@@ -317,5 +274,32 @@ export function AdminArtworksSection({
         </div>
       </div>
     </section>
+  );
+}
+
+function GridIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 fill-current"
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 fill-none stroke-current stroke-2"
+    >
+      <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+    </svg>
   );
 }

@@ -7,11 +7,10 @@ import type {
   AdminAuditLog,
   AdminAuditLogFilter,
   AnalyticsSummary,
-  Artist,
-  Artwork,
-  ArtworkImage,
-  ArtworkStatus,
-  Category,
+    Artist,
+    Artwork,
+    ArtworkImage,
+    Category,
   Exhibition,
   Order,
 } from "@/types";
@@ -545,13 +544,6 @@ export function AdminPageContainer() {
     cancelEdit();
   }
 
-  async function updateArtworkStatus(artwork: Artwork, status: ArtworkStatus) {
-    await run(
-      () => api.admin.artworks.update(artwork.id, { ...artwork, status }),
-      "Статус работы обновлён",
-    );
-  }
-
   async function reorderArtworksInCategory(
     categoryId: number,
     fromId: number,
@@ -970,9 +962,6 @@ export function AdminPageContainer() {
           onCancelEdit={cancelEdit}
           onSaveEdit={() => void saveEdit()}
           onDraftChange={setDraft}
-          onStatusChange={(artwork, status) =>
-            void updateArtworkStatus(artwork, status)
-          }
           onDeleteArtwork={(artwork) =>
             setDeleteTarget({ type: "artwork", artwork })
           }

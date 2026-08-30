@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 
-import type { ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import type { Artwork, ArtworkImage, ArtworkStatus, Category, Exhibition } from "@/types";
 import {
   buttonClassName,
@@ -12,9 +12,9 @@ import { formatPrice, statusDotClassName, statusLabel } from "@/components/admin
 const selectClassName = `${smallInputClassName} bg-paper text-ink`;
 const optionClassName = "bg-white text-black dark:bg-[#111111] dark:text-white";
 const iconButtonClassName =
-  "inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-border/80 bg-paper text-[19px] font-semibold leading-none text-ink transition-colors hover:border-ink/40";
+  "inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-border/80 bg-paper text-ink transition-colors hover:border-ink/40";
 const dangerIconButtonClassName =
-  "inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-red-200 bg-paper text-[22px] font-semibold leading-none text-red-600 transition-opacity hover:opacity-70";
+  "inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-red-200 bg-paper text-[20px] font-semibold leading-none text-red-600 transition-opacity hover:opacity-70";
 
 function getArtworkImageUrl(image: ArtworkImage) {
   return (
@@ -35,9 +35,8 @@ export function ArtworkAdminCard({
   categoryName,
   exhibitionName,
   viewMode,
-  collapsed,
   draggedArtworkId,
-  onToggleCollapsed,
+  saving,
   onDragStart,
   onDragEnd,
   onDrop,
@@ -45,7 +44,6 @@ export function ArtworkAdminCard({
   onCancelEdit,
   onSaveEdit,
   onDraftChange,
-  onStatusChange,
   onDelete,
   onUploadImage,
   onImageDelete,
@@ -62,9 +60,8 @@ export function ArtworkAdminCard({
   categoryName: string;
   exhibitionName: string;
   viewMode: "grid" | "list";
-  collapsed?: boolean;
   draggedArtworkId: number | null;
-  onToggleCollapsed: () => void;
+  saving: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: () => void;
@@ -72,7 +69,6 @@ export function ArtworkAdminCard({
   onCancelEdit: () => void;
   onSaveEdit: () => void;
   onDraftChange: (draft: Artwork) => void;
-  onStatusChange: (status: ArtworkStatus) => void;
   onDelete: () => void;
   onUploadImage: (file: File | undefined) => void;
   onImageDelete: (image: ArtworkImage) => void;
@@ -82,7 +78,7 @@ export function ArtworkAdminCard({
   onImageDragEnd: () => void;
   onImageDrop: (imageId: number) => void;
 }) {
-  const isCollapsed = collapsed === true && draft === null;
+  const modalTitleId = useId();
   const isGrid = viewMode === "grid";
   const coverImage = artwork.images[0];
   const coverUrl = coverImage ? getArtworkImageUrl(coverImage) : "";
@@ -97,11 +93,32 @@ export function ArtworkAdminCard({
       <span>{categoryName}</span>
       <span>{exhibitionName}</span>
       <span>#{artwork.sort_order}</span>
-      {isCollapsed && artwork.images.length > 0 && (
+      {artwork.images.length > 0 && (
         <span>{artwork.images.length} фото</span>
       )}
     </>
   );
+
+  useEffect(() => {
+    if (!draft) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        onCancelEdit();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [draft, onCancelEdit, saving]);
 
   return (
     <article
@@ -110,15 +127,43 @@ export function ArtworkAdminCard({
       onDragEnd={onDragEnd}
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDrop}
-      className={[
-        "rounded-[8px] bg-white p-3 shadow-sm transition-opacity dark:bg-paper",
-        isGrid && !isCollapsed ? "2xl:col-span-3" : "",
-        isCollapsed ? "cursor-grab active:cursor-grabbing" : "",
-        draggedArtworkId === artwork.id ? "opacity-40" : "opacity-100",
-      ].join(" ")}
+      onClick={draft && !saving ? onCancelEdit : undefined}
+      className={
+        draft
+          ? "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/35 px-4 py-6 backdrop-blur-sm"
+          : [
+              "rounded-[8px] bg-white p-3 shadow-sm transition-opacity dark:bg-paper",
+              "cursor-grab active:cursor-grabbing",
+              draggedArtworkId === artwork.id ? "opacity-40" : "opacity-100",
+            ].join(" ")
+      }
     >
       {draft ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={modalTitleId}
+          onClick={(event) => event.stopPropagation()}
+          className="grid max-h-[calc(100vh-3rem)] w-full max-w-[920px] gap-3 overflow-y-auto rounded-[8px] bg-paper p-5 shadow-xl md:grid-cols-2 md:p-6"
+        >
+          <div className="mb-1 flex items-center justify-between gap-4 md:col-span-2">
+            <h2
+              id={modalTitleId}
+              className="min-w-0 break-words text-[22px] font-semibold leading-[120%] text-ink"
+            >
+              Редактировать «{artwork.title || `Работа #${artwork.id}`}»
+            </h2>
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              disabled={saving}
+              className={iconButtonClassName}
+              aria-label="Закрыть окно"
+              title="Закрыть"
+            >
+              ×
+            </button>
+          </div>
           <input
             value={draft.title}
             onChange={(event) =>
@@ -310,17 +355,30 @@ export function ArtworkAdminCard({
             className={`${smallInputClassName} md:col-span-2`}
           />
 
+          <ArtworkImagesEditor
+            artwork={artwork}
+            draggedImageId={draggedImageId}
+            onUploadImage={onUploadImage}
+            onImageDelete={onImageDelete}
+            onImageAltTextSave={onImageAltTextSave}
+            onImageDragStart={onImageDragStart}
+            onImageDragEnd={onImageDragEnd}
+            onImageDrop={onImageDrop}
+          />
+
           <div className="flex gap-2 md:col-span-2">
             <button
               type="button"
               onClick={onSaveEdit}
+              disabled={saving}
               className={buttonClassName}
             >
-              Сохранить
+              {saving ? "Сохраняем..." : "Сохранить"}
             </button>
             <button
               type="button"
               onClick={onCancelEdit}
+              disabled={saving}
               className={secondaryButtonClassName}
             >
               Отмена
@@ -328,9 +386,8 @@ export function ArtworkAdminCard({
           </div>
         </div>
       ) : (
-        <div className={isGrid && isCollapsed ? "flex h-full flex-col gap-3" : "flex flex-col justify-between gap-3 md:flex-row md:items-start"}>
-          <div className={isGrid && isCollapsed ? "min-w-0" : "flex min-w-0 items-start gap-3"}>
-            {isCollapsed && (
+        <div className={isGrid ? "flex h-full flex-col gap-3" : "flex flex-col justify-between gap-3 md:flex-row md:items-start"}>
+          <div className={isGrid ? "min-w-0" : "flex min-w-0 items-start gap-3"}>
               <div className={isGrid ? "aspect-[4/3] w-full overflow-hidden rounded-[6px] bg-paper-dark" : "h-[72px] w-[96px] shrink-0 overflow-hidden rounded-[6px] bg-paper-dark"}>
                 {coverUrl ? (
                   <img
@@ -344,18 +401,11 @@ export function ArtworkAdminCard({
                   </div>
                 )}
               </div>
-            )}
 
-            <div className={isGrid && isCollapsed ? "mt-1 min-w-0" : "min-w-0"}>
+            <div className={isGrid ? "mt-1 min-w-0" : "min-w-0"}>
               <p className="break-words text-[17px] font-semibold leading-[125%] text-ink">
                 {artwork.title || `Работа #${artwork.id}`}
               </p>
-
-              {!isCollapsed && (
-                <p className="mt-1 text-[14px] font-medium leading-[150%] text-ink-light">
-                  EN: {artwork.title_en || "не заполнено"}
-                </p>
-              )}
 
               <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium leading-[145%] text-ink-light">
                 {details}
@@ -363,37 +413,10 @@ export function ArtworkAdminCard({
             </div>
           </div>
 
-          <div className={isGrid && isCollapsed ? "mt-auto flex shrink-0 flex-wrap items-center gap-2" : "flex shrink-0 flex-wrap items-center gap-2"}>
-            <IconButton
-              onClick={onToggleCollapsed}
-              title={isCollapsed ? "Развернуть" : "Свернуть"}
-            >
-              {isCollapsed ? "⤢" : "−"}
-            </IconButton>
-
+          <div className={isGrid ? "mt-auto flex shrink-0 flex-wrap items-center gap-2" : "flex shrink-0 flex-wrap items-center gap-2"}>
             <IconLink href={`/artwork/${artwork.id}`} title="Превью">
-              ↗
+              <EyeIcon />
             </IconLink>
-
-            {!isCollapsed && (
-              <select
-                value={artwork.status}
-                onChange={(event) =>
-                  onStatusChange(event.target.value as ArtworkStatus)
-                }
-                className="h-[42px] rounded-[8px] border border-border bg-paper px-3 text-[15px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40"
-              >
-                {(Object.keys(statusLabel) as ArtworkStatus[]).map((status) => (
-                  <option
-                    key={status}
-                    value={status}
-                    className={optionClassName}
-                  >
-                    {statusLabel[status]}
-                  </option>
-                ))}
-              </select>
-            )}
 
             <button
               type="button"
@@ -402,122 +425,162 @@ export function ArtworkAdminCard({
               title="Редактировать"
               aria-label="Редактировать"
             >
-              ✎
+              <PencilIcon />
             </button>
 
-            {!isCollapsed && (
-              <button
-                type="button"
-                onClick={onDelete}
-                className={dangerIconButtonClassName}
-                title="Удалить"
-                aria-label="Удалить"
-              >
-                ×
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={onDelete}
+              className={dangerIconButtonClassName}
+              title="Удалить"
+              aria-label="Удалить"
+            >
+              ×
+            </button>
           </div>
-        </div>
-      )}
-
-      {draft === null && !isCollapsed && (
-        <div className="mt-4 pt-2">
-          {artwork.images.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {artwork.images.map((image) => {
-                const imageUrl = getArtworkImageUrl(image);
-
-                return (
-                  <div
-                    key={image.id}
-                    draggable
-                    onDragStart={() => onImageDragStart(image.id)}
-                    onDragEnd={onImageDragEnd}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => onImageDrop(image.id)}
-                    className={[
-                      "rounded-[8px] bg-paper-dark/45 p-2 transition-opacity",
-                      draggedImageId === image.id
-                        ? "opacity-40"
-                        : "opacity-100",
-                    ].join(" ")}
-                  >
-                    <div className="aspect-square overflow-hidden rounded-[6px] bg-paper-dark">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={image.alt_text || artwork.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[12px] text-ink-light">
-                          Нет фото
-                        </div>
-                      )}
-                    </div>
-
-                    <label className="mt-2 block text-[12px] font-semibold leading-[150%] text-ink-light">
-                      Alt text
-                      <input
-                        defaultValue={image.alt_text || artwork.title}
-                        onBlur={(event) => {
-                          const value = event.target.value.trim();
-                          if (value !== image.alt_text) {
-                            onImageAltTextSave(image, value);
-                          }
-                        }}
-                        className="mt-1 w-full rounded-[6px] border border-border/80 bg-white/40 px-2 py-2 text-[14px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40 dark:bg-transparent"
-                        placeholder="Описание изображения"
-                      />
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() => onImageDelete(image)}
-                      className="mt-2 w-full text-[13px] font-medium text-red-600 hover:opacity-70"
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <label className="mt-3 inline-flex cursor-pointer rounded-[8px] border border-border/80 px-4 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
-            Добавить изображение
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => onUploadImage(event.target.files?.[0])}
-              className="hidden"
-            />
-          </label>
         </div>
       )}
     </article>
   );
 }
 
-function IconButton({
-  children,
-  onClick,
-  title,
+function EyeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 fill-none stroke-current stroke-2"
+    >
+      <path
+        d="M2.1 12s3.6-6 9.9-6 9.9 6 9.9 6-3.6 6-9.9 6-9.9-6-9.9-6Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-[18px] w-[18px] fill-none stroke-current stroke-2"
+    >
+      <path
+        d="m4 20 4.2-1 10.6-10.6-3.2-3.2L5 15.8 4 20Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="m13.8 7 3.2 3.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ArtworkImagesEditor({
+  artwork,
+  draggedImageId,
+  onUploadImage,
+  onImageDelete,
+  onImageAltTextSave,
+  onImageDragStart,
+  onImageDragEnd,
+  onImageDrop,
 }: {
-  children: ReactNode;
-  onClick: () => void;
-  title: string;
+  artwork: Artwork;
+  draggedImageId: number | null;
+  onUploadImage: (file: File | undefined) => void;
+  onImageDelete: (image: ArtworkImage) => void;
+  onImageAltTextSave: (image: ArtworkImage, altText: string) => void;
+  onImageDragStart: (imageId: number) => void;
+  onImageDragEnd: () => void;
+  onImageDrop: (imageId: number) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={iconButtonClassName}
-      title={title}
-      aria-label={title}
-    >
-      {children}
-    </button>
+    <div className="rounded-[8px] bg-paper-dark/35 p-3 md:col-span-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[15px] font-semibold leading-[150%] text-ink">
+          Фотографии
+        </p>
+        <label className="inline-flex cursor-pointer rounded-[8px] border border-border/80 bg-paper px-3 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
+          Добавить фото
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => {
+              onUploadImage(event.target.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+            className="hidden"
+          />
+        </label>
+      </div>
+
+      {artwork.images.length > 0 ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {artwork.images.map((image) => {
+            const imageUrl = getArtworkImageUrl(image);
+
+            return (
+              <div
+                key={image.id}
+                draggable
+                onDragStart={() => onImageDragStart(image.id)}
+                onDragEnd={onImageDragEnd}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => onImageDrop(image.id)}
+                className={[
+                  "rounded-[8px] bg-paper p-2 transition-opacity",
+                  draggedImageId === image.id ? "opacity-40" : "opacity-100",
+                ].join(" ")}
+              >
+                <div className="aspect-[4/3] overflow-hidden rounded-[6px] bg-paper-dark">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={image.alt_text || artwork.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[12px] text-ink-light">
+                      Нет фото
+                    </div>
+                  )}
+                </div>
+
+                <label className="mt-2 block text-[12px] font-semibold leading-[150%] text-ink-light">
+                  Описание фото
+                  <input
+                    defaultValue={image.alt_text || artwork.title}
+                    onBlur={(event) => {
+                      const value = event.target.value.trim();
+                      if (value !== image.alt_text) {
+                        onImageAltTextSave(image, value);
+                      }
+                    }}
+                    className="mt-1 w-full rounded-[6px] border border-border/80 bg-white/40 px-2 py-2 text-[14px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40 dark:bg-transparent"
+                    placeholder="Описание изображения"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => onImageDelete(image)}
+                  className="mt-2 text-[13px] font-medium text-red-600 hover:opacity-70"
+                >
+                  Удалить фото
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 text-[14px] font-medium text-ink-light">
+          Фотографии ещё не добавлены.
+        </p>
+      )}
+    </div>
   );
 }
 

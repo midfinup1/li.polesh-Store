@@ -24,6 +24,14 @@ export function SiteFooter() {
                 <InstagramIcon />
               </SocialLink>
             </div>
+
+            <p className="mt-8 max-w-[360px] text-[14px] font-medium leading-[150%] text-[#888888] dark:text-ink-light">
+              © 2026{" "}
+              <LocalizedText
+                ru="Елизавета Полещенко. Все права защищены."
+                en="Elizaveta Poleshchenko. All rights reserved."
+              />
+            </p>
           </div>
 
           <FooterColumn titleRu="Навигация" titleEn="Navigation">
@@ -62,16 +70,6 @@ export function SiteFooter() {
               lis.polesh@gmail.com
             </a>
           </FooterColumn>
-        </div>
-
-        <div className="mt-12 border-t border-border pt-6 text-[14px] font-medium leading-[150%] text-[#888888] dark:text-ink-light">
-          <p>
-            © 2026{" "}
-            <LocalizedText
-              ru="Елизавета Полещенко. Все права защищены."
-              en="Elizaveta Poleshchenko. All rights reserved."
-            />
-          </p>
         </div>
       </div>
     </footer>

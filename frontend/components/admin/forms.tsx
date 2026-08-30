@@ -3,16 +3,16 @@
 import type { ReactNode } from "react";
 
 export const inputClassName =
-  "w-full rounded-[8px] border border-border bg-transparent px-4 py-3 text-[16px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full rounded-[8px] border border-border/80 bg-white/40 px-4 py-4 text-[17px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent";
 
 export const smallInputClassName =
-  "w-full rounded-[8px] border border-border bg-transparent px-3 py-2 text-[15px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full rounded-[8px] border border-border/80 bg-white/40 px-3 py-3 text-[16px] font-medium leading-[150%] outline-none transition-colors placeholder:text-ink-light focus:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent";
 
 export const buttonClassName =
   "inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-4 text-[15px] font-medium leading-[150%] text-paper transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const secondaryButtonClassName =
-  "inline-flex h-[42px] items-center justify-center rounded-[8px] border border-border px-4 text-[15px] font-medium leading-[150%] transition-colors hover:border-ink/40";
+  "inline-flex h-[42px] items-center justify-center rounded-[8px] border border-border/80 px-4 text-[15px] font-medium leading-[150%] transition-colors hover:border-ink/40";
 
 export const dangerButtonClassName =
   "inline-flex h-[42px] items-center justify-center rounded-[8px] border border-red-600 px-4 text-[15px] font-medium leading-[150%] text-red-600 transition-opacity hover:opacity-70";
@@ -101,7 +101,7 @@ export function PhotoUploadCard({
   onChange: (file: File | undefined) => void;
 }) {
   return (
-    <div className="rounded-[8px] border border-border p-3">
+    <div className="rounded-[8px] bg-paper-dark/45 p-4">
       <p className="text-[15px] font-semibold leading-[150%] text-ink">
         {title}
       </p>
@@ -118,7 +118,7 @@ export function PhotoUploadCard({
           Фото не загружено
         </div>
       )}
-      <label className="mt-3 inline-flex cursor-pointer rounded-[8px] border border-border px-4 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
+      <label className="mt-3 inline-flex cursor-pointer rounded-[8px] border border-border/80 bg-paper px-4 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
         {loading ? "Загрузка..." : "Загрузить файл"}
         <input
           type="file"

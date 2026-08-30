@@ -27,6 +27,7 @@ type Artwork struct {
 	Price             *int64        `db:"price"               json:"price"`
 	Status            ArtworkStatus `db:"status"              json:"status"`
 	CategoryID        *int64        `db:"category_id"         json:"category_id"`
+	ExhibitionID      *int64        `db:"exhibition_id"       json:"exhibition_id"`
 	Year              *int          `db:"year"                json:"year"`
 	Size              string        `db:"size"                json:"size"`
 	SizeEN            string        `db:"size_en"             json:"size_en"`
@@ -36,8 +37,9 @@ type Artwork struct {
 	CreatedAt         time.Time     `db:"created_at"          json:"created_at"`
 	UpdatedAt         time.Time     `db:"updated_at"          json:"updated_at"`
 
-	Images   []ArtworkImage `db:"-" json:"images"`
-	Category *Category      `db:"-" json:"category,omitempty"`
+	Images     []ArtworkImage `db:"-" json:"images"`
+	Category   *Category      `db:"-" json:"category,omitempty"`
+	Exhibition *Exhibition    `db:"-" json:"exhibition,omitempty"`
 }
 
 type ArtworkImage struct {
@@ -58,6 +60,18 @@ type ArtworkImage struct {
 // ─── Category ─────────────────────────────────────────────────────────────────
 
 type Category struct {
+	ID        int64     `db:"id"         json:"id"`
+	Name      string    `db:"name"       json:"name"`
+	NameEN    string    `db:"name_en"    json:"name_en"`
+	Slug      string    `db:"slug"       json:"slug"`
+	SortOrder int       `db:"sort_order" json:"sort_order"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// ─── Exhibition ───────────────────────────────────────────────────────────────
+
+type Exhibition struct {
 	ID        int64     `db:"id"         json:"id"`
 	Name      string    `db:"name"       json:"name"`
 	NameEN    string    `db:"name_en"    json:"name_en"`

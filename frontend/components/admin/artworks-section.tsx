@@ -5,12 +5,14 @@ import type {
   ArtworkImage,
   ArtworkStatus,
   Category,
+  Exhibition,
 } from "@/types";
 import { ArtworkAdminCard } from "@/components/admin/artwork-card";
 import { buttonClassName, inputClassName, secondaryButtonClassName } from "@/components/admin/forms";
 
 export function AdminArtworksSection({
   categories,
+  exhibitions,
   artworkSearch,
   setArtworkSearch,
   artworksByCategory,
@@ -20,6 +22,7 @@ export function AdminArtworksSection({
   draggedImageId,
   saving,
   categoryName,
+  exhibitionName,
   onCreateArtwork,
   onStartEdit,
   onCancelEdit,
@@ -38,6 +41,7 @@ export function AdminArtworksSection({
   onImageDrop,
 }: {
   categories: Category[];
+  exhibitions: Exhibition[];
   artworkSearch: string;
   setArtworkSearch: Dispatch<SetStateAction<string>>;
   artworksByCategory: Map<number, Artwork[]>;
@@ -47,6 +51,7 @@ export function AdminArtworksSection({
   draggedImageId: number | null;
   saving: boolean;
   categoryName: (id: number | null) => string;
+  exhibitionName: (id: number | null) => string;
   onCreateArtwork: (event: FormEvent<HTMLFormElement>) => void;
   onStartEdit: (artwork: Artwork) => void;
   onCancelEdit: () => void;
@@ -68,13 +73,8 @@ export function AdminArtworksSection({
   onImageDragEnd: () => void;
   onImageDrop: (artwork: Artwork, imageId: number) => void;
 }) {
-  // The add-work form is collapsed by default — it's long and rarely the first
-  // thing you need when opening the tab.
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Artworks are collapsed by default. We track which ones are *expanded*
-  // (empty set = everything collapsed), so newly loaded artworks start
-  // compact automatically.
   const [expandedArtworkIds, setExpandedArtworkIds] = useState<
     Record<number, boolean>
   >({});
@@ -127,7 +127,7 @@ export function AdminArtworksSection({
 
   return (
     <section className="mt-6 space-y-5">
-      <div className="rounded-[8px] border border-border p-4">
+      <div className="rounded-[8px] bg-paper-dark/35 p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
             Добавить работу
@@ -158,6 +158,14 @@ export function AdminArtworksSection({
                 </option>
               ))}
             </select>
+            <select name="exhibition_id" className={inputClassName} defaultValue="">
+              <option value="">Без выставки</option>
+              {exhibitions.map((exhibition) => (
+                <option key={exhibition.id} value={exhibition.id}>
+                  {exhibition.name}
+                </option>
+              ))}
+            </select>
             <input name="year" type="number" min="1000" max="9999" placeholder="Год" className={inputClassName} />
             <input name="size" placeholder="Размер RU" className={inputClassName} />
             <input name="size_en" placeholder="Размер EN" className={inputClassName} />
@@ -174,16 +182,12 @@ export function AdminArtworksSection({
         )}
       </div>
 
-      <div className="rounded-[8px] border border-border p-4">
+      <div className="rounded-[8px] bg-paper-dark/35 p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
               Работы
             </h2>
-            <p className="mt-1 text-[14px] font-medium leading-[150%] text-ink-light">
-              Карточки свёрнуты — раскрой нужную для редактирования или
-              перетаскивай компактные строки для сортировки.
-            </p>
           </div>
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -197,7 +201,7 @@ export function AdminArtworksSection({
               value={artworkSearch}
               onChange={(event) => setArtworkSearch(event.target.value)}
               placeholder="Поиск по названию, категории, статусу"
-              className="w-full rounded-[8px] border border-border bg-transparent px-4 py-2 text-[15px] font-medium leading-[150%] outline-none focus:border-ink/40 md:w-[360px]"
+              className="w-full rounded-[8px] border border-border/80 bg-white/40 px-4 py-3 text-[16px] font-medium leading-[150%] outline-none focus:border-ink/40 md:w-[380px] dark:bg-transparent"
             />
           </div>
         </div>
@@ -208,14 +212,14 @@ export function AdminArtworksSection({
             const isCategoryCollapsed = Boolean(collapsedCategoryIds[category.id]);
 
             return (
-              <div key={category.id} className="rounded-[8px] border border-border p-3">
+              <div key={category.id} className="rounded-[8px] bg-paper p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="text-[18px] font-semibold leading-[120%] text-ink">
                       {category.name}
                     </h3>
                     <p className="mt-1 text-[13px] font-medium leading-[150%] text-ink-light">
-                      Работ: {categoryArtworks.length}
+                      {categoryArtworks.length} работ
                     </p>
                   </div>
 
@@ -234,14 +238,16 @@ export function AdminArtworksSection({
                       Работ в категории нет.
                     </p>
                   ) : (
-                    <div className="mt-3 space-y-3">
+                    <div className="mt-4 grid gap-3 xl:grid-cols-2">
                       {categoryArtworks.map((artwork) => (
                         <ArtworkAdminCard
                           key={artwork.id}
                           artwork={artwork}
                           draft={editingId === artwork.id ? draft : null}
                           categories={categories}
+                          exhibitions={exhibitions}
                           categoryName={categoryName(artwork.category_id)}
+                          exhibitionName={exhibitionName(artwork.exhibition_id)}
                           collapsed={!expandedArtworkIds[artwork.id]}
                           draggedArtworkId={draggedArtworkId}
                           onToggleCollapsed={() => toggleArtwork(artwork.id)}

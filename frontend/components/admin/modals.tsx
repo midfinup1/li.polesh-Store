@@ -13,6 +13,8 @@ export function ConfirmDeleteModal({
   const title =
     target.type === "category"
       ? `Удалить категорию «${target.category.name}»?`
+      : target.type === "exhibition"
+        ? `Удалить выставку «${target.exhibition.name}»?`
       : target.type === "artwork"
         ? `Удалить работу «${target.artwork.title}»?`
         : target.type === "order"
@@ -22,6 +24,8 @@ export function ConfirmDeleteModal({
   const description =
     target.type === "category"
       ? "Работы из этой категории останутся в системе, но потеряют привязку к категории."
+      : target.type === "exhibition"
+        ? "Работы из этой выставки останутся в системе, но будут показываться только в общем каталоге и своих категориях."
       : target.type === "artwork"
         ? "Если по работе есть активные заявки в статусе «Новая» или «Связались», удалить работу нельзя. Сначала завершите или отмените эти заявки. Если по работе есть только завершённые или отменённые заявки, они будут удалены вместе с работой."
         : target.type === "order"

@@ -46,6 +46,12 @@ func (r *artworkRepository) GetAll(ctx context.Context, filter domain.ArtworkFil
 		argumentNumber++
 	}
 
+	if filter.ExhibitionID != nil {
+		query += fmt.Sprintf(" AND a.exhibition_id = $%d", argumentNumber)
+		args = append(args, *filter.ExhibitionID)
+		argumentNumber++
+	}
+
 	query += " ORDER BY a.sort_order ASC, a.created_at DESC"
 
 	if filter.Limit > 0 {
@@ -127,6 +133,7 @@ func (r *artworkRepository) Create(ctx context.Context, artwork *domain.Artwork)
 				price,
 				status,
 				category_id,
+				exhibition_id,
 				year,
 				size,
 				size_en,
@@ -134,7 +141,7 @@ func (r *artworkRepository) Create(ctx context.Context, artwork *domain.Artwork)
 				materials_en,
 				sort_order
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 			RETURNING id
 		`,
 		artwork.Title,
@@ -146,6 +153,7 @@ func (r *artworkRepository) Create(ctx context.Context, artwork *domain.Artwork)
 		artwork.Price,
 		artwork.Status,
 		artwork.CategoryID,
+		artwork.ExhibitionID,
 		artwork.Year,
 		artwork.Size,
 		artwork.SizeEN,
@@ -174,14 +182,15 @@ func (r *artworkRepository) Update(ctx context.Context, artwork *domain.Artwork)
 				price = $7,
 				status = $8,
 				category_id = $9,
-				year = $10,
-				size = $11,
-				size_en = $12,
-				materials = $13,
-				materials_en = $14,
-				sort_order = $15,
+				exhibition_id = $10,
+				year = $11,
+				size = $12,
+				size_en = $13,
+				materials = $14,
+				materials_en = $15,
+				sort_order = $16,
 				updated_at = NOW()
-			WHERE id = $16
+			WHERE id = $17
 		`,
 		artwork.Title,
 		artwork.TitleEN,
@@ -192,6 +201,7 @@ func (r *artworkRepository) Update(ctx context.Context, artwork *domain.Artwork)
 		artwork.Price,
 		artwork.Status,
 		artwork.CategoryID,
+		artwork.ExhibitionID,
 		artwork.Year,
 		artwork.Size,
 		artwork.SizeEN,

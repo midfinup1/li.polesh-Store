@@ -1,5 +1,5 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
-import type { Category } from "@/types";
+import type { Exhibition } from "@/types";
 import {
   buttonClassName,
   dangerButtonClassName,
@@ -8,39 +8,39 @@ import {
   smallInputClassName,
 } from "@/components/admin/forms";
 
-export function AdminCategoriesSection({
-  categories,
-  editingCategoryId,
-  categoryDraft,
+export function AdminExhibitionsSection({
+  exhibitions,
+  editingExhibitionId,
+  exhibitionDraft,
   saving,
-  onCreateCategory,
-  onSetCategoryDraft,
-  onSaveCategoryEdit,
-  onCancelEditCategory,
-  onStartEditCategory,
-  onReorderCategories,
-  onDeleteCategory,
+  onCreateExhibition,
+  onSetExhibitionDraft,
+  onSaveExhibitionEdit,
+  onCancelEditExhibition,
+  onStartEditExhibition,
+  onReorderExhibitions,
+  onDeleteExhibition,
 }: {
-  categories: Category[];
-  editingCategoryId: number | null;
-  categoryDraft: Category | null;
+  exhibitions: Exhibition[];
+  editingExhibitionId: number | null;
+  exhibitionDraft: Exhibition | null;
   saving: boolean;
-  onCreateCategory: (event: FormEvent<HTMLFormElement>) => void;
-  onSetCategoryDraft: Dispatch<SetStateAction<Category | null>>;
-  onSaveCategoryEdit: () => void;
-  onCancelEditCategory: () => void;
-  onStartEditCategory: (category: Category) => void;
-  onReorderCategories: (fromIndex: number, toIndex: number) => void;
-  onDeleteCategory: (category: Category) => void;
+  onCreateExhibition: (event: FormEvent<HTMLFormElement>) => void;
+  onSetExhibitionDraft: Dispatch<SetStateAction<Exhibition | null>>;
+  onSaveExhibitionEdit: () => void;
+  onCancelEditExhibition: () => void;
+  onStartEditExhibition: (exhibition: Exhibition) => void;
+  onReorderExhibitions: (fromIndex: number, toIndex: number) => void;
+  onDeleteExhibition: (exhibition: Exhibition) => void;
 }) {
   return (
     <section className="mt-6 rounded-[8px] bg-paper-dark/35 p-5">
       <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
-        Категории
+        Выставки
       </h2>
 
       <form
-        onSubmit={onCreateCategory}
+        onSubmit={onCreateExhibition}
         className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_auto]"
       >
         <input required name="name" placeholder="Название RU" className={inputClassName} />
@@ -51,30 +51,30 @@ export function AdminCategoriesSection({
       </form>
 
       <div className="mt-5 space-y-2">
-        {categories.map((category, index) => (
-          <div key={category.id} className="rounded-[8px] bg-paper p-3">
-            {editingCategoryId === category.id && categoryDraft ? (
+        {exhibitions.map((exhibition, index) => (
+          <div key={exhibition.id} className="rounded-[8px] bg-paper p-3">
+            {editingExhibitionId === exhibition.id && exhibitionDraft ? (
               <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
                 <input
-                  value={categoryDraft.name}
+                  value={exhibitionDraft.name}
                   onChange={(event) =>
-                    onSetCategoryDraft({ ...categoryDraft, name: event.target.value })
+                    onSetExhibitionDraft({ ...exhibitionDraft, name: event.target.value })
                   }
                   placeholder="Название RU"
                   className={smallInputClassName}
                 />
                 <input
-                  value={categoryDraft.name_en}
+                  value={exhibitionDraft.name_en}
                   onChange={(event) =>
-                    onSetCategoryDraft({ ...categoryDraft, name_en: event.target.value })
+                    onSetExhibitionDraft({ ...exhibitionDraft, name_en: event.target.value })
                   }
                   placeholder="Название EN"
                   className={smallInputClassName}
                 />
-                <button type="button" onClick={onSaveCategoryEdit} className={buttonClassName}>
+                <button type="button" onClick={onSaveExhibitionEdit} className={buttonClassName}>
                   Сохранить
                 </button>
-                <button type="button" onClick={onCancelEditCategory} className={secondaryButtonClassName}>
+                <button type="button" onClick={onCancelEditExhibition} className={secondaryButtonClassName}>
                   Отмена
                 </button>
               </div>
@@ -82,10 +82,10 @@ export function AdminCategoriesSection({
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-[16px] font-semibold leading-[150%] text-ink">
-                    {category.name}
+                    {exhibition.name}
                   </p>
                   <p className="text-[14px] font-medium leading-[150%] text-ink-light">
-                    EN: {category.name_en || "не заполнено"} · порядок: {category.sort_order}
+                    EN: {exhibition.name_en || "не заполнено"} · порядок: {exhibition.sort_order}
                   </p>
                 </div>
 
@@ -93,7 +93,7 @@ export function AdminCategoriesSection({
                   <button
                     type="button"
                     disabled={index === 0}
-                    onClick={() => onReorderCategories(index, index - 1)}
+                    onClick={() => onReorderExhibitions(index, index - 1)}
                     className={`${secondaryButtonClassName} disabled:cursor-not-allowed disabled:opacity-40`}
                     aria-label="Переместить вверх"
                   >
@@ -101,8 +101,8 @@ export function AdminCategoriesSection({
                   </button>
                   <button
                     type="button"
-                    disabled={index === categories.length - 1}
-                    onClick={() => onReorderCategories(index, index + 1)}
+                    disabled={index === exhibitions.length - 1}
+                    onClick={() => onReorderExhibitions(index, index + 1)}
                     className={`${secondaryButtonClassName} disabled:cursor-not-allowed disabled:opacity-40`}
                     aria-label="Переместить вниз"
                   >
@@ -110,14 +110,14 @@ export function AdminCategoriesSection({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onStartEditCategory(category)}
+                    onClick={() => onStartEditExhibition(exhibition)}
                     className={secondaryButtonClassName}
                   >
                     Редактировать
                   </button>
                   <button
                     type="button"
-                    onClick={() => onDeleteCategory(category)}
+                    onClick={() => onDeleteExhibition(exhibition)}
                     className={dangerButtonClassName}
                   >
                     Удалить

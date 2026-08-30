@@ -12,6 +12,7 @@ import type {
   ArtworkImage,
   ArtworkStatus,
   Category,
+  Exhibition,
   Order,
 } from "@/types";
 import {
@@ -26,12 +27,14 @@ import {
   slugify,
   sortedArtworks,
   sortedCategories,
+  sortedExhibitions,
   statusLabel,
 } from "@/components/admin/helpers";
 import { AdminAnalyticsSection } from "@/components/admin/analytics-section";
 import { AdminArtistSection } from "@/components/admin/artist-section";
 import { AdminArtworksSection } from "@/components/admin/artworks-section";
 import { AdminCategoriesSection } from "@/components/admin/categories-section";
+import { AdminExhibitionsSection } from "@/components/admin/exhibitions-section";
 import { AdminOrdersSection } from "@/components/admin/orders-section";
 import { AdminAuditHistorySection } from "@/components/admin/audit-section";
 
@@ -55,6 +58,7 @@ export function AdminPageContainer() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
   const [artist, setArtist] = useState<Artist>(blankArtist);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
@@ -79,6 +83,10 @@ export function AdminPageContainer() {
     null,
   );
   const [categoryDraft, setCategoryDraft] = useState<Category | null>(null);
+  const [editingExhibitionId, setEditingExhibitionId] = useState<number | null>(
+    null,
+  );
+  const [exhibitionDraft, setExhibitionDraft] = useState<Exhibition | null>(null);
 
   const [artworkSearch, setArtworkSearch] = useState("");
   const [draggedArtworkId, setDraggedArtworkId] = useState<number | null>(null);
@@ -105,6 +113,7 @@ export function AdminPageContainer() {
         worksResponse,
         ordersResponse,
         categoriesResponse,
+        exhibitionsResponse,
         artistResponse,
         analyticsResponse,
         auditLogsResponse,
@@ -112,6 +121,7 @@ export function AdminPageContainer() {
         api.admin.artworks.list(),
         api.admin.orders.list(),
         api.categories.list(),
+        api.exhibitions.list(),
         api.artist.get(),
         api.admin.analytics.summary().catch(() => null),
         api.admin.auditLogs
@@ -123,6 +133,9 @@ export function AdminPageContainer() {
       setOrders(Array.isArray(ordersResponse) ? ordersResponse : []);
       setCategories(
         Array.isArray(categoriesResponse) ? categoriesResponse : [],
+      );
+      setExhibitions(
+        Array.isArray(exhibitionsResponse) ? exhibitionsResponse : [],
       );
       setArtist(artistResponse ?? blankArtist);
       setAnalytics(analyticsResponse);
@@ -165,7 +178,7 @@ export function AdminPageContainer() {
     };
   }, [load]);
 
-  const hasUnsavedChanges = Boolean(draft || categoryDraft);
+  const hasUnsavedChanges = Boolean(draft || categoryDraft || exhibitionDraft);
 
   useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -357,6 +370,82 @@ export function AdminPageContainer() {
     }, "Порядок категорий обновлён");
   }
 
+  async function createExhibition(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const name = String(data.get("name") ?? "").trim();
+    const nameEn = String(data.get("name_en") ?? "").trim();
+    const slug = slugify(nameEn, name);
+
+    if (!name || !slug) {
+      setError("Заполните название выставки");
+      return;
+    }
+
+    await run(
+      () =>
+        api.admin.exhibitions.create({
+          name,
+          name_en: nameEn,
+          slug,
+          sort_order: exhibitions.length,
+        }),
+      "Выставка добавлена",
+    );
+
+    form.reset();
+  }
+
+  function startEditExhibition(exhibition: Exhibition) {
+    setEditingExhibitionId(exhibition.id);
+    setExhibitionDraft({ ...exhibition });
+  }
+
+  function cancelEditExhibition() {
+    setEditingExhibitionId(null);
+    setExhibitionDraft(null);
+  }
+
+  async function saveExhibitionEdit() {
+    if (!exhibitionDraft) {
+      return;
+    }
+
+    const payload = {
+      ...exhibitionDraft,
+      slug: slugify(exhibitionDraft.name_en, exhibitionDraft.name),
+    };
+
+    await run(
+      () => api.admin.exhibitions.update(payload.id, payload),
+      "Выставка обновлена",
+    );
+
+    cancelEditExhibition();
+  }
+
+  async function reorderExhibitions(fromIndex: number, toIndex: number) {
+    const current = sortedExhibitions(exhibitions);
+    const reordered = moveInArray(current, fromIndex, toIndex);
+
+    if (reordered === current) {
+      return;
+    }
+
+    await run(async () => {
+      await Promise.all(
+        reordered.map((exhibition, sortOrder) =>
+          api.admin.exhibitions.update(exhibition.id, {
+            ...exhibition,
+            sort_order: sortOrder,
+          }),
+        ),
+      );
+    }, "Порядок выставок обновлён");
+  }
+
   function getNextArtworkSortOrder(categoryId: number) {
     const categoryArtworks = artworks.filter(
       (artwork) => artwork.category_id === categoryId,
@@ -379,6 +468,7 @@ export function AdminPageContainer() {
     const rawPrice = String(data.get("price") ?? "").trim();
     const rawYear = String(data.get("year") ?? "").trim();
     const rawCategoryId = String(data.get("category_id") ?? "").trim();
+    const rawExhibitionId = String(data.get("exhibition_id") ?? "").trim();
     const title = String(data.get("title") ?? "").trim();
 
     if (!title) {
@@ -407,6 +497,7 @@ export function AdminPageContainer() {
           price: rawPrice === "" ? null : Number(rawPrice),
           status: "available",
           category_id: categoryId,
+          exhibition_id: rawExhibitionId === "" ? null : Number(rawExhibitionId),
           year: rawYear === "" ? null : Number(rawYear),
           size: String(data.get("size") ?? "").trim(),
           size_en: String(data.get("size_en") ?? "").trim(),
@@ -578,6 +669,15 @@ export function AdminPageContainer() {
       return;
     }
 
+    if (target.type === "exhibition") {
+      await run(
+        () => api.admin.exhibitions.delete(target.exhibition.id),
+        "Выставка удалена",
+        "Не удалось удалить выставку",
+      );
+      return;
+    }
+
     if (target.type === "artwork") {
       await run(
         () => api.admin.artworks.delete(target.artwork.id),
@@ -608,6 +708,11 @@ export function AdminPageContainer() {
     [categories],
   );
 
+  const exhibitionsSorted = useMemo(
+    () => sortedExhibitions(exhibitions),
+    [exhibitions],
+  );
+
   const filteredArtworks = useMemo(() => {
     const query = artworkSearch.trim().toLowerCase();
 
@@ -619,12 +724,16 @@ export function AdminPageContainer() {
       const categoryName =
         categories.find((category) => category.id === artwork.category_id)
           ?.name || "";
+      const exhibitionName =
+        exhibitions.find((exhibition) => exhibition.id === artwork.exhibition_id)
+          ?.name || "";
       const text = [
         artwork.title,
         artwork.title_en,
         artwork.materials,
         artwork.materials_en,
         categoryName,
+        exhibitionName,
         statusLabel[artwork.status],
       ]
         .join(" ")
@@ -632,7 +741,7 @@ export function AdminPageContainer() {
 
       return text.includes(query);
     });
-  }, [artworks, artworkSearch, categories]);
+  }, [artworks, artworkSearch, categories, exhibitions]);
 
   const artworksByCategory = useMemo(() => {
     const result = new Map<number, Artwork[]>();
@@ -661,12 +770,23 @@ export function AdminPageContainer() {
     );
   }
 
+  function exhibitionName(id: number | null) {
+    if (id === null) {
+      return "Без выставки";
+    }
+
+    return (
+      exhibitions.find((exhibition) => exhibition.id === id)?.name ||
+      "Без выставки"
+    );
+  }
+
   if (loading) {
     return (
       <main className="mx-auto min-h-[70vh] max-w-[1280px] px-6 py-12 md:px-10">
         <AdminState
           loading
-          loadingText="Загружаем работы, категории, заявки, аналитику и историю действий..."
+          loadingText="Загружаем админку..."
           emptyText="Данные админки пока отсутствуют."
         />
       </main>
@@ -722,6 +842,17 @@ export function AdminPageContainer() {
           }}
         >
           Категории
+        </TabButton>
+
+        <TabButton
+          active={activeTab === "exhibitions"}
+          onClick={() => {
+            if (confirmUnsavedLeave()) {
+              setActiveTab("exhibitions");
+            }
+          }}
+        >
+          Выставки
         </TabButton>
 
         <TabButton
@@ -800,9 +931,30 @@ export function AdminPageContainer() {
         />
       )}
 
+      {activeTab === "exhibitions" && (
+        <AdminExhibitionsSection
+          exhibitions={exhibitionsSorted}
+          editingExhibitionId={editingExhibitionId}
+          exhibitionDraft={exhibitionDraft}
+          saving={saving}
+          onCreateExhibition={createExhibition}
+          onSetExhibitionDraft={setExhibitionDraft}
+          onSaveExhibitionEdit={() => void saveExhibitionEdit()}
+          onCancelEditExhibition={cancelEditExhibition}
+          onStartEditExhibition={startEditExhibition}
+          onReorderExhibitions={(fromIndex, toIndex) =>
+            void reorderExhibitions(fromIndex, toIndex)
+          }
+          onDeleteExhibition={(exhibition) =>
+            setDeleteTarget({ type: "exhibition", exhibition })
+          }
+        />
+      )}
+
       {activeTab === "artworks" && (
         <AdminArtworksSection
           categories={categoriesSorted}
+          exhibitions={exhibitionsSorted}
           artworkSearch={artworkSearch}
           setArtworkSearch={setArtworkSearch}
           artworksByCategory={artworksByCategory}
@@ -812,6 +964,7 @@ export function AdminPageContainer() {
           draggedImageId={draggedImageId}
           saving={saving}
           categoryName={categoryName}
+          exhibitionName={exhibitionName}
           onCreateArtwork={createArtwork}
           onStartEdit={startEdit}
           onCancelEdit={cancelEdit}

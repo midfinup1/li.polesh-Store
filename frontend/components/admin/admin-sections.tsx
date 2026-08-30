@@ -3,4 +3,5 @@ export { AdminArtistSection } from "@/components/admin/artist-section";
 export { AdminArtworksSection } from "@/components/admin/artworks-section";
 export { AdminAuditHistorySection } from "@/components/admin/audit-section";
 export { AdminCategoriesSection } from "@/components/admin/categories-section";
+export { AdminExhibitionsSection } from "@/components/admin/exhibitions-section";
 export { AdminOrdersSection } from "@/components/admin/orders-section";

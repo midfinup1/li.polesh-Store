@@ -2,6 +2,7 @@ import type {
   Artist,
   Artwork,
   Category,
+  Exhibition,
   CreateOrderRequest,
   Order,
   AnalyticsSummary,
@@ -105,7 +106,7 @@ function buildQuery(
 
 export const api = {
   artworks: {
-    list: (params?: { category_id?: number }) =>
+    list: (params?: { category_id?: number; exhibition_id?: number }) =>
       request<Artwork[]>(`/artworks${buildQuery(params)}`),
 
     getById: (id: number) => request<Artwork>(`/artworks/${id}`),
@@ -113,6 +114,10 @@ export const api = {
 
   categories: {
     list: () => request<Category[]>("/categories"),
+  },
+
+  exhibitions: {
+    list: () => request<Exhibition[]>("/exhibitions"),
   },
 
   artist: {
@@ -226,6 +231,25 @@ export const api = {
 
       delete: (id: number) =>
         request<void>(`/admin/categories/${id}`, {
+          method: "DELETE",
+        }),
+    },
+
+    exhibitions: {
+      create: (data: Partial<Exhibition>) =>
+        request<Exhibition>("/admin/exhibitions", {
+          method: "POST",
+          body: JSON.stringify(data),
+        }),
+
+      update: (id: number, data: Partial<Exhibition>) =>
+        request<Exhibition>(`/admin/exhibitions/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        }),
+
+      delete: (id: number) =>
+        request<void>(`/admin/exhibitions/${id}`, {
           method: "DELETE",
         }),
     },

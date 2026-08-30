@@ -24,13 +24,10 @@ export function AdminArtistSection({
   onUploadPhoto: (slot: ArtistPhotoSlot, file: File | undefined) => void;
 }) {
   return (
-    <section className="mt-6 rounded-[8px] border border-border p-4">
+    <section className="mt-6 rounded-[8px] bg-paper-dark/35 p-5">
       <h2 className="text-[24px] font-semibold leading-[120%] text-ink">
         Профиль художницы
       </h2>
-      <p className="mt-1 text-[14px] font-medium leading-[150%] text-ink-light">
-        Фотографии загружаются файлом — адреса проставляются автоматически.
-      </p>
 
       <form onSubmit={onSave} className="mt-5 grid gap-3 md:grid-cols-2">
         <input
@@ -79,14 +76,14 @@ export function AdminArtistSection({
           value={artist.bio}
           onChange={(event) => setArtist({ ...artist, bio: event.target.value })}
           placeholder="Текст об авторе RU"
-          rows={4}
+          rows={8}
           className={`${inputClassName} md:col-span-2`}
         />
         <textarea
           value={artist.bio_en}
           onChange={(event) => setArtist({ ...artist, bio_en: event.target.value })}
           placeholder="Текст об авторе EN"
-          rows={4}
+          rows={8}
           className={`${inputClassName} md:col-span-2`}
         />
         <button

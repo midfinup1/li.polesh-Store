@@ -22,6 +22,15 @@ export interface Category {
   created_at?: string;
 }
 
+export interface Exhibition {
+  id: number;
+  name: string;
+  name_en: string;
+  slug: string;
+  sort_order: number;
+  created_at?: string;
+}
+
 export interface Artwork {
   id: number;
   title: string;
@@ -34,6 +43,8 @@ export interface Artwork {
   status: ArtworkStatus;
   category_id: number | null;
   category?: Category;
+  exhibition_id: number | null;
+  exhibition?: Exhibition;
   year: number | null;
   size: string;
   size_en: string;

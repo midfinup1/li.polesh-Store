@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 
-import type { Artwork, ArtworkImage, ArtworkStatus, Category } from "@/types";
+import type { Artwork, ArtworkImage, ArtworkStatus, Category, Exhibition } from "@/types";
 import {
   buttonClassName,
   dangerButtonClassName,
@@ -27,7 +27,9 @@ export function ArtworkAdminCard({
   artwork,
   draft,
   categories,
+  exhibitions,
   categoryName,
+  exhibitionName,
   collapsed,
   draggedArtworkId,
   onToggleCollapsed,
@@ -51,7 +53,9 @@ export function ArtworkAdminCard({
   artwork: Artwork;
   draft: Artwork | null;
   categories: Category[];
+  exhibitions: Exhibition[];
   categoryName: string;
+  exhibitionName: string;
   collapsed?: boolean;
   draggedArtworkId: number | null;
   onToggleCollapsed: () => void;
@@ -84,7 +88,7 @@ export function ArtworkAdminCard({
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDrop}
       className={[
-        "rounded-[8px] border border-border p-4 transition-opacity",
+        "rounded-[8px] bg-white p-4 shadow-sm transition-opacity dark:bg-paper",
         isCollapsed ? "cursor-grab active:cursor-grabbing" : "",
         draggedArtworkId === artwork.id ? "opacity-40" : "opacity-100",
       ].join(" ")}
@@ -144,6 +148,31 @@ export function ArtworkAdminCard({
                 className={optionClassName}
               >
                 {category.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={draft.exhibition_id ?? ""}
+            onChange={(event) =>
+              onDraftChange({
+                ...draft,
+                exhibition_id:
+                  event.target.value === "" ? null : Number(event.target.value),
+              })
+            }
+            className={selectClassName}
+          >
+            <option value="" className={optionClassName}>
+              Без выставки
+            </option>
+            {exhibitions.map((exhibition) => (
+              <option
+                key={exhibition.id}
+                value={exhibition.id}
+                className={optionClassName}
+              >
+                {exhibition.name}
               </option>
             ))}
           </select>
@@ -223,7 +252,7 @@ export function ArtworkAdminCard({
               onDraftChange({ ...draft, description: event.target.value })
             }
             placeholder="Описание RU"
-            rows={3}
+            rows={5}
             className={`${smallInputClassName} md:col-span-2`}
           />
           <textarea
@@ -232,7 +261,7 @@ export function ArtworkAdminCard({
               onDraftChange({ ...draft, description_en: event.target.value })
             }
             placeholder="Описание EN"
-            rows={3}
+            rows={5}
             className={`${smallInputClassName} md:col-span-2`}
           />
           <textarea
@@ -241,7 +270,7 @@ export function ArtworkAdminCard({
               onDraftChange({ ...draft, purchase_comment: event.target.value })
             }
             placeholder="Комментарий к покупке RU"
-            rows={2}
+            rows={4}
             className={`${smallInputClassName} md:col-span-2`}
           />
           <textarea
@@ -253,7 +282,7 @@ export function ArtworkAdminCard({
               })
             }
             placeholder="Комментарий к покупке EN"
-            rows={2}
+            rows={4}
             className={`${smallInputClassName} md:col-span-2`}
           />
 
@@ -299,7 +328,7 @@ export function ArtworkAdminCard({
             )}
 
             <div className="min-w-0">
-              <p className="truncate text-[18px] font-semibold leading-[120%] text-ink">
+              <p className="break-words text-[18px] font-semibold leading-[120%] text-ink">
                 {artwork.title || `Работа #${artwork.id}`}
               </p>
 
@@ -316,7 +345,7 @@ export function ArtworkAdminCard({
                 />
                 {statusLabel[artwork.status]}
                 {artwork.price != null && ` · ${formatPrice(artwork.price)}`} ·{" "}
-                {categoryName} · порядок: {artwork.sort_order}
+                {categoryName} · {exhibitionName} · порядок: {artwork.sort_order}
                 {isCollapsed && artwork.images.length > 0
                   ? ` · фото: ${artwork.images.length}`
                   : ""}
@@ -384,7 +413,7 @@ export function ArtworkAdminCard({
       )}
 
       {draft === null && !isCollapsed && (
-        <div className="mt-4 border-t border-border pt-4">
+        <div className="mt-4 pt-2">
           {artwork.images.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {artwork.images.map((image) => {
@@ -399,7 +428,7 @@ export function ArtworkAdminCard({
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={() => onImageDrop(image.id)}
                     className={[
-                      "rounded-[8px] border border-border p-2 transition-opacity",
+                      "rounded-[8px] bg-paper-dark/45 p-2 transition-opacity",
                       draggedImageId === image.id
                         ? "opacity-40"
                         : "opacity-100",
@@ -429,7 +458,7 @@ export function ArtworkAdminCard({
                             onImageAltTextSave(image, value);
                           }
                         }}
-                        className="mt-1 w-full rounded-[6px] border border-border bg-transparent px-2 py-1 text-[13px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40"
+                        className="mt-1 w-full rounded-[6px] border border-border/80 bg-white/40 px-2 py-2 text-[14px] font-medium leading-[150%] text-ink outline-none focus:border-ink/40 dark:bg-transparent"
                         placeholder="Описание изображения"
                       />
                     </label>
@@ -447,7 +476,7 @@ export function ArtworkAdminCard({
             </div>
           )}
 
-          <label className="mt-3 inline-flex cursor-pointer rounded-[8px] border border-border px-4 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
+          <label className="mt-3 inline-flex cursor-pointer rounded-[8px] border border-border/80 px-4 py-2 text-[14px] font-medium transition-colors hover:border-ink/40">
             Добавить изображение
             <input
               type="file"

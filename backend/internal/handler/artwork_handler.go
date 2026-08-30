@@ -43,6 +43,15 @@ func (h *ArtworkHandler) List(w http.ResponseWriter, r *http.Request) {
 		filter.CategoryID = &id
 	}
 
+	if exhibitionID := q.Get("exhibition_id"); exhibitionID != "" {
+		id, err := strconv.ParseInt(exhibitionID, 10, 64)
+		if err != nil || id <= 0 {
+			respondError(w, http.StatusBadRequest, "invalid exhibition_id")
+			return
+		}
+		filter.ExhibitionID = &id
+	}
+
 	artworks, err := h.svc.List(r.Context(), filter)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to fetch artworks")
@@ -79,9 +88,10 @@ func (h *ArtworkHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	recordAdminAudit(r, h.audit, "artwork.create", "artwork", &created.ID, map[string]any{
-		"title":       created.Title,
-		"status":      created.Status,
-		"category_id": created.CategoryID,
+		"title":         created.Title,
+		"status":        created.Status,
+		"category_id":   created.CategoryID,
+		"exhibition_id": created.ExhibitionID,
 	})
 	respondCreated(w, created)
 }
@@ -122,6 +132,7 @@ func (h *ArtworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 			"price":               oldArtwork.Price,
 			"status":              oldArtwork.Status,
 			"category_id":         oldArtwork.CategoryID,
+			"exhibition_id":       oldArtwork.ExhibitionID,
 			"year":                oldArtwork.Year,
 			"size":                oldArtwork.Size,
 			"size_en":             oldArtwork.SizeEN,
@@ -139,6 +150,7 @@ func (h *ArtworkHandler) Update(w http.ResponseWriter, r *http.Request) {
 			"price":               updated.Price,
 			"status":              updated.Status,
 			"category_id":         updated.CategoryID,
+			"exhibition_id":       updated.ExhibitionID,
 			"year":                updated.Year,
 			"size":                updated.Size,
 			"size_en":             updated.SizeEN,

@@ -381,6 +381,52 @@ func (s *CategoryService) Delete(ctx context.Context, id int64) error {
 	return s.repo.Delete(ctx, id)
 }
 
+// ─── Exhibition Service ──────────────────────────────────────────────────────
+
+type ExhibitionService struct {
+	repo domain.ExhibitionRepository
+}
+
+func NewExhibitionService(repo domain.ExhibitionRepository) *ExhibitionService {
+	return &ExhibitionService{repo: repo}
+}
+
+func (s *ExhibitionService) List(ctx context.Context) ([]domain.Exhibition, error) {
+	return s.repo.GetAll(ctx)
+}
+
+func (s *ExhibitionService) GetByID(ctx context.Context, id int64) (*domain.Exhibition, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s *ExhibitionService) Create(ctx context.Context, e *domain.Exhibition) (*domain.Exhibition, error) {
+	e.Name = strings.TrimSpace(e.Name)
+	e.NameEN = strings.TrimSpace(e.NameEN)
+	e.Slug = strings.TrimSpace(e.Slug)
+
+	if e.Name == "" || e.Slug == "" {
+		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
+	}
+
+	return s.repo.Create(ctx, e)
+}
+
+func (s *ExhibitionService) Update(ctx context.Context, e *domain.Exhibition) (*domain.Exhibition, error) {
+	e.Name = strings.TrimSpace(e.Name)
+	e.NameEN = strings.TrimSpace(e.NameEN)
+	e.Slug = strings.TrimSpace(e.Slug)
+
+	if e.Name == "" || e.Slug == "" {
+		return nil, fmt.Errorf("%w: name and slug are required", domain.ErrValidation)
+	}
+
+	return s.repo.Update(ctx, e)
+}
+
+func (s *ExhibitionService) Delete(ctx context.Context, id int64) error {
+	return s.repo.Delete(ctx, id)
+}
+
 // ─── Artist Service ───────────────────────────────────────────────────────────
 
 type ArtistService struct {

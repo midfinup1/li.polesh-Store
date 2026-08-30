@@ -72,8 +72,10 @@ func TestPublicAndAdminAPI(t *testing.T) {
 
 	t.Run("public lists are arrays", func(t *testing.T) {
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/categories", nil, http.StatusOK)
+		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/exhibitions", nil, http.StatusOK)
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks?category_id=bad", nil, http.StatusBadRequest)
+		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks?exhibition_id=bad", nil, http.StatusBadRequest)
 	})
 
 	t.Run("admin route rejects anonymous request", func(t *testing.T) {
@@ -108,20 +110,37 @@ func TestPublicAndAdminAPI(t *testing.T) {
 			"sort_order": 1,
 		}
 
-		assertAuthenticatedJSONStatus(
+		createdCategory := postAuthenticatedJSON[map[string]any](
 			t,
 			cookie,
-			http.MethodPost,
 			server.URL+"/api/v1/admin/categories",
 			category,
 			http.StatusCreated,
 		)
+		categoryID := int64(createdCategory["id"].(float64))
+
+		exhibition := map[string]any{
+			"name":       "Летняя выставка",
+			"slug":       "summer-show",
+			"sort_order": 1,
+		}
+
+		createdExhibition := postAuthenticatedJSON[map[string]any](
+			t,
+			cookie,
+			server.URL+"/api/v1/admin/exhibitions",
+			exhibition,
+			http.StatusCreated,
+		)
+		exhibitionID := int64(createdExhibition["id"].(float64))
 
 		artwork := map[string]any{
-			"title":       "Работа",
-			"description": "Описание",
-			"status":      "available",
-			"price":       1000,
+			"title":         "Работа",
+			"description":   "Описание",
+			"status":        "available",
+			"price":         1000,
+			"category_id":   categoryID,
+			"exhibition_id": exhibitionID,
 		}
 
 		assertAuthenticatedJSONStatus(
@@ -134,6 +153,7 @@ func TestPublicAndAdminAPI(t *testing.T) {
 		)
 
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
+		assertJSONStatus(t, http.MethodGet, fmt.Sprintf("%s/api/v1/artworks?exhibition_id=%d", server.URL, exhibitionID), nil, http.StatusOK)
 	})
 
 	t.Run("multiple active orders are allowed until artwork status changes", func(t *testing.T) {

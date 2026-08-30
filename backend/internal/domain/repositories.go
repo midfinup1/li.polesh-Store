@@ -26,6 +26,7 @@ type ArtworkRepository interface {
 
 type ArtworkFilter struct {
 	CategoryID    *int64
+	ExhibitionID  *int64
 	Status        *ArtworkStatus // nil = all statuses (admin), non-nil = filter by status
 	ExcludeHidden bool
 	Limit         int
@@ -38,6 +39,15 @@ type CategoryRepository interface {
 	GetByID(ctx context.Context, id int64) (*Category, error)
 	Create(ctx context.Context, c *Category) (*Category, error)
 	Update(ctx context.Context, c *Category) (*Category, error)
+	Delete(ctx context.Context, id int64) error
+}
+
+// ExhibitionRepository defines DB operations for exhibitions.
+type ExhibitionRepository interface {
+	GetAll(ctx context.Context) ([]Exhibition, error)
+	GetByID(ctx context.Context, id int64) (*Exhibition, error)
+	Create(ctx context.Context, e *Exhibition) (*Exhibition, error)
+	Update(ctx context.Context, e *Exhibition) (*Exhibition, error)
 	Delete(ctx context.Context, id int64) error
 }
 

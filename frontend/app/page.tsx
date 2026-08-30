@@ -11,12 +11,14 @@ import { SoldBadge } from "@/components/sold-badge";
 import { useSiteSettings } from "@/lib/site-settings";
 import { pickLocalized } from "@/lib/i18n";
 import { api } from "@/lib/api";
-import type { Artist, Artwork, Category } from "@/types";
+import type { Artist, Artwork, Category, Exhibition } from "@/types";
 
 export default function HomePage() {
   const [artist, setArtist] = useState<Artist | null>(null);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
+  const [activeExhibitionId, setActiveExhibitionId] = useState<number | null>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,11 +29,12 @@ export default function HomePage() {
 
     async function load() {
       try {
-        const [artistResponse, artworksResponse, categoriesResponse] =
+        const [artistResponse, artworksResponse, categoriesResponse, exhibitionsResponse] =
           await Promise.all([
             api.artist.get().catch(() => null),
             api.artworks.list().catch(() => []),
             api.categories.list().catch(() => []),
+            api.exhibitions.list().catch(() => []),
           ]);
 
         if (!mounted) {
@@ -42,6 +45,9 @@ export default function HomePage() {
         setArtworks(Array.isArray(artworksResponse) ? artworksResponse : []);
         setCategories(
           Array.isArray(categoriesResponse) ? categoriesResponse : [],
+        );
+        setExhibitions(
+          Array.isArray(exhibitionsResponse) ? exhibitionsResponse : [],
         );
       } finally {
         if (mounted) {
@@ -65,11 +71,15 @@ export default function HomePage() {
     [categories],
   );
 
-  const selectedCategoryId = useMemo(() => {
-    if (visibleCategories.length === 0) {
-      return null;
-    }
+  const visibleExhibitions = useMemo(
+    () =>
+      [...exhibitions].sort(
+        (a, b) => a.sort_order - b.sort_order || a.id - b.id,
+      ),
+    [exhibitions],
+  );
 
+  const selectedCategoryId = useMemo(() => {
     if (
       activeCategoryId !== null &&
       visibleCategories.some((category) => category.id === activeCategoryId)
@@ -77,19 +87,34 @@ export default function HomePage() {
       return activeCategoryId;
     }
 
-    return visibleCategories[0].id;
+    return null;
   }, [activeCategoryId, visibleCategories]);
 
-  const visibleArtworks = useMemo(() => {
-    if (selectedCategoryId === null) {
-      return [];
+  const selectedExhibitionId = useMemo(() => {
+    if (
+      activeExhibitionId !== null &&
+      visibleExhibitions.some((exhibition) => exhibition.id === activeExhibitionId)
+    ) {
+      return activeExhibitionId;
     }
 
+    return null;
+  }, [activeExhibitionId, visibleExhibitions]);
+
+  const visibleArtworks = useMemo(() => {
     return artworks
       .filter((artwork) => artwork.status !== "hidden")
-      .filter((artwork) => artwork.category_id === selectedCategoryId)
+      .filter(
+        (artwork) =>
+          selectedExhibitionId === null ||
+          artwork.exhibition_id === selectedExhibitionId,
+      )
+      .filter(
+        (artwork) =>
+          selectedCategoryId === null || artwork.category_id === selectedCategoryId,
+      )
       .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
-  }, [artworks, selectedCategoryId]);
+  }, [artworks, selectedCategoryId, selectedExhibitionId]);
 
   const firstColumnArtworks = visibleArtworks.filter(
     (_, index) => index % 3 === 0,
@@ -183,8 +208,61 @@ export default function HomePage() {
           <LocalizedText ru="Каталог" en="Catalog" />
         </h2>
 
-        {visibleCategories.length > 0 && (
+        {visibleExhibitions.length > 0 && (
           <div className="mt-12 flex flex-wrap gap-4">
+            <button
+              type="button"
+              onClick={() => setActiveExhibitionId(null)}
+              className={[
+                "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
+                selectedExhibitionId === null
+                  ? "bg-ink text-paper"
+                  : "bg-paper-dark text-ink",
+              ].join(" ")}
+            >
+              <LocalizedText ru="Все работы" en="All works" />
+            </button>
+
+            {visibleExhibitions.map((exhibition) => {
+              const isActive = selectedExhibitionId === exhibition.id;
+              const label = pickLocalized(
+                language,
+                exhibition.name,
+                exhibition.name_en,
+              );
+
+              return (
+                <button
+                  key={exhibition.id}
+                  type="button"
+                  onClick={() => setActiveExhibitionId(exhibition.id)}
+                  className={[
+                    "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
+                    isActive ? "bg-ink text-paper" : "bg-paper-dark text-ink",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {visibleCategories.length > 0 && (
+          <div className={visibleExhibitions.length > 0 ? "mt-4 flex flex-wrap gap-4" : "mt-12 flex flex-wrap gap-4"}>
+            <button
+              type="button"
+              onClick={() => setActiveCategoryId(null)}
+              className={[
+                "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
+                selectedCategoryId === null
+                  ? "bg-ink text-paper"
+                  : "bg-paper-dark text-ink",
+              ].join(" ")}
+            >
+              <LocalizedText ru="Все типы" en="All types" />
+            </button>
+
             {visibleCategories.map((category) => {
               const isActive = selectedCategoryId === category.id;
               const label = pickLocalized(
@@ -268,8 +346,8 @@ export default function HomePage() {
         ) : (
           <div className="mt-16 flex min-h-[320px] items-center justify-center rounded-[8px] bg-paper-dark text-[14px] text-ink-light">
             <LocalizedText
-              ru="В этой категории пока нет работ"
-              en="There are no artworks in this category yet"
+              ru="По выбранным фильтрам пока нет работ"
+              en="There are no artworks for these filters yet"
             />
           </div>
         )}

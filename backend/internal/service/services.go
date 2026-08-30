@@ -7,14 +7,15 @@ import (
 )
 
 type Services struct {
-	Artworks   *ArtworkService
-	Categories *CategoryService
-	Orders     *OrderService
-	Auth       *AuthService
-	Artist     *ArtistService
-	Storage    *StorageService
-	Analytics  *AnalyticsService
-	Audit      *AuditService
+	Artworks    *ArtworkService
+	Categories  *CategoryService
+	Exhibitions *ExhibitionService
+	Orders      *OrderService
+	Auth        *AuthService
+	Artist      *ArtistService
+	Storage     *StorageService
+	Analytics   *AnalyticsService
+	Audit       *AuditService
 }
 
 type Deps struct {
@@ -33,13 +34,14 @@ func NewServices(d Deps) *Services {
 	})
 
 	return &Services{
-		Artworks:   NewArtworkService(d.Repos.Artworks, d.Repos.Categories, d.Repos.Orders, storage),
-		Categories: NewCategoryService(d.Repos.Categories),
-		Orders:     NewOrderService(d.Repos.Orders, d.Repos.Artworks, telegramNotifier),
-		Auth:       NewAuthService(d.Repos.Admins, d.Config.JWT),
-		Artist:     NewArtistService(d.Repos.Artist, storage),
-		Storage:    storage,
-		Analytics:  NewAnalyticsService(d.Repos.Analytics),
-		Audit:      NewAuditService(d.Repos.AuditLogs),
+		Artworks:    NewArtworkService(d.Repos.Artworks, d.Repos.Categories, d.Repos.Orders, storage),
+		Categories:  NewCategoryService(d.Repos.Categories),
+		Exhibitions: NewExhibitionService(d.Repos.Exhibitions),
+		Orders:      NewOrderService(d.Repos.Orders, d.Repos.Artworks, telegramNotifier),
+		Auth:        NewAuthService(d.Repos.Admins, d.Config.JWT),
+		Artist:      NewArtistService(d.Repos.Artist, storage),
+		Storage:     storage,
+		Analytics:   NewAnalyticsService(d.Repos.Analytics),
+		Audit:       NewAuditService(d.Repos.AuditLogs),
 	}
 }

@@ -208,48 +208,46 @@ export default function HomePage() {
           <LocalizedText ru="Каталог" en="Catalog" />
         </h2>
 
-        {visibleExhibitions.length > 0 && (
-          <div className="mt-12 flex flex-wrap gap-4">
-            <button
-              type="button"
-              onClick={() => setActiveExhibitionId(null)}
-              className={[
-                "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
-                selectedExhibitionId === null
-                  ? "bg-ink text-paper"
-                  : "bg-paper-dark text-ink",
-              ].join(" ")}
-            >
-              <LocalizedText ru="Все работы" en="All works" />
-            </button>
+        <div className="mt-12 flex flex-wrap gap-4">
+          <button
+            type="button"
+            onClick={() => setActiveExhibitionId(null)}
+            className={[
+              "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
+              selectedExhibitionId === null
+                ? "bg-ink text-paper"
+                : "bg-paper-dark text-ink",
+            ].join(" ")}
+          >
+            <LocalizedText ru="Все работы" en="All works" />
+          </button>
 
-            {visibleExhibitions.map((exhibition) => {
-              const isActive = selectedExhibitionId === exhibition.id;
-              const label = pickLocalized(
-                language,
-                exhibition.name,
-                exhibition.name_en,
-              );
+          {visibleExhibitions.map((exhibition) => {
+            const isActive = selectedExhibitionId === exhibition.id;
+            const label = pickLocalized(
+              language,
+              exhibition.name,
+              exhibition.name_en,
+            );
 
-              return (
-                <button
-                  key={exhibition.id}
-                  type="button"
-                  onClick={() => setActiveExhibitionId(exhibition.id)}
-                  className={[
-                    "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
-                    isActive ? "bg-ink text-paper" : "bg-paper-dark text-ink",
-                  ].join(" ")}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+            return (
+              <button
+                key={exhibition.id}
+                type="button"
+                onClick={() => setActiveExhibitionId(exhibition.id)}
+                className={[
+                  "inline-flex h-[44px] items-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-opacity hover:opacity-70",
+                  isActive ? "bg-ink text-paper" : "bg-paper-dark text-ink",
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
         {visibleCategories.length > 0 && (
-          <div className={visibleExhibitions.length > 0 ? "mt-4 flex flex-wrap gap-4" : "mt-12 flex flex-wrap gap-4"}>
+          <div className="mt-4 flex flex-wrap gap-4">
             <button
               type="button"
               onClick={() => setActiveCategoryId(null)}

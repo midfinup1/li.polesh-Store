@@ -179,12 +179,12 @@ export function CatalogHome({
           <LocalizedText ru="Каталог" en="Catalog" />
         </h2>
 
-        <div className="mt-12 flex gap-3 overflow-x-auto pb-1 md:gap-5">
+        <div className="mt-12 flex flex-wrap gap-4">
           <button
             type="button"
             onClick={() => setActiveSeriesId(null)}
             className={[
-              "inline-flex h-[64px] min-w-[180px] flex-1 items-center justify-center rounded-[8px] px-6 text-[17px] font-medium leading-[150%] transition-colors md:h-[76px] md:min-w-[240px] md:text-[20px]",
+              "inline-flex h-[44px] items-center justify-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-colors hover:opacity-70",
               selectedSeriesId === null
                 ? "bg-ink text-paper"
                 : "bg-paper-dark text-ink",
@@ -207,7 +207,7 @@ export function CatalogHome({
                 type="button"
                 onClick={() => setActiveSeriesId(item.id)}
                 className={[
-                  "inline-flex h-[64px] min-w-[180px] flex-1 items-center justify-center rounded-[8px] px-6 text-[17px] font-medium leading-[150%] transition-colors md:h-[76px] md:min-w-[240px] md:text-[20px]",
+                  "inline-flex h-[44px] items-center justify-center rounded-[8px] px-5 text-[16px] font-medium leading-[150%] shadow-sm transition-colors hover:opacity-70",
                   isActive ? "bg-ink text-paper" : "bg-paper-dark text-ink",
                 ].join(" ")}
               >
@@ -218,13 +218,8 @@ export function CatalogHome({
         </div>
 
         {visibleCategories.length > 0 && (
-          <div className="mt-10 overflow-x-auto rounded-[8px] bg-paper-dark px-2 md:mt-14">
-            <div
-              className="grid min-w-max w-full"
-              style={{
-                gridTemplateColumns: `repeat(${visibleCategories.length}, minmax(190px, 1fr))`,
-              }}
-            >
+          <div className="mt-10 max-w-full overflow-x-auto md:mt-14">
+            <div className="inline-flex min-w-max rounded-[8px] bg-paper-dark px-1">
               {visibleCategories.map((category) => {
                 const isActive = selectedCategoryId === category.id;
                 const label = pickLocalized(
@@ -248,7 +243,7 @@ export function CatalogHome({
                         .catch(() => {});
                     }}
                     className={[
-                      "relative inline-flex h-[66px] items-center justify-center px-5 text-[17px] font-medium leading-[150%] text-ink transition-opacity hover:opacity-70 md:h-[78px] md:text-[20px]",
+                      "relative inline-flex h-[44px] items-center justify-center px-5 text-[16px] font-medium leading-[150%] text-ink transition-opacity hover:opacity-70",
                       isActive
                         ? "after:absolute after:inset-x-5 after:bottom-0 after:h-[3px] after:rounded-full after:bg-ink"
                         : "",

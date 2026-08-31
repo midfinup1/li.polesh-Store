@@ -58,7 +58,7 @@ docker run \
   -e POSTGRES_USER="${POSTGRES_USER}" \
   -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
   -e POSTGRES_DB="${POSTGRES_DB}" \
-  -p "${POSTGRES_PORT}:5432" \
+  -p "127.0.0.1:${POSTGRES_PORT}:5432" \
   -d "${POSTGRES_IMAGE}" >/dev/null
 
 echo "Waiting for PostgreSQL..."
@@ -117,7 +117,7 @@ echo "Test restore is OK."
 
 echo
 echo "Connection string:"
-echo "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+echo "postgres://${POSTGRES_USER}:***@localhost:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
 
 if [[ "${CLEANUP}" == "true" ]]; then
   echo "Cleaning up test container..."

@@ -27,6 +27,7 @@ const productionImageHosts = uniqueHosts([
 
 const nextConfig = {
   output: "standalone",
+  poweredByHeader: false,
 
   // Next >=15.2 streams metadata on dynamic pages: <meta> tags can end up in
   // <body> instead of <head>. Bots matching this list get blocking (in-<head>)

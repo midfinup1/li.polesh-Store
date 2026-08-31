@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/infra/.env.prod"
 BACKUP_DIR="$ROOT_DIR/backups"
+MINIO_MC_IMAGE="${MINIO_MC_IMAGE:-minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727}"
 
 mkdir -p "$BACKUP_DIR"
 
@@ -73,7 +75,7 @@ if [[ "${BACKUP_S3_ENABLED:-false}" == "true" ]]; then
     -e BACKUP_S3_PREFIX="$BACKUP_S3_PREFIX" \
     -e BACKUP_NAME="$BACKUP_NAME" \
     -e BACKUP_RETENTION_DAYS="$BACKUP_RETENTION_DAYS" \
-    minio/mc:latest -lc '
+    "$MINIO_MC_IMAGE" -lc '
       set -e
 
       mc alias set backup-s3 "${S3_SCHEME}://${S3_ENDPOINT}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" --api S3v4

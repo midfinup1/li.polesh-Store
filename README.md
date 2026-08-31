@@ -82,6 +82,7 @@ infra/
 
 scripts/
   install-vps.sh
+  install-backup-cron.sh
   backup-postgres.sh
   restore-postgres.sh
   test-restore-postgres.sh

@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Deploy exact commit over SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -45,6 +45,8 @@ jobs:
 
             git fetch origin main
             git reset --hard "$DEPLOY_SHA"
+
+            ./scripts/install-backup-cron.sh
 
             export IMAGE_TAG="$DEPLOY_SHA"
 
@@ -71,7 +73,7 @@ jobs:
           fi
 
       - name: Roll back exact images over SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}

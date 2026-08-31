@@ -15,18 +15,21 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server &
     CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /backfill-images ./cmd/backfill-images
 
 # ── Final stage ───────────────────────────────────────────────────────────────
-FROM alpine:3.19
+FROM alpine:3.24.1
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata libavif-apps libwebp-tools
+RUN apk add --no-cache ca-certificates tzdata libavif-apps libwebp-tools && \
+    addgroup -S app && adduser -S -D -H -G app app
 
-COPY --from=builder /server /app/server
-COPY --from=builder /create-admin /app/create-admin
-COPY --from=builder /migrate /app/migrate
-COPY --from=builder /backfill-images /app/backfill-images
-COPY migrations/ /app/migrations/
+COPY --from=builder --chown=app:app /server /app/server
+COPY --from=builder --chown=app:app /create-admin /app/create-admin
+COPY --from=builder --chown=app:app /migrate /app/migrate
+COPY --from=builder --chown=app:app /backfill-images /app/backfill-images
+COPY --chown=app:app migrations/ /app/migrations/
 
 EXPOSE 8080
+
+USER app
 
 CMD ["/app/server"]

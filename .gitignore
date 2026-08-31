@@ -39,6 +39,9 @@ backend/uploads/*
 # Logs
 *.log
 
+# Production database backups
+backups/
+
 # IDE
 .idea/
 .vscode/

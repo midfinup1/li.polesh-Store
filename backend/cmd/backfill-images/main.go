@@ -1,10 +1,11 @@
-// backfill-images генерирует display-варианты (~2400px) для изображений,
+// backfill-images генерирует display-варианты (~3200px) для изображений,
 // загруженных до их появления, и проставляет Cache-Control на все существующие
 // объекты бакета (server-side copy, без перекачивания данных).
 //
 // Запуск на VPS (однократно после деплоя):
 //
 //	docker compose -f docker-compose.prod.yml exec backend /app/backfill-images
+//	docker compose -f docker-compose.prod.yml exec backend /app/backfill-images -force
 //	docker compose -f docker-compose.prod.yml exec backend /app/backfill-images -dry-run
 package main
 
@@ -36,9 +37,17 @@ type imageRow struct {
 	DisplayURL  string `db:"display_url"`
 }
 
+type generatedURLs struct {
+	ThumbURL       string
+	ThumbWebPURL   string
+	ThumbAVIFURL   string
+	DisplayURL     string
+	DisplayWebPURL string
+}
+
 func main() {
 	dryRun := flag.Bool("dry-run", false, "print planned actions without writing")
-	force := flag.Bool("force", false, "regenerate display variants even when they already exist")
+	force := flag.Bool("force", false, "regenerate every thumbnail and display variant")
 	skipHeaders := flag.Bool("skip-cache-headers", false, "skip the bucket-wide Cache-Control pass")
 	flag.Parse()
 
@@ -103,11 +112,13 @@ func backfillDisplayVariants(ctx context.Context, db *sqlx.DB, s3 *minio.Client,
 		log.Printf("images without display variant: %d", len(rows))
 	}
 	processor := imageprocessor.New()
+	failed := 0
 
 	for _, row := range rows {
 		key := keyFromURL(row.OriginalURL, publicURL)
 		if key == "" {
 			log.Printf("image %d: cannot derive object key from %q — skipped", row.ID, row.OriginalURL)
+			failed++
 			continue
 		}
 
@@ -119,12 +130,14 @@ func backfillDisplayVariants(ctx context.Context, db *sqlx.DB, s3 *minio.Client,
 		obj, err := s3.GetObject(ctx, bucket, key, minio.GetObjectOptions{})
 		if err != nil {
 			log.Printf("image %d: get %s: %v — skipped", row.ID, key, err)
+			failed++
 			continue
 		}
 		data, err := io.ReadAll(obj)
 		obj.Close()
 		if err != nil {
 			log.Printf("image %d: read %s: %v — skipped", row.ID, key, err)
+			failed++
 			continue
 		}
 
@@ -133,38 +146,115 @@ func backfillDisplayVariants(ctx context.Context, db *sqlx.DB, s3 *minio.Client,
 		cancel()
 		if err != nil {
 			log.Printf("image %d: process: %v — skipped", row.ID, err)
+			failed++
 			continue
 		}
 
-		timestamp := time.Now().UnixNano()
-		displayURL := ""
-		displayWebPURL := ""
-
-		jpgKey := fmt.Sprintf("artworks/%d/%d_display.jpg", row.ArtworkID, timestamp)
-		if url, err := putObject(ctx, s3, bucket, publicURL, jpgKey, result.DisplayJPEG, "image/jpeg"); err == nil {
-			displayURL = url
-		} else {
-			log.Printf("image %d: upload display jpeg: %v — skipped", row.ID, err)
+		urls, err := uploadGeneratedVariants(ctx, s3, bucket, publicURL, row.ArtworkID, row.OriginalURL, result, force)
+		if err != nil {
+			log.Printf("image %d: upload variants: %v — skipped", row.ID, err)
+			failed++
 			continue
 		}
 
-		if len(result.DisplayWebP) > 0 {
-			webpKey := fmt.Sprintf("artworks/%d/%d_display.webp", row.ArtworkID, timestamp)
-			if url, err := putObject(ctx, s3, bucket, publicURL, webpKey, result.DisplayWebP, "image/webp"); err == nil {
-				displayWebPURL = url
+		if force {
+			if _, err := db.ExecContext(ctx,
+				`UPDATE artwork_images
+				    SET thumb_url = $1,
+				        thumb_webp_url = $2,
+				        thumb_avif_url = $3,
+				        display_url = $4,
+				        display_webp_url = $5
+				  WHERE id = $6`,
+				urls.ThumbURL, urls.ThumbWebPURL, urls.ThumbAVIFURL,
+				urls.DisplayURL, urls.DisplayWebPURL, row.ID); err != nil {
+				return fmt.Errorf("update image %d: %w", row.ID, err)
 			}
-		}
-
-		if _, err := db.ExecContext(ctx,
+		} else if _, err := db.ExecContext(ctx,
 			`UPDATE artwork_images SET display_url = $1, display_webp_url = $2 WHERE id = $3`,
-			displayURL, displayWebPURL, row.ID); err != nil {
+			urls.DisplayURL, urls.DisplayWebPURL, row.ID); err != nil {
 			return fmt.Errorf("update image %d: %w", row.ID, err)
 		}
 
-		log.Printf("image %d: display variants generated (%d KB jpeg)", row.ID, len(result.DisplayJPEG)/1024)
+		if result.ReuseOriginalForDisplay {
+			log.Printf("image %d: thumbnails generated; original reused for display", row.ID)
+		} else {
+			log.Printf("image %d: variants generated (display fallback %d KB)", row.ID, len(result.Display.Data)/1024)
+		}
+	}
+
+	if failed > 0 {
+		return fmt.Errorf("%d of %d images failed", failed, len(rows))
 	}
 
 	return nil
+}
+
+func uploadGeneratedVariants(
+	ctx context.Context,
+	s3 *minio.Client,
+	bucket string,
+	publicURL string,
+	artworkID int64,
+	originalURL string,
+	result *imageprocessor.Result,
+	includeThumbnails bool,
+) (generatedURLs, error) {
+	timestamp := time.Now().UnixNano()
+	urls := generatedURLs{}
+
+	if includeThumbnails {
+		thumbKey := fmt.Sprintf("artworks/%d/%d_thumb%s", artworkID, timestamp, result.Thumbnail.Extension)
+		url, err := putObject(ctx, s3, bucket, publicURL, thumbKey, result.Thumbnail.Data, result.Thumbnail.ContentType)
+		if err != nil {
+			return generatedURLs{}, fmt.Errorf("upload thumbnail fallback: %w", err)
+		}
+		urls.ThumbURL = url
+
+		if len(result.ThumbnailWebP) > 0 {
+			webpKey := fmt.Sprintf("artworks/%d/%d_thumb.webp", artworkID, timestamp)
+			if url, err := putObject(ctx, s3, bucket, publicURL, webpKey, result.ThumbnailWebP, "image/webp"); err == nil {
+				urls.ThumbWebPURL = url
+			} else {
+				log.Printf("artwork %d: upload thumbnail webp: %v", artworkID, err)
+			}
+		}
+
+		if len(result.ThumbnailAVIF) > 0 {
+			avifKey := fmt.Sprintf("artworks/%d/%d_thumb.avif", artworkID, timestamp)
+			if url, err := putObject(ctx, s3, bucket, publicURL, avifKey, result.ThumbnailAVIF, "image/avif"); err == nil {
+				urls.ThumbAVIFURL = url
+			} else {
+				log.Printf("artwork %d: upload thumbnail avif: %v", artworkID, err)
+			}
+		}
+	}
+
+	if result.ReuseOriginalForDisplay {
+		urls.DisplayURL = originalURL
+		if strings.HasSuffix(strings.ToLower(originalURL), ".webp") {
+			urls.DisplayWebPURL = originalURL
+		}
+		return urls, nil
+	}
+
+	displayKey := fmt.Sprintf("artworks/%d/%d_display%s", artworkID, timestamp, result.Display.Extension)
+	displayURL, err := putObject(ctx, s3, bucket, publicURL, displayKey, result.Display.Data, result.Display.ContentType)
+	if err != nil {
+		return generatedURLs{}, fmt.Errorf("upload display fallback: %w", err)
+	}
+	urls.DisplayURL = displayURL
+
+	if len(result.DisplayWebP) > 0 {
+		webpKey := fmt.Sprintf("artworks/%d/%d_display.webp", artworkID, timestamp)
+		if url, err := putObject(ctx, s3, bucket, publicURL, webpKey, result.DisplayWebP, "image/webp"); err == nil {
+			urls.DisplayWebPURL = url
+		} else {
+			log.Printf("artwork %d: upload display webp: %v", artworkID, err)
+		}
+	}
+
+	return urls, nil
 }
 
 // setCacheHeaders walks every object in the bucket and re-writes its metadata

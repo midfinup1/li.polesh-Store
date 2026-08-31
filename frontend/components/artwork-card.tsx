@@ -39,7 +39,7 @@ export function ArtworkCard({
 
   return (
     <Link href={`/artwork/${artwork.id}`} scroll={false} className="group block">
-      <div className="mb-6 overflow-hidden rounded-[8px] bg-paper-dark">
+      <div className="mb-6 overflow-hidden rounded-[8px] bg-transparent">
         {cover ? (
           <ArtworkThumbnail image={cover} title={title} />
         ) : (

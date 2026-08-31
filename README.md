@@ -12,7 +12,7 @@ The application includes a responsive public website, a protected administration
 * Light and dark themes
 * Responsive public website and administration panel
 * Protected administrator authentication
-* Image upload with 1200px thumbnails and 2400px display variants
+* Image upload with 1200px thumbnails, transparent PNG support, smart original reuse, and 3200px display variants
 * Feedback request form
 * Telegram notifications for new requests
 * SEO metadata, Open Graph, sitemap, and robots.txt

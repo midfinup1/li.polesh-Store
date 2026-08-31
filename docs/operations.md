@@ -188,6 +188,20 @@ crontab -l
 ./scripts/install-backup-cron.sh
 ```
 
+После первого deploy версии обработки изображений v2 все существующие варианты
+однократно пересобираются из оригиналов. Маркер успешного выполнения хранится в
+`backups/image-variants-v2.done`, поэтому последующие deploy не запускают
+дорогую обработку повторно. Ручной повторный запуск:
+
+```bash
+docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml exec -T backend \
+  /app/backfill-images -force -skip-cache-headers
+```
+
+Оригиналы до `3200 px` и `2 МБ` используются на странице работы без повторного
+сжатия. Более крупные файлы получают display-версию до `3200 px`; каталог всегда
+использует отдельные облегчённые варианты до `1200 px`.
+
 Off-site backup в S3 включается переменными:
 
 ```env

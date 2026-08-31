@@ -50,6 +50,19 @@ const blankArtist: Artist = {
   instagram: "",
 };
 
+const recommendedArtworkLongEdge = 2400;
+
+async function readImageDimensions(file: File) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const dimensions = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return dimensions;
+  } catch {
+    return null;
+  }
+}
+
 function applySortOrder<T extends { id: number; sort_order: number }>(
   items: T[],
   ids: number[],
@@ -670,10 +683,21 @@ export function AdminPageContainer() {
       return;
     }
 
-    await run(
+    const dimensions = await readImageDimensions(file);
+    const uploaded = await run(
       () => api.admin.artworks.uploadImage(artworkId, file),
       "Изображение загружено",
     );
+
+    if (
+      uploaded &&
+      dimensions &&
+      Math.max(dimensions.width, dimensions.height) < recommendedArtworkLongEdge
+    ) {
+      setNotice(
+        `Изображение загружено, но оригинал ${dimensions.width}×${dimensions.height} px. Для максимальной чёткости лучше от ${recommendedArtworkLongEdge} px по длинной стороне.`,
+      );
+    }
   }
 
   async function updateImageAltText(

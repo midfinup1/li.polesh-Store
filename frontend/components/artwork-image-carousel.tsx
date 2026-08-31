@@ -19,7 +19,7 @@ type ArtworkImageCarouselProps = {
   title: string;
 };
 
-// Display variant (~2400px) first; original is only a last-resort fallback for
+// Display variant (~3200px) first; original is only a last-resort fallback for
 // images uploaded before display variants existed (until backfill-images runs).
 function getImageUrl(image: ArtworkImageCarouselImage) {
   return (

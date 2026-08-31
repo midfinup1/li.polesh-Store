@@ -88,36 +88,42 @@ func (s *StorageService) UploadArtworkImage(ctx context.Context, artworkID int64
 		return nil, err
 	}
 	result := &UploadedArtworkImage{OriginalURL: originalURL, ThumbURL: originalURL}
+	if processed.ReuseOriginalForDisplay {
+		result.DisplayURL = originalURL
+		if contentType == "image/webp" {
+			result.DisplayWebPURL = originalURL
+		}
+	}
 
-	jpegKey := fmt.Sprintf("artworks/%d/%d_thumb.jpg", artworkID, timestamp)
-	if url, err := s.put(ctx, jpegKey, processed.JPEG, "image/jpeg"); err == nil {
+	thumbnailKey := fmt.Sprintf("artworks/%d/%d_thumb%s", artworkID, timestamp, processed.Thumbnail.Extension)
+	if url, err := s.put(ctx, thumbnailKey, processed.Thumbnail.Data, processed.Thumbnail.ContentType); err == nil {
 		result.ThumbURL = url
 	}
 
-	if len(processed.WebP) > 0 {
+	if len(processed.ThumbnailWebP) > 0 {
 		webpKey := fmt.Sprintf("artworks/%d/%d_thumb.webp", artworkID, timestamp)
-		if url, err := s.put(ctx, webpKey, processed.WebP, "image/webp"); err == nil {
+		if url, err := s.put(ctx, webpKey, processed.ThumbnailWebP, "image/webp"); err == nil {
 			result.ThumbWebPURL = url
 		}
 	}
 
-	if len(processed.AVIF) > 0 {
+	if len(processed.ThumbnailAVIF) > 0 {
 		avifKey := fmt.Sprintf("artworks/%d/%d_thumb.avif", artworkID, timestamp)
-		if url, err := s.put(ctx, avifKey, processed.AVIF, "image/avif"); err == nil {
+		if url, err := s.put(ctx, avifKey, processed.ThumbnailAVIF, "image/avif"); err == nil {
 			result.ThumbAVIFURL = url
 		}
 	}
 
-	// Display variants (~2400px) — what the public carousel serves instead of
+	// Display variants (~3200px) are what the public carousel serves instead of
 	// the original. On failure the frontend falls back to the original.
-	if len(processed.DisplayJPEG) > 0 {
-		displayKey := fmt.Sprintf("artworks/%d/%d_display.jpg", artworkID, timestamp)
-		if url, err := s.put(ctx, displayKey, processed.DisplayJPEG, "image/jpeg"); err == nil {
+	if !processed.ReuseOriginalForDisplay && len(processed.Display.Data) > 0 {
+		displayKey := fmt.Sprintf("artworks/%d/%d_display%s", artworkID, timestamp, processed.Display.Extension)
+		if url, err := s.put(ctx, displayKey, processed.Display.Data, processed.Display.ContentType); err == nil {
 			result.DisplayURL = url
 		}
 	}
 
-	if len(processed.DisplayWebP) > 0 {
+	if !processed.ReuseOriginalForDisplay && len(processed.DisplayWebP) > 0 {
 		displayWebPKey := fmt.Sprintf("artworks/%d/%d_display.webp", artworkID, timestamp)
 		if url, err := s.put(ctx, displayWebPKey, processed.DisplayWebP, "image/webp"); err == nil {
 			result.DisplayWebPURL = url

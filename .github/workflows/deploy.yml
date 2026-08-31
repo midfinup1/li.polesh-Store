@@ -33,6 +33,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 30m
           script: |
             set -e
             cd /opt/li-polesh-store
@@ -55,6 +56,14 @@ jobs:
 
             echo "Restart production services..."
             docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml up -d --remove-orphans
+
+            IMAGE_VARIANTS_MARKER="backups/image-variants-v2.done"
+            if [ ! -f "$IMAGE_VARIANTS_MARKER" ]; then
+              echo "Regenerating high-quality image variants once..."
+              docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml exec -T backend \
+                /app/backfill-images -force -skip-cache-headers
+              touch "$IMAGE_VARIANTS_MARKER"
+            fi
 
             docker image prune -f
             docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml ps

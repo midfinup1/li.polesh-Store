@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
-	_ "image/png"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,27 +19,38 @@ import (
 
 const (
 	ThumbnailMaxDim      = 1200
-	ThumbnailJPEGQuality = 88
+	ThumbnailJPEGQuality = 92
+	ThumbnailWebPQuality = 90
 	MaxImageDimension    = 20000
 	MaxImagePixels       = 60_000_000
 
-	// Display variants are what the public artwork page (carousel) serves
-	// instead of multi-megabyte originals. 2400px keeps artwork details crisp on
-	// retina screens while still being much lighter than the original upload.
-	DisplayMaxDim      = 2400
-	DisplayJPEGQuality = 92
-	DisplayWebPQuality = 90
+	// Display variants are what the public artwork page serves instead of
+	// multi-megabyte originals. 3200px leaves ample detail for large and retina
+	// displays while remaining substantially lighter than camera originals.
+	DisplayMaxDim      = 3200
+	DisplayJPEGQuality = 95
+	DisplayWebPQuality = 94
+
+	MaxOriginalDisplayBytes = 2 << 20
 )
 
-type Result struct {
-	JPEG []byte
-	WebP []byte
-	AVIF []byte
+type EncodedImage struct {
+	Data        []byte
+	Extension   string
+	ContentType string
+}
 
-	// Display-size variants (DisplayMaxDim). WebP may be empty when the cwebp
-	// binary is unavailable; JPEG is always present on success.
-	DisplayJPEG []byte
-	DisplayWebP []byte
+type Result struct {
+	Thumbnail     EncodedImage
+	ThumbnailWebP []byte
+	ThumbnailAVIF []byte
+
+	// Small, screen-sized originals need no additional lossy encoding. For
+	// larger originals Display is always present; WebP may be empty when cwebp
+	// is unavailable.
+	ReuseOriginalForDisplay bool
+	Display                 EncodedImage
+	DisplayWebP             []byte
 }
 
 type Processor struct {
@@ -66,32 +77,45 @@ func (p *Processor) Generate(ctx context.Context, data []byte, _ string) (*Resul
 
 	thumb := downscale(img, p.MaxDim)
 
-	jpegBytes, err := encodeJPEG(thumb, p.JPEGQuality)
+	thumbnail, thumbLossless, err := encodeFallbackAndLossless(thumb, p.JPEGQuality)
 	if err != nil {
 		return nil, err
 	}
 
-	webpBytes, _ := encodeWebPQuality(ctx, jpegBytes, 82)
-	avifBytes, _ := encodeAVIF(ctx, jpegBytes)
+	webpBytes, _ := encodeWebPQuality(ctx, thumbLossless, ThumbnailWebPQuality)
+	avifBytes, _ := encodeAVIF(ctx, thumbLossless)
+	result := &Result{
+		Thumbnail:     thumbnail,
+		ThumbnailWebP: webpBytes,
+		ThumbnailAVIF: avifBytes,
+	}
+
+	if shouldReuseOriginalForDisplay(img, len(data)) {
+		result.ReuseOriginalForDisplay = true
+		return result, nil
+	}
 
 	// Display variant reuses the already-decoded image (no second decode of a
 	// potentially 10MB original). AVIF is intentionally skipped here: avifenc
 	// on display-size inputs is too slow for a synchronous upload path, and
-	// JPEG+WebP already give the bulk of the savings.
+	// a high-quality fallback plus WebP already gives the bulk of the savings.
 	display := downscale(img, DisplayMaxDim)
-	displayJPEG, err := encodeJPEG(display, DisplayJPEGQuality)
+	displayFallback, displayLossless, err := encodeFallbackAndLossless(display, DisplayJPEGQuality)
 	if err != nil {
 		return nil, err
 	}
-	displayWebP, _ := encodeWebPQuality(ctx, displayJPEG, DisplayWebPQuality)
+	displayWebP, _ := encodeWebPQuality(ctx, displayLossless, DisplayWebPQuality)
 
-	return &Result{
-		JPEG:        jpegBytes,
-		WebP:        webpBytes,
-		AVIF:        avifBytes,
-		DisplayJPEG: displayJPEG,
-		DisplayWebP: displayWebP,
-	}, nil
+	result.Display = displayFallback
+	result.DisplayWebP = displayWebP
+	return result, nil
+}
+
+func shouldReuseOriginalForDisplay(img image.Image, byteLength int) bool {
+	bounds := img.Bounds()
+	return bounds.Dx() <= DisplayMaxDim &&
+		bounds.Dy() <= DisplayMaxDim &&
+		byteLength <= MaxOriginalDisplayBytes
 }
 
 func (p *Processor) Validate(data []byte) error {
@@ -125,12 +149,71 @@ func encodeJPEG(img image.Image, quality int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func encodePNG(img image.Image) ([]byte, error) {
+	var buf bytes.Buffer
+
+	encoder := png.Encoder{CompressionLevel: png.DefaultCompression}
+	if err := encoder.Encode(&buf, img); err != nil {
+		return nil, fmt.Errorf("encode png image: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func encodeFallbackAndLossless(img image.Image, jpegQuality int) (EncodedImage, []byte, error) {
+	lossless, err := encodePNG(img)
+	if err != nil {
+		return EncodedImage{}, nil, err
+	}
+
+	if hasTransparency(img) {
+		return EncodedImage{
+			Data:        lossless,
+			Extension:   ".png",
+			ContentType: "image/png",
+		}, lossless, nil
+	}
+
+	jpegData, err := encodeJPEG(img, jpegQuality)
+	if err != nil {
+		return EncodedImage{}, nil, err
+	}
+
+	return EncodedImage{
+		Data:        jpegData,
+		Extension:   ".jpg",
+		ContentType: "image/jpeg",
+	}, lossless, nil
+}
+
+func hasTransparency(img image.Image) bool {
+	type opaqueImage interface {
+		Opaque() bool
+	}
+
+	if opaque, ok := img.(opaqueImage); ok {
+		return !opaque.Opaque()
+	}
+
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			_, _, _, alpha := img.At(x, y).RGBA()
+			if alpha != 0xffff {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func encodeWebPQuality(ctx context.Context, inputData []byte, quality int) ([]byte, error) {
 	return encodeWithCLI(
 		ctx,
 		"cwebp",
-		[]string{"-quiet", "-q", fmt.Sprintf("%d", quality)},
-		".jpg",
+		[]string{"-quiet", "-q", fmt.Sprintf("%d", quality), "-alpha_q", "100", "-exact"},
+		".png",
 		".webp",
 		inputData,
 		func(args []string, input string, output string) []string {
@@ -145,8 +228,8 @@ func encodeAVIF(ctx context.Context, inputData []byte) ([]byte, error) {
 	return encodeWithCLI(
 		ctx,
 		"avifenc",
-		[]string{"--min", "28", "--max", "34", "--speed", "6"},
-		".jpg",
+		[]string{"--min", "20", "--max", "28", "--speed", "6"},
+		".png",
 		".avif",
 		inputData,
 		func(args []string, input string, output string) []string {
@@ -243,7 +326,7 @@ func downscale(src image.Image, maxDim int) image.Image {
 	}
 
 	dst := image.NewRGBA(image.Rect(0, 0, tw, th))
-	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Over, nil)
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
 
 	return dst
 }

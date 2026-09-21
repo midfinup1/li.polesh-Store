@@ -141,19 +141,21 @@ func TestPublicAndAdminAPI(t *testing.T) {
 			"title":         "Работа",
 			"description":   "Описание",
 			"status":        "available",
-			"price":         1000,
+			"price":         1,
 			"category_id":   categoryID,
 			"exhibition_id": seriesID,
 		}
 
-		assertAuthenticatedJSONStatus(
+		createdArtwork := postAuthenticatedJSON[map[string]any](
 			t,
 			cookie,
-			http.MethodPost,
 			server.URL+"/api/v1/admin/artworks",
 			artwork,
 			http.StatusCreated,
 		)
+		if createdArtwork["price"] != float64(1) {
+			t.Fatalf("expected price 1, got %v", createdArtwork["price"])
+		}
 
 		assertJSONStatus(t, http.MethodGet, server.URL+"/api/v1/artworks", nil, http.StatusOK)
 		assertJSONStatus(t, http.MethodGet, fmt.Sprintf("%s/api/v1/artworks?series_id=%d", server.URL, seriesID), nil, http.StatusOK)

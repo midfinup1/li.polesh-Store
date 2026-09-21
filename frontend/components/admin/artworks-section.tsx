@@ -126,12 +126,24 @@ export function AdminArtworksSection({
             </FormGroup>
 
             <FormGroup title="Параметры">
-              <input name="price" type="number" min="0" placeholder="Цена, руб." className={inputClassName} />
-              <input name="year" type="number" min="1000" max="9999" placeholder="Год" className={inputClassName} />
-              <input name="size" placeholder="Размер RU" className={inputClassName} />
-              <input name="size_en" placeholder="Размер EN" className={inputClassName} />
-              <input name="materials" placeholder="Материалы RU" className={inputClassName} />
-              <input name="materials_en" placeholder="Материалы EN" className={inputClassName} />
+              <CreateField label="Цена, руб.">
+                <input name="price" type="number" min="0" step="1" placeholder="Например, 500" className={inputClassName} />
+              </CreateField>
+              <CreateField label="Год">
+                <input name="year" type="number" min="1000" max="9999" step="1" placeholder="Например, 2026" className={inputClassName} />
+              </CreateField>
+              <CreateField label="Размер RU">
+                <input name="size" className={inputClassName} />
+              </CreateField>
+              <CreateField label="Размер EN">
+                <input name="size_en" className={inputClassName} />
+              </CreateField>
+              <CreateField label="Материалы RU">
+                <input name="materials" className={inputClassName} />
+              </CreateField>
+              <CreateField label="Материалы EN">
+                <input name="materials_en" className={inputClassName} />
+              </CreateField>
             </FormGroup>
 
             <FormGroup title="Описание">
@@ -264,6 +276,15 @@ function FormGroup({ title, children }: { title: string; children: ReactNode }) 
       <legend className="mb-2 text-[14px] font-semibold text-ink-light">{title}</legend>
       <div className="grid gap-2 md:grid-cols-2">{children}</div>
     </fieldset>
+  );
+}
+
+function CreateField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="space-y-1">
+      <span className="block text-[13px] font-medium text-ink-light">{label}</span>
+      {children}
+    </label>
   );
 }
 
